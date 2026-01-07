@@ -1,12 +1,16 @@
+import 'dart:io';
 import 'package:e_logbook/screens/Login/welcome_screen.dart';
 import 'package:e_logbook/screens/nahkoda/screens/crew_attendance_screen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
 import 'package:e_logbook/services/auth_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
+import 'package:e_logbook/screens/main_screen.dart';
+import 'package:e_logbook/screens/faq_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -18,6 +22,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String _currentAddress = "Mengambil lokasi...";
   bool _isLoadingLocation = true;
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -85,6 +90,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    try {
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _isUploadingImage = true;
+        });
+
+        // Simpan path lokal ke provider
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        await userProvider.updateProfileImage(pickedFile.path);
+
+        setState(() {
+          _isUploadingImage = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Foto profil berhasil diperbarui')),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isUploadingImage = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal mengambil gambar: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,21 +173,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
       color: Colors.transparent,
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.black87, width: 2),
-            ),
-            child: const CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.person_rounded,
-                size: 60,
-                color: Colors.black87,
-              ),
-            ),
+          Consumer<UserProvider>(
+            builder: (context, userProvider, child) {
+              final user = userProvider.user;
+              final imagePath = user?.profileImagePath;
+
+              return Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black87, width: 2),
+                    ),
+                    child: _isUploadingImage
+                        ? const CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.white,
+                            child: CircularProgressIndicator(),
+                          )
+                        : CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.white,
+                            backgroundImage: imagePath != null
+                                ? FileImage(File(imagePath))
+                                : null,
+                            child: imagePath == null
+                                ? const Icon(
+                                    Icons.person_rounded,
+                                    size: 60,
+                                    color: Colors.black87,
+                                  )
+                                : null,
+                          ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B4F9C),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           Consumer<UserProvider>(
@@ -307,13 +393,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.assessment_outlined,
             title: 'Laporan',
             subtitle: 'Lihat laporan statistik lengkap',
-            onTap: () {},
+            onTap: () {
+              MainScreen.globalKey.currentState?.changeTab(1);
+            },
           ),
           _buildMenuItem(
             icon: Icons.help_outline_rounded,
             title: 'Bantuan',
             subtitle: 'Pusat bantuan dan FAQ',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FaqScreen()),
+              );
+            },
           ),
           _buildMenuItem(
             icon: Icons.info_outline_rounded,

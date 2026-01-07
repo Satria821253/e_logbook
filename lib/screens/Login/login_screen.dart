@@ -77,10 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   /// TITLE
                   Text(
                     'Selamat datang Kembali di E-Logbook',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12.sp,
-                    ),
+                    style: TextStyle(color: Colors.grey, fontSize: 12.sp),
                     textAlign: TextAlign.left,
                   ),
 
@@ -190,8 +187,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 18.w,
                             child: Checkbox(
                               value: _rememberMe,
-                              activeColor:
-                                  const Color.fromARGB(255, 23, 124, 207),
+                              activeColor: const Color.fromARGB(
+                                255,
+                                23,
+                                124,
+                                207,
+                              ),
                               onChanged: (val) {
                                 setState(() {
                                   _rememberMe = val ?? false;
@@ -235,74 +236,91 @@ class _LoginScreenState extends State<LoginScreen> {
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
                       ),
-                      onPressed: _isLoading ? null : () async {
-                        setState(() {
-                          _isLoading = true;
-                        });
-                        
-                        try {
-                          final result = await ApiService.login(
-                            login: _emailPhoneController.text,
-                            password: _passwordController.text,
-                          );
-                          
-                          if (result['token'] != null) {
-                            // Save user data if available
-                            if (result['user'] != null) {
-                              final prefs = await SharedPreferences.getInstance();
-                              await prefs.setString('user_data', jsonEncode(result['user']));
-                              
-                              // Create UserModel and set to provider
-                              final userData = result['user'] as Map<String, dynamic>;
-                              final userModel = UserModel(
-                                id: userData['id'],
-                                name: userData['name'],
-                                email: userData['email'],
-                                phone: userData['phone'],
-                                role: userData['role'],
-                                token: result['token'],
-                              );
-                              
-                              // Set user to provider (this will also save to UserService)
-                              if (mounted) {
-                                final userProvider = Provider.of<UserProvider>(context, listen: false);
-                                await userProvider.setUser(userModel);
+                      onPressed: _isLoading
+                          ? null
+                          : () async {
+                              setState(() {
+                                _isLoading = true;
+                              });
+
+                              try {
+                                final result = await ApiService.login(
+                                  login: _emailPhoneController.text,
+                                  password: _passwordController.text,
+                                );
+
+                                if (result['token'] != null) {
+                                  // Save user data if available
+                                  if (result['user'] != null) {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    await prefs.setString(
+                                      'user_data',
+                                      jsonEncode(result['user']),
+                                    );
+
+                                    // Create UserModel and set to provider
+                                    final userData =
+                                        result['user'] as Map<String, dynamic>;
+                                    final userModel = UserModel(
+                                      id: userData['id'],
+                                      name: userData['name'],
+                                      email: userData['email'],
+                                      phone: userData['phone'],
+                                      role: userData['role'],
+                                      token: result['token'],
+                                    );
+
+                                    // Set user to provider (this will also save to UserService)
+                                    if (mounted) {
+                                      final userProvider =
+                                          Provider.of<UserProvider>(
+                                            context,
+                                            listen: false,
+                                          );
+                                      await userProvider.setUser(userModel);
+                                    }
+                                  }
+
+                                  if (mounted) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => MainScreen(),
+                                      ),
+                                    );
+                                  }
+                                } else {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          result['message'] ??
+                                              result['error'] ??
+                                              'Login gagal',
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Terjadi kesalahan koneksi',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
                               }
-                            }
-                            
-                            if (mounted) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const MainScreen(),
-                                ),
-                              );
-                            }
-                          } else {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(result['message'] ?? result['error'] ?? 'Login gagal'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Terjadi kesalahan koneksi'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
-                        
-                        setState(() {
-                          _isLoading = false;
-                        });
-                      },
+
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            },
                       child: Ink(
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
@@ -343,13 +361,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     children: [
                       Expanded(
-                          child: Divider(color: Colors.grey, thickness: 0.5.h)),
+                        child: Divider(color: Colors.grey, thickness: 0.5.h),
+                      ),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 8.w),
                         child: Text("Atau", style: TextStyle(fontSize: 12.sp)),
                       ),
                       Expanded(
-                          child: Divider(color: Colors.grey, thickness: 0.5.h)),
+                        child: Divider(color: Colors.grey, thickness: 0.5.h),
+                      ),
                     ],
                   ),
 
@@ -359,8 +379,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("Belum Punya Akun? ",
-                          style: TextStyle(fontSize: 12.sp)),
+                      Text(
+                        "Belum Punya Akun? ",
+                        style: TextStyle(fontSize: 12.sp),
+                      ),
                       GestureDetector(
                         onTap: () {
                           Navigator.pushReplacement(
@@ -406,15 +428,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(height: 4.h),
                         Text(
                           "• rizki@abk.com / 123456 (Ahmad Rizki)",
-                          style: TextStyle(fontSize: 10.sp, color: Colors.blue.shade700),
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.blue.shade700,
+                          ),
                         ),
                         Text(
                           "• sari@abk.com / 123456 (Sari Dewi)",
-                          style: TextStyle(fontSize: 10.sp, color: Colors.blue.shade700),
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.blue.shade700,
+                          ),
                         ),
                         Text(
                           "• budi@abk.com / 123456 (Budi Santoso)",
-                          style: TextStyle(fontSize: 10.sp, color: Colors.blue.shade700),
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.blue.shade700,
+                          ),
                         ),
                       ],
                     ),
@@ -444,15 +475,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(height: 4.h),
                         Text(
                           "• nahkoda1@email.com / 123456 (Kapten Joko)",
-                          style: TextStyle(fontSize: 10.sp, color: Colors.green.shade700),
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.green.shade700,
+                          ),
                         ),
                         Text(
                           "• nahkoda2@email.com / 123456 (Kapten Sari)",
-                          style: TextStyle(fontSize: 10.sp, color: Colors.green.shade700),
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.green.shade700,
+                          ),
                         ),
                         Text(
                           "• nahkoda3@email.com / 123456 (Kapten Budi)",
-                          style: TextStyle(fontSize: 10.sp, color: Colors.green.shade700),
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.green.shade700,
+                          ),
                         ),
                       ],
                     ),

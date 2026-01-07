@@ -51,7 +51,7 @@ class _SplashScreenState extends State<SplashScreen>
     // Load user data
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     await userProvider.loadUser();
-    
+
     // Set dummy user data if no user exists (for testing)
     if (userProvider.user == null) {
       final dummyUser = UserModel(
@@ -67,11 +67,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Check if user is already logged in
     final token = await AuthService.getToken();
-    
+
     Widget nextScreen;
     if (token != null && token.isNotEmpty) {
       // User has token, go to main screen
-      nextScreen = const MainScreen();
+      nextScreen = MainScreen();
     } else {
       // No token, go to welcome screen
       nextScreen = const WelcomeScreen();
@@ -111,8 +111,8 @@ class _SplashScreenState extends State<SplashScreen>
                   /// LOGO RESPONSIVE
                   Image.asset(
                     'assets/OIP.png',
-                    width: 220.w,   // otomatis menyesuaikan layar
-                    height: 220.w,  // pakai width supaya lebih stabil
+                    width: 220.w, // otomatis menyesuaikan layar
+                    height: 220.w, // pakai width supaya lebih stabil
                     fit: BoxFit.contain,
                   ),
 
@@ -133,10 +133,7 @@ class _SplashScreenState extends State<SplashScreen>
                   /// VERSION RESPONSIVE
                   Text(
                     'V1.0',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
                   ),
                 ],
               ),
