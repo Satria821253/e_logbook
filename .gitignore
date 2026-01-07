@@ -1,0 +1,22 @@
+# Environment variables
+.env
+.env.local
+
+# Google Maps API key
+android/app/src/main/res/values/google_maps_api.xml
+
+# Build files
+build/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
