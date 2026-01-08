@@ -16,7 +16,7 @@ import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
- 
+
   try {
     AuthService.init();
 
@@ -62,7 +62,7 @@ class MyApp extends StatelessWidget {
           onGenerateRoute: (settings) {
             switch (settings.name) {
               case '/':
-                return MaterialPageRoute(builder: (_) => const MainScreen());
+                return MaterialPageRoute(builder: (_) => MainScreen());
               case '/profile':
                 return MaterialPageRoute(builder: (_) => const ProfileScreen());
               case '/pre-trip-form':
@@ -72,10 +72,15 @@ class MyApp extends StatelessWidget {
                 );
               case '/vessel-info':
                 final arguments = settings.arguments as Map<String, dynamic>?;
-                return MaterialPageRoute(builder: (_) => VesselInfoScreen(arguments: arguments));
+                return MaterialPageRoute(
+                  builder: (_) => VesselInfoScreen(arguments: arguments),
+                );
               case '/document-completion':
                 final arguments = settings.arguments as String?;
-                return MaterialPageRoute(builder: (_) => DocumentCompletionScreen(), settings: RouteSettings(arguments: arguments));
+                return MaterialPageRoute(
+                  builder: (_) => DocumentCompletionScreen(),
+                  settings: RouteSettings(arguments: arguments),
+                );
               default:
                 return null;
             }

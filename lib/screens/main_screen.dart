@@ -11,13 +11,16 @@ import 'history_screen.dart';
 import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  static final GlobalKey<MainScreenState> globalKey =
+      GlobalKey<MainScreenState>();
+
+  MainScreen({Key? key}) : super(key: globalKey);
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<MainScreen> createState() => MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
@@ -26,6 +29,12 @@ class _MainScreenState extends State<MainScreen> {
     const HistoryScreen(),
     const ProfileScreen(),
   ];
+
+  void changeTab(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -68,8 +77,11 @@ class _MainScreenState extends State<MainScreen> {
           ),
 
           // FAB - role based
-          floatingActionButton: isABK ? _buildCatchFAB(fabSize) : const NahkodaTrackingButton(),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+          floatingActionButton: isABK
+              ? _buildCatchFAB(fabSize)
+              : const NahkodaTrackingButton(),
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerDocked,
 
           bottomNavigationBar: BottomAppBar(
             shape: const CircularNotchedRectangle(),
@@ -80,11 +92,35 @@ class _MainScreenState extends State<MainScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildNavItem(Icons.home_rounded, 'Beranda', 0, iconSize, fontSize),
-                  _buildNavItem(Icons.bar_chart_rounded, 'Statistik', 1, iconSize, fontSize),
+                  _buildNavItem(
+                    Icons.home_rounded,
+                    'Beranda',
+                    0,
+                    iconSize,
+                    fontSize,
+                  ),
+                  _buildNavItem(
+                    Icons.bar_chart_rounded,
+                    'Statistik',
+                    1,
+                    iconSize,
+                    fontSize,
+                  ),
                   SizedBox(width: rs(context, 40)),
-                  _buildNavItem(Icons.history_rounded, 'Riwayat', 2, iconSize, fontSize),
-                  _buildNavItem(Icons.person_rounded, 'Profil', 3, iconSize, fontSize),
+                  _buildNavItem(
+                    Icons.history_rounded,
+                    'Riwayat',
+                    2,
+                    iconSize,
+                    fontSize,
+                  ),
+                  _buildNavItem(
+                    Icons.person_rounded,
+                    'Profil',
+                    3,
+                    iconSize,
+                    fontSize,
+                  ),
                 ],
               ),
             ),
@@ -95,8 +131,13 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   // NAVIGATION ITEM
-  Widget _buildNavItem(IconData icon, String label, int index,
-      double iconSize, double fontSize) {
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    int index,
+    double iconSize,
+    double fontSize,
+  ) {
     final bool isSelected = _selectedIndex == index;
 
     return InkWell(
@@ -151,18 +192,12 @@ class _MainScreenState extends State<MainScreen> {
         onPressed: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const CreateCatchScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const CreateCatchScreen()),
           );
         },
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: Icon(
-          Icons.add,
-          size: rs(context, 36),
-          color: Colors.white,
-        ),
+        child: Icon(Icons.add, size: rs(context, 36), color: Colors.white),
       ),
     );
   }

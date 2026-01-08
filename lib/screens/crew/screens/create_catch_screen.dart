@@ -11,7 +11,7 @@ import 'package:e_logbook/services/weather_service.dart';
 import 'package:e_logbook/widgets/ai_detection_loading_widget.dart';
 import 'package:e_logbook/widgets/ai_detection_result_widget.dart';
 import 'package:e_logbook/widgets/custom_text_field.dart';
-import 'package:e_logbook/widgets/date_time_picker.dart';
+
 import 'package:e_logbook/widgets/image_picker.dart';
 import 'package:e_logbook/widgets/location_picker.dart';
 import 'package:e_logbook/widgets/section_title.dart';
@@ -19,13 +19,12 @@ import 'package:e_logbook/widgets/vessel_info_display.dart';
 import 'package:e_logbook/widgets/sync_status_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-
 
 class CreateCatchScreen extends StatefulWidget {
   const CreateCatchScreen({super.key});
@@ -45,15 +44,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   final _quantityController = TextEditingController();
   final _locationController = TextEditingController();
   final _waterDepthController = TextEditingController();
-  final _fuelCostController = TextEditingController();
-  final _operationalCostController = TextEditingController();
-  final _taxController = TextEditingController();
+
   final _fishingGearController = TextEditingController();
   final _notesController = TextEditingController();
   final _harborController = TextEditingController();
   final _estimatedLengthController = TextEditingController();
   final _estimatedHeightController = TextEditingController();
-
 
   // State variables
   final List<XFile> _catchImages = [];
@@ -63,11 +59,11 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   TimeOfDay _arrivalTime = TimeOfDay.now();
   int _calculatedHours = 0;
   int _calculatedMinutes = 0;
-  
+
   String _selectedCondition = '';
   String _selectedFishType = '';
   String _selectedWeatherCondition = 'Cerah';
-  
+
   double? _latitude;
   double? _longitude;
   bool _isLoadingLocation = false;
@@ -103,9 +99,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     _quantityController.dispose();
     _locationController.dispose();
     _waterDepthController.dispose();
-    _fuelCostController.dispose();
-    _operationalCostController.dispose();
-    _taxController.dispose();
+
     _fishingGearController.dispose();
     _notesController.dispose();
     _harborController.dispose();
@@ -136,12 +130,11 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   }
 
   Future<void> _performHarborSearch(String query) async {
-
     try {
       final results = await HarborSearchService.searchHarbors(query);
-      
+
       if (!mounted) return;
-      
+
       // Tambahkan jarak jika ada posisi saat ini
       if (_currentPosition != null) {
         for (var harbor in results) {
@@ -152,10 +145,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
             toLng: harbor['lng'],
           );
         }
-        
+
         // Sort by distance
-        results.sort((a, b) => 
-          (a['distance'] as double).compareTo(b['distance'] as double));
+        results.sort(
+          (a, b) =>
+              (a['distance'] as double).compareTo(b['distance'] as double),
+        );
       }
 
       safeSetState(() {
@@ -193,11 +188,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       if (weather != null) {
         safeSetState(() {
           _weatherData = weather;
-          _selectedWeatherCondition = 
-            _getWeatherConditionIndonesian(weather.condition);
+          _selectedWeatherCondition = _getWeatherConditionIndonesian(
+            weather.condition,
+          );
           _isLoadingWeather = false;
         });
-        
+
         // Cek keamanan cuaca
         if (!WeatherService.isWeatherSafe(weather)) {
           _showWeatherWarningDialog(weather);
@@ -217,8 +213,10 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     if (lower.contains('clear') || lower.contains('cerah')) return 'Cerah';
     if (lower.contains('cloud') || lower.contains('berawan')) return 'Berawan';
     if (lower.contains('rain') || lower.contains('hujan')) {
-      if (lower.contains('light') || lower.contains('ringan')) return 'Hujan Ringan';
-      if (lower.contains('heavy') || lower.contains('lebat')) return 'Hujan Lebat';
+      if (lower.contains('light') || lower.contains('ringan'))
+        return 'Hujan Ringan';
+      if (lower.contains('heavy') || lower.contains('lebat'))
+        return 'Hujan Lebat';
       return 'Hujan Ringan';
     }
     if (lower.contains('storm') || lower.contains('badai')) return 'Badai';
@@ -228,7 +226,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   void _showWeatherWarningDialog(WeatherData weather) {
     final warningLevel = WeatherService.getWeatherWarningLevel(weather);
     Color warningColor = Colors.orange;
-    
+
     if (warningLevel == 'BERBAHAYA') {
       warningColor = Colors.red;
     } else if (warningLevel == 'WASPADA') {
@@ -270,8 +268,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   SizedBox(height: 8),
                   Text('Kondisi: ${weather.condition}'),
                   Text('Suhu: ${weather.temperature.toStringAsFixed(1)}°C'),
-                  Text('Kecepatan Angin: ${weather.windSpeed.toStringAsFixed(1)} km/h'),
-                  Text('Tinggi Ombak: ${weather.waveHeight.toStringAsFixed(1)} m'),
+                  Text(
+                    'Kecepatan Angin: ${weather.windSpeed.toStringAsFixed(1)} km/h',
+                  ),
+                  Text(
+                    'Tinggi Ombak: ${weather.waveHeight.toStringAsFixed(1)} m',
+                  ),
                   Text('Kelembaban: ${weather.humidity}%'),
                 ],
               ),
@@ -314,9 +316,11 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           throw Exception('Izin lokasi ditolak');
         }
       }
-      
+
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Izin lokasi ditolak permanen. Silakan aktifkan di pengaturan.');
+        throw Exception(
+          'Izin lokasi ditolak permanen. Silakan aktifkan di pengaturan.',
+        );
       }
 
       Position position = await Geolocator.getCurrentPosition(
@@ -340,9 +344,9 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               "${place.subLocality ?? place.locality ?? 'Tidak diketahui'}, ${place.administrativeArea ?? ''}";
           _isLoadingLocation = false;
         });
-        
+
         _showSnackBar('✅ Lokasi berhasil diambil!');
-        
+
         // AUTO UPDATE WEATHER
         _updateWeather();
       }
@@ -368,7 +372,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
         _locationController.text = result['address'];
       });
       _showSnackBar('✅ Lokasi dipilih dari map!');
-      
+
       // AUTO UPDATE WEATHER
       _updateWeather();
     }
@@ -385,49 +389,11 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   }
 
   // ==================== TRIP CALCULATIONS ====================
-  void _calculateTripDuration() {
-    final departure = DateTime(
-      _departureDate.year,
-      _departureDate.month,
-      _departureDate.day,
-      _departureTime.hour,
-      _departureTime.minute,
-    );
-
-    final arrival = DateTime(
-      _arrivalDate.year,
-      _arrivalDate.month,
-      _arrivalDate.day,
-      _arrivalTime.hour,
-      _arrivalTime.minute,
-    );
-
-    final duration = arrival.difference(departure);
-
-    if (duration.isNegative) {
-      _showSnackBar('⚠️ Waktu kedatangan harus setelah keberangkatan!');
-      return;
-    }
-
-    setState(() {
-      _calculatedHours = duration.inHours;
-      _calculatedMinutes = duration.inMinutes.remainder(60);
-    });
-  }
-
-  void _calculateTax() {
-    final weight = double.tryParse(_weightController.text) ?? 0;
-    final tax = weight * 1000; // Contoh: Rp 1000 per kg
-
-    setState(() {
-      _taxController.text = tax.toStringAsFixed(0);
-    });
-  }
 
   // ==================== AI DETECTION ====================
   Future<void> _detectFishFromImage(XFile imageFile) async {
     debugPrint('🔍 Starting AI detection for: ${imageFile.path}');
-    
+
     safeSetState(() {
       _isDetectingFish = true;
       _showDetectionResult = false;
@@ -436,25 +402,25 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
     try {
       debugPrint('📡 Calling Gemini AI...');
-      final result = await GeminiFishDetectionService.detectFish(File(imageFile.path))
-          .timeout(Duration(seconds: 120));
-      
+      final result = await GeminiFishDetectionService.detectFish(
+        File(imageFile.path),
+      ).timeout(Duration(seconds: 120));
+
       debugPrint('✅ AI detection successful: ${result.fishName}');
-      
+
       if (mounted) {
         safeSetState(() {
           _detectionResult = result;
           _isDetectingFish = false;
           _showDetectionResult = true;
         });
-        
+
         // Show success message
         _showSnackBar('🎉 AI berhasil mendeteksi ikan! Periksa hasil deteksi.');
       }
-      
     } catch (e) {
       debugPrint('❌ AI detection failed: $e');
-      
+
       if (mounted) {
         safeSetState(() => _isDetectingFish = false);
         // Hanya tampilkan pesan singkat, tidak perlu error detail
@@ -465,7 +431,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
   void _acceptDetectionResult() {
     if (_detectionResult == null) return;
-    
+
     safeSetState(() {
       // Auto fill form dengan hasil AI
       _fishNameController.text = _detectionResult!.fishName;
@@ -473,15 +439,16 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       _selectedCondition = _detectionResult!.condition;
       _weightController.text = _detectionResult!.estimatedWeight.toString();
       _quantityController.text = _detectionResult!.estimatedQuantity.toString();
-      _estimatedLengthController.text = _detectionResult!.estimatedLength.toString();
-      _estimatedHeightController.text = _detectionResult!.estimatedHeight.toString();
-      
+      _estimatedLengthController.text = _detectionResult!.estimatedLength
+          .toString();
+      _estimatedHeightController.text = _detectionResult!.estimatedHeight
+          .toString();
+
       _showDetectionResult = false;
     });
-    
+
     // Auto calculate tax
-    _calculateTax();
-    
+
     _showSnackBar('✅ Data AI berhasil diterapkan!');
   }
 
@@ -491,88 +458,41 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     }
   }
 
- Future<void> _pickImage(ImageSource source) async {
-  if (source != ImageSource.camera) {
-    _showSnackBar('⚠️ Hanya kamera yang diizinkan untuk deteksi AI ikan!');
-    return;
+  Future<void> _pickImage(ImageSource source) async {
+    if (source != ImageSource.camera) {
+      _showSnackBar('⚠️ Hanya kamera yang diizinkan untuk deteksi AI ikan!');
+      return;
+    }
+
+    // OPTIMAL settings untuk AI detection
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85, // ✅ OPTIMAL: Balance quality & size
+      maxWidth: 1920, // ✅ OPTIMAL: Full HD sufficient
+      maxHeight: 1920, // ✅ OPTIMAL: Full HD sufficient
+      preferredCameraDevice: CameraDevice.rear,
+    );
+
+    if (pickedFile != null) {
+      // Optional: Show file size for debugging
+      final file = File(pickedFile.path);
+      final fileSize = await file.length();
+      final fileSizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
+
+      debugPrint('📸 Image captured: ${fileSizeMB}MB');
+
+      setState(() => _catchImages.add(pickedFile));
+
+      _showSnackBar('📸 Foto HD berhasil diambil! Memulai AI detection...');
+      await _detectFishFromImage(pickedFile);
+    }
   }
-  
-  // OPTIMAL settings untuk AI detection
-  final XFile? pickedFile = await _picker.pickImage(
-    source: ImageSource.camera,
-    imageQuality: 85,           // ✅ OPTIMAL: Balance quality & size
-    maxWidth: 1920,             // ✅ OPTIMAL: Full HD sufficient
-    maxHeight: 1920,            // ✅ OPTIMAL: Full HD sufficient
-    preferredCameraDevice: CameraDevice.rear,
-  );
-  
-  if (pickedFile != null) {
-    // Optional: Show file size for debugging
-    final file = File(pickedFile.path);
-    final fileSize = await file.length();
-    final fileSizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
-    
-    debugPrint('📸 Image captured: ${fileSizeMB}MB');
-    
-    setState(() => _catchImages.add(pickedFile));
-    
-    _showSnackBar('📸 Foto HD berhasil diambil! Memulai AI detection...');
-    await _detectFishFromImage(pickedFile);
-  }
-}
 
   void _removeImage(int index) {
     setState(() => _catchImages.removeAt(index));
   }
 
   // ==================== DATE/TIME PICKERS ====================
-  Future<void> _selectDepartureDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _departureDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() => _departureDate = picked);
-      _calculateTripDuration();
-    }
-  }
-
-  Future<void> _selectDepartureTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _departureTime,
-    );
-    if (picked != null) {
-      setState(() => _departureTime = picked);
-      _calculateTripDuration();
-    }
-  }
-
-  Future<void> _selectArrivalDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _arrivalDate,
-      firstDate: _departureDate,
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() => _arrivalDate = picked);
-      _calculateTripDuration();
-    }
-  }
-
-  Future<void> _selectArrivalTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _arrivalTime,
-    );
-    if (picked != null) {
-      setState(() => _arrivalTime = picked);
-      _calculateTripDuration();
-    }
-  }
 
   void _showSnackBar(String message) {
     if (!mounted) return;
@@ -597,23 +517,20 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       return false;
     }
 
-    if (_weightController.text.trim().isEmpty || (double.tryParse(_weightController.text) ?? 0) <= 0) {
+    if (_weightController.text.trim().isEmpty ||
+        (double.tryParse(_weightController.text) ?? 0) <= 0) {
       _showSnackBar('⚠️ Berat ikan harus diisi dan lebih dari 0!');
       return false;
     }
 
-    if (_priceController.text.trim().isEmpty || (double.tryParse(_priceController.text) ?? 0) <= 0) {
+    if (_priceController.text.trim().isEmpty ||
+        (double.tryParse(_priceController.text) ?? 0) <= 0) {
       _showSnackBar('⚠️ Harga per kg harus diisi dan lebih dari 0!');
       return false;
     }
 
     if (_catchImages.isEmpty) {
       _showSnackBar('⚠️ Minimal upload 1 foto tangkapan ikan!');
-      return false;
-    }
-
-    if (_calculatedHours == 0 && _calculatedMinutes == 0) {
-      _showSnackBar('⚠️ Silakan atur waktu keberangkatan & kedatangan!');
       return false;
     }
 
@@ -642,9 +559,11 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     // Get vessel info from UserProvider
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final user = userProvider.user;
-    
+
     if (user?.vesselName == null) {
-      _showSnackBar('⚠️ Silakan atur informasi kapal di profil terlebih dahulu!');
+      _showSnackBar(
+        '⚠️ Silakan atur informasi kapal di profil terlebih dahulu!',
+      );
       return;
     }
 
@@ -672,12 +591,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     try {
       // Hitung nilai
       final weight = double.tryParse(_weightController.text) ?? 0;
-      final totalRevenue = 0; // Tidak ada harga per kg lagi
-      final fuelCost = double.tryParse(_fuelCostController.text) ?? 0;
-      final operationalCost = double.tryParse(_operationalCostController.text) ?? 0;
-      final tax = double.tryParse(_taxController.text) ?? 0;
-      final totalCost = fuelCost + operationalCost + tax;
-      final netProfit = totalRevenue - totalCost;
+      // final double totalRevenue = 0;Removed
+      final double fuelCost = 0.0;
+      final double operationalCost = 0.0;
+      final double tax = 0.0;
+      final double totalCost = 0.0;
+      final double netProfit = 0.0;
 
       // Buat data catch untuk submission dengan ID unik
       final catchId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -720,10 +639,10 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
         catchData: catchData,
         imageFile: File(_catchImages[0].path),
       );
-      
+
       // Close loading dialog
       if (mounted) Navigator.pop(context);
-      
+
       // Show result
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -772,15 +691,14 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           syncStatus: result.isOffline ? 'pending' : 'synced',
           lastSyncAttempt: DateTime.now(),
         );
-        
+
         Provider.of<CatchProvider>(context, listen: false).addCatch(newCatch);
         Navigator.pop(context, true);
       }
-      
     } catch (e) {
       // Close loading dialog
       if (mounted) Navigator.pop(context);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -805,10 +723,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   Widget _buildCreateCatchScreen(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final width = size.width;
-    
+
     // Improved responsive scaling with constraints
-    double fs(double size) => (size * (width / 390)).clamp(size * 0.8, size * 1.2);
-    double sp(double size) => (size * (width / 390)).clamp(size * 0.8, size * 1.2);
+    double fs(double size) =>
+        (size * (width / 390)).clamp(size * 0.8, size * 1.2);
+    double sp(double size) =>
+        (size * (width / 390)).clamp(size * 0.8, size * 1.2);
 
     return Scaffold(
       appBar: AppBar(
@@ -841,32 +761,30 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
             children: [
               // SYNC STATUS WIDGET
               SyncStatusWidget(),
-              
+
               // INFORMASI KAPAL DARI PROFIL
-              SectionTitle(title: 'Informasi Kapal', icon: Icons.directions_boat),
+              SectionTitle(
+                title: 'Informasi Kapal',
+                icon: Icons.directions_boat,
+              ),
               SizedBox(height: sp(12)),
               VesselInfoDisplay(),
-
-              SizedBox(height: sp(24)),
-
-              // WAKTU KEBERANGKATAN & KEDATANGAN
-              SectionTitle(title: 'Waktu Keberangkatan & Kedatangan', icon: Icons.schedule),
-              SizedBox(height: sp(12)),
-              
-              _buildDepartureArrivalSection(sp, fs),
 
               SizedBox(height: sp(24)),
 
               // PELABUHAN PANGKALAN
               SectionTitle(title: 'Pelabuhan Pangkalan', icon: Icons.anchor),
               SizedBox(height: sp(12)),
-              
+
               _buildHarborSearchField(sp, fs),
 
               SizedBox(height: sp(24)),
 
               // LOKASI PENANGKAPAN
-              SectionTitle(title: 'Lokasi Penangkapan', icon: Icons.location_on),
+              SectionTitle(
+                title: 'Lokasi Penangkapan',
+                icon: Icons.location_on,
+              ),
               SizedBox(height: sp(12)),
 
               LocationPickerWidget(
@@ -889,7 +807,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               // INFORMASI HASIL TANGKAPAN (AI DETECTION)
               Row(
                 children: [
-                  Image.asset('assets/icons/icon_ai.png', width: fs(22), height: fs(22), color: Color(0xFF1B4F9C)),
+                  Image.asset(
+                    'assets/icons/icon_ai.png',
+                    width: fs(22),
+                    height: fs(22),
+                    color: Color(0xFF1B4F9C),
+                  ),
                   SizedBox(width: sp(8)),
                   Expanded(
                     child: Text(
@@ -904,7 +827,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                 ],
               ),
               SizedBox(height: sp(12)),
-              
+
               _buildFishInfoSection(sp),
 
               SizedBox(height: sp(24)),
@@ -912,7 +835,11 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               // FOTO TANGKAPAN & AI DETECTION
               Row(
                 children: [
-                  Icon(Icons.camera_enhance, color: Color(0xFF1B4F9C), size: fs(22)),
+                  Icon(
+                    Icons.camera_enhance,
+                    color: Color(0xFF1B4F9C),
+                    size: fs(22),
+                  ),
                   SizedBox(width: sp(6)),
                   Expanded(
                     child: Text(
@@ -926,7 +853,10 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   ),
                   SizedBox(width: sp(4)),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(3)),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: sp(6),
+                      vertical: sp(3),
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.blue.shade100,
                       borderRadius: BorderRadius.circular(sp(10)),
@@ -934,7 +864,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset('assets/icons/icon_ai.png', width: 12, height: 12, color: Colors.blue.shade700),
+                        Image.asset(
+                          'assets/icons/icon_ai.png',
+                          width: 12,
+                          height: 12,
+                          color: Colors.blue.shade700,
+                        ),
                         SizedBox(width: sp(3)),
                         Text(
                           'AI',
@@ -950,11 +885,10 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                 ],
               ),
               SizedBox(height: sp(12)),
-              
+
               // AI Detection Loading
-              if (_isDetectingFish) 
-                const AIDetectionLoadingWidget(),
-              
+              if (_isDetectingFish) const AIDetectionLoadingWidget(),
+
               // AI Detection Result
               if (_showDetectionResult && _detectionResult != null)
                 AIDetectionResultWidget(
@@ -962,23 +896,29 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   onAccept: _acceptDetectionResult,
                   onRetry: _retryDetection,
                 ),
-              
+
               // Image Picker
               ImagePickerWidget(
                 images: _catchImages,
                 onPickImage: _pickImage,
                 onRemoveImage: _removeImage,
               ),
-              
+
               // Manual AI Detection Button
-              if (_catchImages.isNotEmpty && !_isDetectingFish && !_showDetectionResult)
+              if (_catchImages.isNotEmpty &&
+                  !_isDetectingFish &&
+                  !_showDetectionResult)
                 Padding(
                   padding: EdgeInsets.only(top: sp(12)),
                   child: SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: () => _detectFishFromImage(_catchImages.first),
-                      icon: Image.asset('assets/icons/icon_ai.png', width: 16, height: 16),
+                      icon: Image.asset(
+                        'assets/icons/icon_ai.png',
+                        width: 16,
+                        height: 16,
+                      ),
                       label: const Text('Deteksi Ikan dengan AI'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.blue.shade700,
@@ -991,12 +931,11 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
               SizedBox(height: sp(24)),
 
-              // BIAYA & PAJAK
-              SectionTitle(title: 'Biaya Operasional & Pajak', icon: Icons.attach_money),
-              SizedBox(height: sp(12)),
-              
-              _buildCostSection(sp, fs),
+              // BIAYA & PAJAK (Removed)
+              // SectionTitle(title: 'Biaya Operasional & Pajak', icon: Icons.attach_money),
+              // SizedBox(height: sp(12)),
 
+              // _buildCostSection(sp, fs),
               SizedBox(height: sp(32)),
 
               // TOMBOL KIRIM
@@ -1008,7 +947,10 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   icon: Icon(Icons.send_rounded, size: fs(20)),
                   label: Text(
                     'Kirim Data Tangkapan',
-                    style: TextStyle(fontSize: fs(16), fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: fs(16),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B4F9C),
@@ -1029,7 +971,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   }
 
   // ==================== BUILD WIDGETS ====================
-  
+
   Widget _buildHarborSearchField(
     double Function(double) sp,
     double Function(double) fs,
@@ -1075,7 +1017,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
             });
           },
         ),
-        
+
         // Selected Harbor
         if (_selectedHarborName != null) ...[
           SizedBox(height: sp(12)),
@@ -1101,7 +1043,8 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                           fontSize: fs(14),
                         ),
                       ),
-                      if (_selectedHarborCoords != null && _currentPosition != null)
+                      if (_selectedHarborCoords != null &&
+                          _currentPosition != null)
                         Text(
                           'Jarak: ${_calculateDistanceFromCoords().toStringAsFixed(2)} km',
                           style: TextStyle(
@@ -1126,7 +1069,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
             ),
           ),
         ],
-        
+
         // Suggestions List
         if (_harborSuggestions.isNotEmpty && _selectedHarborName == null) ...[
           SizedBox(height: sp(8)),
@@ -1196,7 +1139,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   ) {
     final warningLevel = WeatherService.getWeatherWarningLevel(_weatherData!);
     Color statusColor = Colors.green;
-    
+
     if (warningLevel == 'BERBAHAYA') {
       statusColor = Colors.red;
     } else if (warningLevel == 'WASPADA') {
@@ -1229,7 +1172,10 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                 ),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(4)),
+                padding: EdgeInsets.symmetric(
+                  horizontal: sp(8),
+                  vertical: sp(4),
+                ),
                 decoration: BoxDecoration(
                   color: statusColor,
                   borderRadius: BorderRadius.circular(sp(12)),
@@ -1246,7 +1192,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
             ],
           ),
           SizedBox(height: sp(16)),
-          
+
           // Weather Grid
           Row(
             children: [
@@ -1313,7 +1259,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               ),
             ],
           ),
-          
+
           if (_isLoadingWeather) ...[
             SizedBox(height: sp(12)),
             LinearProgressIndicator(
@@ -1342,10 +1288,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       ),
       child: Column(
         children: [
-          Text(
-            emoji,
-            style: TextStyle(fontSize: fs(16)),
-          ),
+          Text(emoji, style: TextStyle(fontSize: fs(16))),
           SizedBox(height: sp(4)),
           Text(
             label,
@@ -1359,161 +1302,13 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           SizedBox(height: sp(2)),
           Text(
             value,
-            style: TextStyle(
-              fontSize: fs(11),
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: fs(11), fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDepartureArrivalSection(
-    double Function(double) sp,
-    double Function(double) fs,
-  ) {
-    return Column(
-      children: [
-        // Keberangkatan
-        Container(
-          padding: EdgeInsets.all(sp(16)),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(sp(12)),
-            border: Border.all(color: Colors.green.withOpacity(0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Waktu Keberangkatan',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: fs(15),
-                ),
-              ),
-              SizedBox(height: sp(12)),
-              Row(
-                children: [
-                  Expanded(
-                    child: DateTimePickerField(
-                      label: 'Tanggal',
-                      value: DateFormat('dd MMM yyyy').format(_departureDate),
-                      icon: Icons.calendar_today,
-                      onTap: () => _selectDepartureDate(context),
-                    ),
-                  ),
-                  SizedBox(width: sp(12)),
-                  Expanded(
-                    child: DateTimePickerField(
-                      label: 'Jam',
-                      value: _departureTime.format(context),
-                      icon: Icons.access_time,
-                      onTap: () => _selectDepartureTime(context),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        SizedBox(height: sp(16)),
-
-        // Kedatangan
-        Container(
-          padding: EdgeInsets.all(sp(16)),
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(sp(12)),
-            border: Border.all(color: Colors.blue.withOpacity(0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Waktu Kembali',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: fs(15),
-                ),
-              ),
-              SizedBox(height: sp(12)),
-              Row(
-                children: [
-                  Expanded(
-                    child: DateTimePickerField(
-                      label: 'Tanggal',
-                      value: DateFormat('dd MMM yyyy').format(_arrivalDate),
-                      icon: Icons.calendar_today,
-                      onTap: () => _selectArrivalDate(context),
-                    ),
-                  ),
-                  SizedBox(width: sp(12)),
-                  Expanded(
-                    child: DateTimePickerField(
-                      label: 'Jam',
-                      value: _arrivalTime.format(context),
-                      icon: Icons.access_time,
-                      onTap: () => _selectArrivalTime(context),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        SizedBox(height: sp(16)),
-
-        // Durasi
-        Container(
-          padding: EdgeInsets.all(sp(16)),
-          decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(sp(12)),
-            border: Border.all(color: Colors.orange.withOpacity(0.3)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.timer, color: Colors.orange[700]),
-              SizedBox(width: sp(12)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Durasi Trip',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      _calculatedHours > 0 || _calculatedMinutes > 0
-                          ? '$_calculatedHours Jam $_calculatedMinutes Menit'
-                          : 'Belum dihitung',
-                      style: TextStyle(
-                        fontSize: fs(16),
-                        color: Colors.orange[900],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _calculateTripDuration,
-                icon: Icon(Icons.refresh),
-                label: Text('Hitung'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -1526,8 +1321,8 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           readOnly: true,
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: _fishNameController.text.isNotEmpty 
-                ? Colors.blue[800] 
+            color: _fishNameController.text.isNotEmpty
+                ? Colors.blue[800]
                 : Colors.grey[600],
           ),
           decoration: InputDecoration(
@@ -1538,8 +1333,8 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               borderRadius: BorderRadius.circular(sp(12)),
               borderSide: BorderSide(
                 width: 2,
-                color: _fishNameController.text.isNotEmpty 
-                    ? Colors.blue[600]! 
+                color: _fishNameController.text.isNotEmpty
+                    ? Colors.blue[600]!
                     : Colors.blue.withOpacity(0.3),
               ),
             ),
@@ -1547,8 +1342,8 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               borderRadius: BorderRadius.circular(sp(12)),
               borderSide: BorderSide(
                 width: 2,
-                color: _fishNameController.text.isNotEmpty 
-                    ? Colors.blue[600]! 
+                color: _fishNameController.text.isNotEmpty
+                    ? Colors.blue[600]!
                     : Colors.blue.withOpacity(0.3),
               ),
             ),
@@ -1561,7 +1356,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           ),
         ),
         SizedBox(height: sp(16)),
-        
+
         // Jenis Ikan Field - Format seperti TextFormField
         TextFormField(
           readOnly: true,
@@ -1586,25 +1381,29 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           ),
           controller: TextEditingController(text: _selectedFishType),
         ),
-        
+
         SizedBox(height: sp(16)),
-        
+
         // Kondisi Kesegaran Field - Format seperti TextFormField
         TextFormField(
           readOnly: true,
           decoration: InputDecoration(
-            labelText: _selectedCondition.isNotEmpty ? 'Kondisi Kesegaran' : null,
+            labelText: _selectedCondition.isNotEmpty
+                ? 'Kondisi Kesegaran'
+                : null,
             hintText: _selectedCondition.isEmpty ? 'Kondisi Kesegaran' : null,
             prefixIcon: Icon(Icons.health_and_safety, color: Color(0xFF1B4F9C)),
-            suffixIcon: _selectedCondition.isNotEmpty ? Container(
-              margin: EdgeInsets.all(sp(12)),
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: _getConditionColor(),
-                shape: BoxShape.circle,
-              ),
-            ) : null,
+            suffixIcon: _selectedCondition.isNotEmpty
+                ? Container(
+                    margin: EdgeInsets.all(sp(12)),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: _getConditionColor(),
+                      shape: BoxShape.circle,
+                    ),
+                  )
+                : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(sp(12)),
               borderSide: BorderSide(color: Colors.grey[300]!),
@@ -1622,14 +1421,16 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           ),
           controller: TextEditingController(text: _selectedCondition),
         ),
-        
+
         SizedBox(height: sp(16)),
-        
+
         Row(
           children: [
             Expanded(
               child: CustomTextField(
-                controller: TextEditingController(text: _detectionResult?.unitWeight.toStringAsFixed(2) ?? ''),
+                controller: TextEditingController(
+                  text: _detectionResult?.unitWeight.toStringAsFixed(2) ?? '',
+                ),
                 label: 'Berat Per Ikan (kg)',
                 icon: Icons.scale_rounded,
                 hint: '0.0',
@@ -1645,7 +1446,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                 icon: Icons.scale_rounded,
                 hint: '0.0',
                 keyboardType: TextInputType.number,
-                onChanged: (_) => _calculateTax(),
+                onChanged: (_) {},
               ),
             ),
           ],
@@ -1687,7 +1488,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       ],
     );
   }
-  
+
   Color _getConditionColor() {
     switch (_selectedCondition) {
       case 'Segar':
@@ -1699,48 +1500,5 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       default:
         return Colors.grey;
     }
-  }
-
-  Widget _buildCostSection(
-    double Function(double) sp,
-    double Function(double) fs,
-  ) {
-    return Column(
-      children: [
-        CustomTextField(
-          controller: _fuelCostController,
-          label: 'Biaya Bahan Bakar (Rp)',
-          icon: Icons.local_gas_station,
-          hint: '0',
-          keyboardType: TextInputType.number,
-        ),
-        SizedBox(height: sp(16)),
-        CustomTextField(
-          controller: _operationalCostController,
-          label: 'Biaya Operasional Lain (Rp)',
-          icon: Icons.build,
-          hint: 'Es, ransum, dll',
-          keyboardType: TextInputType.number,
-        ),
-        SizedBox(height: sp(16)),
-        CustomTextField(
-          controller: _taxController,
-          label: 'Pajak Retribusi (Rp)',
-          icon: Icons.receipt_long,
-          hint: 'Auto 10%',
-          keyboardType: TextInputType.number,
-          readOnly: true,
-          suffixWidget: IconButton(
-            icon: Icon(
-              Icons.calculate,
-              color: const Color(0xFF1B4F9C),
-              size: fs(18),
-            ),
-            onPressed: _calculateTax,
-            tooltip: 'Hitung otomatis',
-          ),
-        ),
-      ],
-    );
   }
 }

@@ -10,6 +10,7 @@ class UserModel {
   final int? crewCount;
   final List<String>? crewNames;
   final String? role; // 'Nahkoda' or 'ABK'
+  final String? profileImagePath;
 
   UserModel({
     required this.id,
@@ -23,6 +24,7 @@ class UserModel {
     this.crewCount,
     this.crewNames,
     this.role = 'Nahkoda', // Default role
+    this.profileImagePath,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -36,10 +38,11 @@ class UserModel {
       vesselNumber: json['vessel_number'],
       captainName: json['captain_name'],
       crewCount: json['crew_count'],
-      crewNames: json['crew_names'] != null 
-          ? List<String>.from(json['crew_names']) 
+      crewNames: json['crew_names'] != null
+          ? List<String>.from(json['crew_names'])
           : null,
       role: json['role'] ?? 'Nahkoda',
+      profileImagePath: json['profile_image_path'],
     );
   }
 
@@ -56,6 +59,7 @@ class UserModel {
       'crew_count': crewCount,
       'crew_names': crewNames,
       'role': role,
+      'profile_image_path': profileImagePath,
     };
   }
 
