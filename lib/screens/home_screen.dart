@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadDocumentRequirements();
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadDocumentRequirements() async {
     // Check if full process is completed
     bool isFullyCompleted = await _checkFullCompletion();
-    
+
     if (isFullyCompleted) {
       // Hide document alert if fully completed
       setState(() {
@@ -53,14 +53,17 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       return;
     }
-    
+
     final user = Provider.of<UserProvider>(context, listen: false).user;
     if (user != null) {
-      final requirements = await AdminNotificationService.getDocumentRequirementsForUser(user.email);
+      final requirements =
+          await AdminNotificationService.getDocumentRequirementsForUser(
+            user.email,
+          );
       if (mounted) {
         // Calculate real completion percentage
         final completion = await _calculateCompletionPercentage();
-        
+
         // Only show popup if completion is less than 100%
         if (completion < 1.0) {
           final updatedRequirements = requirements.map((req) {
@@ -77,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
               dueDate: req.dueDate,
             );
           }).toList();
-          
+
           setState(() {
             _documentRequirements = updatedRequirements;
             _isLoadingDocuments = false;
@@ -92,55 +95,61 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
-  
+
   Future<bool> _checkFullCompletion() async {
     final prefs = await SharedPreferences.getInstance();
     final isCompleted = prefs.getBool('full_process_completed') ?? false;
     print('DEBUG: _checkFullCompletion = $isCompleted');
     return isCompleted;
   }
-  
+
   Future<double> _calculateCompletionPercentage() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     int completedFields = 0;
     int totalFields = 5; // Documents (3 minimum) + Fuel + Ice + Certificates
-    
+
     // Check documents (count minimum 3 required documents)
     final documentsJson = prefs.getStringList('documents') ?? [];
     final documents = documentsJson.map((doc) => json.decode(doc)).toList();
-    final uploadedDocs = documents.where((doc) => doc['isUploaded'] == true).length;
-    
+    final uploadedDocs = documents
+        .where((doc) => doc['isUploaded'] == true)
+        .length;
+
     // Only count up to 3 documents maximum for completion
     if (uploadedDocs >= 3) {
       completedFields += 3; // Max 3 documents
     } else {
       completedFields += uploadedDocs; // Less than 3
     }
-    
+
     // Check fuel
     final fuel = prefs.getString('vessel_fuel') ?? '';
     if (fuel.isNotEmpty) completedFields++;
-    
+
     // Check ice
     final ice = prefs.getString('vessel_ice') ?? '';
     if (ice.isNotEmpty) completedFields++;
-    
+
     // Check certificates
     final certificates = prefs.getStringList('vessel_certificates') ?? [];
     if (certificates.isNotEmpty) completedFields++;
-    
+
     final completion = (completedFields / totalFields).clamp(0.0, 1.0);
     print('DEBUG: Completion = $completion ($completedFields/$totalFields)');
-    print('DEBUG: Documents = $uploadedDocs, Fuel = ${fuel.isNotEmpty}, Ice = ${ice.isNotEmpty}, Certificates = ${certificates.length}');
-    
+    print(
+      'DEBUG: Documents = $uploadedDocs, Fuel = ${fuel.isNotEmpty}, Ice = ${ice.isNotEmpty}, Certificates = ${certificates.length}',
+    );
+
     return completion;
   }
+
   @override
   Widget build(BuildContext context) {
     final isTablet = ResponsiveHelper.isTablet(context);
-    
+
     return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
       slivers: [
         CustomSliverAppBar(),
         // Content
@@ -148,45 +157,89 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             color: Colors.grey[50],
             child: Padding(
-              padding: ResponsiveHelper.responsivePadding(context, mobile: 20, tablet: 32),
+              padding: ResponsiveHelper.responsivePadding(
+                context,
+                mobile: 20,
+                tablet: 32,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Carousel
                   CatchCarousel(),
-                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
+                  SizedBox(
+                    height: ResponsiveHelper.responsiveHeight(
+                      context,
+                      mobile: 16,
+                      tablet: 20,
+                    ),
+                  ),
 
                   // Document Requirements Alert
                   if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
                     _buildDocumentAlert(),
 
-                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 24, tablet: 32)),
+                  SizedBox(
+                    height: ResponsiveHelper.responsiveHeight(
+                      context,
+                      mobile: 24,
+                      tablet: 32,
+                    ),
+                  ),
 
                   // Statistics Title
                   Text(
                     'Statistik Hari Ini',
                     style: TextStyle(
-                      fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
+                      fontSize: ResponsiveHelper.responsiveFontSize(
+                        context,
+                        mobile: 20,
+                        tablet: 24,
+                      ),
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1A1A1A),
                     ),
                   ),
-                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
+                  SizedBox(
+                    height: ResponsiveHelper.responsiveHeight(
+                      context,
+                      mobile: 16,
+                      tablet: 20,
+                    ),
+                  ),
 
                   // Statistics Cards
                   _buildStatisticsCards(),
 
-                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 28, tablet: 36)),
+                  SizedBox(
+                    height: ResponsiveHelper.responsiveHeight(
+                      context,
+                      mobile: 28,
+                      tablet: 36,
+                    ),
+                  ),
 
                   // Weekly Activity Chart
                   _buildWeeklyActivity(),
 
-                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 28, tablet: 36)),
+                  SizedBox(
+                    height: ResponsiveHelper.responsiveHeight(
+                      context,
+                      mobile: 28,
+                      tablet: 36,
+                    ),
+                  ),
 
                   // Recent Catches
                   _buildRecentCatches(),
 
-                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 28)),
+                  SizedBox(
+                    height: ResponsiveHelper.responsiveHeight(
+                      context,
+                      mobile: 20,
+                      tablet: 28,
+                    ),
+                  ),
 
                   // Dummy Data Setup Button (for testing)
                   _buildDummyDataButton(),
@@ -228,7 +281,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 gradientColors: [Color(0xFF4A90E2), Color(0xFF357ABD)],
               ),
             ),
-            SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+            SizedBox(
+              width: ResponsiveHelper.responsiveWidth(
+                context,
+                mobile: 12,
+                tablet: 16,
+              ),
+            ),
             Expanded(
               child: _buildModernStatCard(
                 lottieAsset: 'assets/animations/Weighing.json',
@@ -240,7 +299,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+        SizedBox(
+          height: ResponsiveHelper.responsiveHeight(
+            context,
+            mobile: 12,
+            tablet: 16,
+          ),
+        ),
         Row(
           children: [
             Expanded(
@@ -252,7 +317,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 gradientColors: [Color(0xFFF0AD4E), Color(0xFFEC971F)],
               ),
             ),
-            SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+            SizedBox(
+              width: ResponsiveHelper.responsiveWidth(
+                context,
+                mobile: 12,
+                tablet: 16,
+              ),
+            ),
             Expanded(
               child: _buildModernStatCard(
                 lottieAsset: 'assets/animations/chart.json',
@@ -276,19 +347,32 @@ class _HomeScreenState extends State<HomeScreen> {
     required List<Color> gradientColors,
   }) {
     return Container(
-      padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 20),
+      padding: ResponsiveHelper.responsivePadding(
+        context,
+        mobile: 16,
+        tablet: 20,
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24)),
+        borderRadius: BorderRadius.circular(
+          ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24),
+        ),
         boxShadow: [
           BoxShadow(
             color: gradientColors[0].withOpacity(0.3),
-            blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
-            offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 6, tablet: 8)),
+            blurRadius: ResponsiveHelper.responsiveWidth(
+              context,
+              mobile: 12,
+              tablet: 16,
+            ),
+            offset: Offset(
+              0,
+              ResponsiveHelper.responsiveHeight(context, mobile: 6, tablet: 8),
+            ),
           ),
         ],
       ),
@@ -297,38 +381,80 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Lottie Animation
           Container(
-            width: ResponsiveHelper.responsiveWidth(context, mobile: 50, tablet: 60),
-            height: ResponsiveHelper.responsiveHeight(context, mobile: 50, tablet: 60),
+            width: ResponsiveHelper.responsiveWidth(
+              context,
+              mobile: 50,
+              tablet: 60,
+            ),
+            height: ResponsiveHelper.responsiveHeight(
+              context,
+              mobile: 50,
+              tablet: 60,
+            ),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 15)),
+              borderRadius: BorderRadius.circular(
+                ResponsiveHelper.responsiveWidth(
+                  context,
+                  mobile: 12,
+                  tablet: 15,
+                ),
+              ),
             ),
             child: Center(
               child: Lottie.asset(
                 lottieAsset,
-                width: ResponsiveHelper.responsiveWidth(context, mobile: 50, tablet: 60),
-                height: ResponsiveHelper.responsiveHeight(context, mobile: 50, tablet: 60),
+                width: ResponsiveHelper.responsiveWidth(
+                  context,
+                  mobile: 50,
+                  tablet: 60,
+                ),
+                height: ResponsiveHelper.responsiveHeight(
+                  context,
+                  mobile: 50,
+                  tablet: 60,
+                ),
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   return Icon(
                     Icons.analytics,
                     color: Colors.white,
-                    size: ResponsiveHelper.responsiveWidth(context, mobile: 30, tablet: 36),
+                    size: ResponsiveHelper.responsiveWidth(
+                      context,
+                      mobile: 30,
+                      tablet: 36,
+                    ),
                   );
                 },
               ),
             ),
           ),
-          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+          SizedBox(
+            height: ResponsiveHelper.responsiveHeight(
+              context,
+              mobile: 12,
+              tablet: 16,
+            ),
+          ),
           Text(
             label,
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
+              fontSize: ResponsiveHelper.responsiveFontSize(
+                context,
+                mobile: 12,
+                tablet: 14,
+              ),
               color: Colors.white.withOpacity(0.9),
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
+          SizedBox(
+            height: ResponsiveHelper.responsiveHeight(
+              context,
+              mobile: 4,
+              tablet: 6,
+            ),
+          ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -336,20 +462,40 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   value,
                   style: TextStyle(
-                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 24, tablet: 28),
+                    fontSize: ResponsiveHelper.responsiveFontSize(
+                      context,
+                      mobile: 24,
+                      tablet: 28,
+                    ),
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
+              SizedBox(
+                width: ResponsiveHelper.responsiveWidth(
+                  context,
+                  mobile: 4,
+                  tablet: 6,
+                ),
+              ),
               Padding(
-                padding: EdgeInsets.only(bottom: ResponsiveHelper.responsiveHeight(context, mobile: 3, tablet: 4)),
+                padding: EdgeInsets.only(
+                  bottom: ResponsiveHelper.responsiveHeight(
+                    context,
+                    mobile: 3,
+                    tablet: 4,
+                  ),
+                ),
                 child: Text(
                   subtitle,
                   style: TextStyle(
-                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
+                    fontSize: ResponsiveHelper.responsiveFontSize(
+                      context,
+                      mobile: 11,
+                      tablet: 13,
+                    ),
                     color: Colors.white.withOpacity(0.8),
                   ),
                 ),
@@ -689,15 +835,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDocumentAlert() {
-    final urgentRequirements = _documentRequirements.where((req) => req.isUrgent).toList();
+    final urgentRequirements = _documentRequirements
+        .where((req) => req.isUrgent)
+        .toList();
     final hasUrgent = urgentRequirements.isNotEmpty;
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: hasUrgent 
+          colors: hasUrgent
               ? [Colors.red.shade400, Colors.red.shade600]
               : [const Color(0xFF1B4F9C), const Color(0xFF2563EB)],
           begin: Alignment.topLeft,
@@ -706,7 +854,8 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: (hasUrgent ? Colors.red : const Color(0xFF1B4F9C)).withOpacity(0.3),
+            color: (hasUrgent ? Colors.red : const Color(0xFF1B4F9C))
+                .withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -736,7 +885,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      hasUrgent ? 'Dokumen Wajib Belum Lengkap!' : 'Kelengkapan Dokumen',
+                      hasUrgent
+                          ? 'Dokumen Wajib Belum Lengkap!'
+                          : 'Kelengkapan Dokumen',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -745,7 +896,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      hasUrgent 
+                      hasUrgent
                           ? 'Lengkapi dokumen sebelum memulai trip'
                           : 'Ada dokumen yang perlu dilengkapi',
                       style: TextStyle(
@@ -771,7 +922,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: LinearProgressIndicator(
                         value: completion,
                         backgroundColor: Colors.white.withOpacity(0.3),
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.white,
+                        ),
                         minHeight: 6,
                       ),
                     ),
@@ -809,7 +962,9 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: hasUrgent ? Colors.red : const Color(0xFF1B4F9C),
+                foregroundColor: hasUrgent
+                    ? Colors.red
+                    : const Color(0xFF1B4F9C),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -817,9 +972,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Text(
                 hasUrgent ? 'Lengkapi Sekarang' : 'Lihat Dokumen',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -853,23 +1006,33 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final user = Provider.of<UserProvider>(context, listen: false).user;
+                    final user = Provider.of<UserProvider>(
+                      context,
+                      listen: false,
+                    ).user;
                     if (user == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('User tidak ditemukan, silakan login ulang'),
+                          content: Text(
+                            'User tidak ditemukan, silakan login ulang',
+                          ),
                           backgroundColor: Colors.red,
                         ),
                       );
                       return;
                     }
-                    
+
                     try {
-                      await DataClearService.setupDummyData(user.email, user.role ?? 'crew');
+                      await DataClearService.setupDummyData(
+                        user.email,
+                        user.role ?? 'crew',
+                      );
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Dummy data berhasil dibuat untuk ${user.role}'),
+                            content: Text(
+                              'Dummy data berhasil dibuat untuk ${user.role}',
+                            ),
                             backgroundColor: Colors.green,
                           ),
                         );

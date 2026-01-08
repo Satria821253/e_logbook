@@ -176,6 +176,7 @@ Jawab HANYA dengan JSON valid:
           unitWeight: unitWeight,
         );
       } else {
+        debugPrint('❌ Server Error ${response.statusCode}: ${response.body}');
         throw Exception('Server Error: ${response.statusCode}');
       }
     } catch (e) {
@@ -184,38 +185,38 @@ Jawab HANYA dengan JSON valid:
     }
   }
 
-  static double _validateAndNormalizeWeight(double weightPerFish, double length, String fishName) {
+  static double _validateAndNormalizeWeight(
+    double weightPerFish,
+    double length,
+    String fishName,
+  ) {
     // Rasio berat (kg) per cm panjang - Data akurat dengan range tinggi yang diperluas
     Map<String, List<double>> speciesData = {
       // PELAGIS BESAR (High-value commercial fish)
-      'tongkol': [0.012, 0.028],   // 15-30cm range
-      'cakalang': [0.020, 0.045],  // 25-40cm range
-      'tuna': [0.045, 0.180],      // 40-80cm+ range (expanded for large tuna)
-      'tenggiri': [0.015, 0.040],  // 30-60cm range
-      
+      'tongkol': [0.012, 0.028], // 15-30cm range
+      'cakalang': [0.020, 0.045], // 25-40cm range
+      'tuna': [0.045, 0.180], // 40-80cm+ range (expanded for large tuna)
+      'tenggiri': [0.015, 0.040], // 30-60cm range
       // PELAGIS KECIL (Volume tinggi, harga rendah)
-      'layang': [0.007, 0.012],    // 10-18cm range
-      'kembung': [0.009, 0.018],   // 12-20cm range
-      'selar': [0.008, 0.014],     // 15-25cm range
-      'lemuru': [0.007, 0.012],    // Similar to layang
-      'siro': [0.006, 0.010],      // Small anchovy
-      
+      'layang': [0.007, 0.012], // 10-18cm range
+      'kembung': [0.009, 0.018], // 12-20cm range
+      'selar': [0.008, 0.014], // 15-25cm range
+      'lemuru': [0.007, 0.012], // Similar to layang
+      'siro': [0.006, 0.010], // Small anchovy
       // IKAN KARANG & DEMERSAL (High-value)
-      'kerapu': [0.035, 0.080],    // 30-60cm range - very dense
-      'kakap': [0.025, 0.060],     // 25-50cm range
-      'kuwe': [0.030, 0.070],      // 40-80cm range - large trevally
-      'baronang': [0.020, 0.045],  // 20-35cm range
-      'kurisi': [0.018, 0.035],    // Threadfin bream
-      
+      'kerapu': [0.035, 0.080], // 30-60cm range - very dense
+      'kakap': [0.025, 0.060], // 25-50cm range
+      'kuwe': [0.030, 0.070], // 40-80cm range - large trevally
+      'baronang': [0.020, 0.045], // 20-35cm range
+      'kurisi': [0.018, 0.035], // Threadfin bream
       // LAINNYA
-      'bandeng': [0.010, 0.025],   // 20-35cm range
-      'bawal': [0.025, 0.055],     // 15-30cm range - flat but dense
-      'pari': [0.015, 0.040],      // Variable size stingray
-      
+      'bandeng': [0.010, 0.025], // 20-35cm range
+      'bawal': [0.025, 0.055], // 15-30cm range - flat but dense
+      'pari': [0.015, 0.040], // Variable size stingray
       // NON-FISH (dengan ukuran yang diperluas)
-      'cumi': [0.005, 0.020],      // 15-40cm range (including tentacles)
-      'udang': [0.003, 0.015],     // 8-20cm range (larger prawns)
-      'kepiting': [0.008, 0.025],  // Variable size crabs
+      'cumi': [0.005, 0.020], // 15-40cm range (including tentacles)
+      'udang': [0.003, 0.015], // 8-20cm range (larger prawns)
+      'kepiting': [0.008, 0.025], // Variable size crabs
     };
 
     String fishKey = fishName.toLowerCase();
@@ -236,11 +237,15 @@ Jawab HANYA dengan JSON valid:
 
     // Koreksi jika di luar range
     if (weightPerFish < minWeight) {
-      debugPrint('⚖️ Koreksi: $fishName terlalu ringan → ${minWeight.toStringAsFixed(2)}kg');
+      debugPrint(
+        '⚖️ Koreksi: $fishName terlalu ringan → ${minWeight.toStringAsFixed(2)}kg',
+      );
       return minWeight;
     }
     if (weightPerFish > maxWeight) {
-      debugPrint('⚖️ Koreksi: $fishName terlalu berat → ${maxWeight.toStringAsFixed(2)}kg');
+      debugPrint(
+        '⚖️ Koreksi: $fishName terlalu berat → ${maxWeight.toStringAsFixed(2)}kg',
+      );
       return maxWeight;
     }
 
