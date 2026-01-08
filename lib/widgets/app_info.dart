@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 
 class AppInfo extends StatelessWidget {
   final String version;
@@ -15,17 +16,22 @@ class AppInfo extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const SizedBox(height: 8),
+        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
         Text(
           "V $version",
-          style: const TextStyle(
-            fontSize: 14, color: Color.fromARGB(255, 129, 129, 129),),
+          style: TextStyle(
+            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16), 
+            color: Color.fromARGB(255, 129, 129, 129),
+          ),
         ),
 
-        const SizedBox(height: 4),
+        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
         Text(
           "© $releaseYear E-Logbook",
-          style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 129, 129, 129),),
+          style: TextStyle(
+            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14), 
+            color: Color.fromARGB(255, 129, 129, 129),
+          ),
         ),
       ],
     );

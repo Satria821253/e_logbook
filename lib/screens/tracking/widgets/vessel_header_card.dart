@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
@@ -15,17 +16,16 @@ class VesselHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    double sp(double size) => size * (width / 390);
-
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: sp(16)),
+      padding: EdgeInsets.symmetric(
+        horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20),
+      ),
       child: Column(
         children: [
           // 🚢 ICON KAPAL (FOCUS UTAMA)
           SizedBox(
-            width: sp(130),
-            height: sp(130),
+            width: ResponsiveHelper.responsiveWidth(context, mobile: 130, tablet: 156),
+            height: ResponsiveHelper.responsiveHeight(context, mobile: 130, tablet: 156),
             child: Lottie.asset(
               'assets/animations/PreTrip.json', // pastikan path benar
               fit: BoxFit.contain,
@@ -37,7 +37,7 @@ class VesselHeaderCard extends StatelessWidget {
             vesselName,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: sp(19),
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 19, tablet: 22),
               fontWeight: FontWeight.bold,
               color: const Color(0xFF1B4F9C),
             ),
@@ -46,21 +46,25 @@ class VesselHeaderCard extends StatelessWidget {
             'No. Kapal: $vesselNumber',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: sp(12),
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
               color: Colors.grey[600],
             ),
           ),
           TextButton.icon(
             onPressed: onSummaryTap,
-            icon: const Icon(Icons.bar_chart, size: 18),
-            label: const Text('Ringkasan Trip'),
+            icon: Icon(Icons.bar_chart, size: ResponsiveHelper.responsiveWidth(context, mobile: 18, tablet: 22)),
+            label: Text('Ringkasan Trip', style: TextStyle(
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15),
+            )),
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFF1B4F9C),
               padding: EdgeInsets.symmetric(
-                horizontal: sp(12),
-                vertical: sp(6),
+                horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+                vertical: ResponsiveHelper.responsiveHeight(context, mobile: 6, tablet: 8),
               ),
-              textStyle: TextStyle(fontSize: sp(13)),
+              textStyle: TextStyle(
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15),
+              ),
             ),
           ),
         ],

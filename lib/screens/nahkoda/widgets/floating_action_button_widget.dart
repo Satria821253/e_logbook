@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
@@ -36,8 +37,8 @@ class FloatingActionButtonWidget extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 56,
-        height: 56,
+        width: ResponsiveHelper.responsiveWidth(context, mobile: 56, tablet: 64),
+        height: ResponsiveHelper.responsiveHeight(context, mobile: 56, tablet: 64),
         decoration: BoxDecoration(
           color: useLottie ? Colors.white : color,
           shape: BoxShape.circle,
@@ -62,7 +63,7 @@ class FloatingActionButtonWidget extends StatelessWidget {
             : Icon(
                 icon,
                 color: Colors.white,
-                size: 24,
+                size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
               ),
       ),
     );

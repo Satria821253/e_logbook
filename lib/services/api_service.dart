@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.1.22:8000/api'; // Physical device
+  static const String baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000/api'); // Configurable endpoint
   
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();

@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 class FishPhotoTipsScreen extends StatefulWidget {
@@ -36,7 +37,7 @@ class _FishPhotoTipsScreenState extends State<FishPhotoTipsScreen> with SingleTi
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            fontSize: fs(18),
+            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
           ),
         ),
         backgroundColor: Colors.transparent,
@@ -56,8 +57,13 @@ class _FishPhotoTipsScreenState extends State<FishPhotoTipsScreen> with SingleTi
           indicatorWeight: 3,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          labelStyle: TextStyle(fontSize: fs(13), fontWeight: FontWeight.bold),
-          unselectedLabelStyle: TextStyle(fontSize: fs(13)),
+          labelStyle: TextStyle(
+            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15), 
+            fontWeight: FontWeight.bold,
+          ),
+          unselectedLabelStyle: TextStyle(
+            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15),
+          ),
           tabs: const [
             Tab(text: 'Teknik Foto'),
             Tab(text: 'Jenis Ikan'),

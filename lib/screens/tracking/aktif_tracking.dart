@@ -10,6 +10,7 @@ import 'package:e_logbook/services/location_tracking_service.dart';
 import 'package:e_logbook/services/zone_checker.dart';
 import 'package:e_logbook/services/realtime_service.dart';
 import 'package:e_logbook/services/weather_service.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -668,13 +669,13 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.white,
-              fontSize: sp(18),
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
             ),
           ),
           Text(
             widget.vesselName,
             style: TextStyle(
-              fontSize: sp(12),
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
               color: Colors.white.withOpacity(0.9),
             ),
           ),

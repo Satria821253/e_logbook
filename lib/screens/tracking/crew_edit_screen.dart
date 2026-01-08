@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 enum CrewStatus { present, izin, tidakHadir }
@@ -157,7 +158,7 @@ class _CrewEditScreenState extends State<CrewEditScreen> {
                           Text(
                             'Edit Jumlah ABK',
                             style: TextStyle(
-                              fontSize: fs(22),
+                              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 22, tablet: 26),
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -165,7 +166,7 @@ class _CrewEditScreenState extends State<CrewEditScreen> {
                           Text(
                             'Sesuaikan dengan kehadiran crew',
                             style: TextStyle(
-                              fontSize: fs(13),
+                              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15),
                               color: Colors.white.withOpacity(0.9),
                             ),
                           ),
@@ -254,7 +255,7 @@ class _CrewEditScreenState extends State<CrewEditScreen> {
                         Text(
                           'Daftar ABK',
                           style: TextStyle(
-                            fontSize: fs(18),
+                            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
                             fontWeight: FontWeight.bold,
                             color: Colors.grey[800],
                           ),

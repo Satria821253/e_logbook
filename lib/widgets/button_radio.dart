@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 enum ButtonRadio { email, phone }
@@ -28,10 +29,10 @@ class ButtonRadioSelector extends StatelessWidget {
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 onChanged: (newValue) {
                   if (newValue != null) controller.value = newValue;
-                },
+                }, 
               ),
             ),
-            const Text("Email", style: TextStyle(fontSize: 12)),
+            Text("Email", style: TextStyle(fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14))),
             const SizedBox(width: 16),
             Transform.scale(
               scale: 0.8,
@@ -45,7 +46,7 @@ class ButtonRadioSelector extends StatelessWidget {
                 },
               ),
             ),
-            const Text("No Telp", style: TextStyle(fontSize: 12)),
+            Text("No Telp", style: TextStyle(fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14))),
           ],
         );
       },

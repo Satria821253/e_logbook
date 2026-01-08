@@ -97,6 +97,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Responsive breakpoints
+    final isTablet = MediaQuery.of(context).size.width > 600;
+    final logoSize = isTablet ? 280.w : 220.w;
+    
     return Scaffold(
       body: Container(
         color: Colors.white,
@@ -111,30 +115,30 @@ class _SplashScreenState extends State<SplashScreen>
                   /// LOGO RESPONSIVE
                   Image.asset(
                     'assets/OIP.png',
-                    width: 220.w,   // otomatis menyesuaikan layar
-                    height: 220.w,  // pakai width supaya lebih stabil
+                    width: logoSize,
+                    height: logoSize,
                     fit: BoxFit.contain,
                   ),
 
-                  SizedBox(height: 20.h),
+                  SizedBox(height: isTablet ? 30.h : 20.h),
 
                   /// TEXT TITLE RESPONSIVE
                   Text(
                     'e-Logbook',
                     style: TextStyle(
-                      fontSize: 28.sp,
+                      fontSize: isTablet ? 36.sp : 28.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.blue[800],
                     ),
                   ),
 
-                  SizedBox(height: 8.h),
+                  SizedBox(height: isTablet ? 12.h : 8.h),
 
                   /// VERSION RESPONSIVE
                   Text(
                     'V1.0',
                     style: TextStyle(
-                      fontSize: 16.sp,
+                      fontSize: isTablet ? 20.sp : 16.sp,
                       color: Colors.grey[600],
                     ),
                   ),

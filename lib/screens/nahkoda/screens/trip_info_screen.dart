@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -64,11 +65,11 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Info Trip',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -111,15 +112,15 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 120,
-            height: 120,
+            width: ResponsiveHelper.responsiveWidth(context, mobile: 120, tablet: 144),
+            height: ResponsiveHelper.responsiveHeight(context, mobile: 120, tablet: 144),
             decoration: BoxDecoration(
               color: Colors.grey[100],
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.schedule,
-              size: 60,
+              size: ResponsiveHelper.responsiveWidth(context, mobile: 60, tablet: 72),
               color: Colors.grey[400],
             ),
           ),
@@ -127,7 +128,7 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
           Text(
             'Belum Ada Penjadwalan Trip',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
               fontWeight: FontWeight.bold,
               color: Colors.grey[800],
             ),

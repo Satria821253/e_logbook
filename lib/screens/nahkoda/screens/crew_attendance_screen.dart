@@ -1,5 +1,6 @@
 import 'package:e_logbook/models/attendance_model.dart';
 import 'package:e_logbook/provider/user_provider.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
@@ -104,11 +105,12 @@ class _CrewAttendanceScreenState extends State<CrewAttendanceScreen> {
                 ),
               ),
             ),
-            title: const Text(
+            title: Text(
               'informasi Kapal',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
               ),
             ),
           ),
@@ -168,16 +170,16 @@ class _CrewAttendanceScreenState extends State<CrewAttendanceScreen> {
               shape: BoxShape.circle,
             ),
             child: Lottie.asset(
-              'assets/animations/PreTrip.json', // ubah sesuai nama file Anda
-              width: 100,
-              height: 100,
+              'assets/animations/PreTrip.json',
+              width: ResponsiveHelper.responsiveWidth(context, mobile: 100, tablet: 120),
+              height: ResponsiveHelper.responsiveHeight(context, mobile: 100, tablet: 120),
             ),
           ),
           SizedBox(height: 16),
           Text(
             'KM Bahari Jaya',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
               fontWeight: FontWeight.bold,
               color: Colors.grey[800],
             ),

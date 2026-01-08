@@ -1,4 +1,5 @@
 import 'package:e_logbook/constants/indonesia_harbors.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 class HarborZoneSelector extends StatelessWidget {
@@ -44,7 +45,9 @@ class HarborZoneSelector extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(sp(12)),
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            ),
             border: Border.all(color: Colors.blue.withOpacity(0.3)),
             boxShadow: [
               BoxShadow(
@@ -54,17 +57,24 @@ class HarborZoneSelector extends StatelessWidget {
               ),
             ],
           ),
-          padding: EdgeInsets.symmetric(horizontal: sp(12)),
+          padding: EdgeInsets.symmetric(
+            horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+          ),
           child: DropdownButtonFormField<String>(
             value: selectedHarbor,
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.anchor, color: Color(0xFF1B4F9C)),
               border: InputBorder.none,
-              labelStyle: TextStyle(fontSize: fs(14)),
+              labelStyle: TextStyle(
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+              ),
             ),
             isExpanded: true,
             icon: const Icon(Icons.arrow_drop_down),
-            style: TextStyle(fontSize: fs(14), color: Colors.black87),
+            style: TextStyle(
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16), 
+              color: Colors.black87,
+            ),
             items: IndonesiaHarbors.harborNames.map((harborName) {
               final harbor = IndonesiaHarbors.getHarborByFullName(harborName);
               return DropdownMenuItem<String>(

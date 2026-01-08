@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import '../services/offline_sync_service.dart';
 
@@ -49,7 +50,10 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
     switch (status) {
       case 'synced':
         return Container(
-          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: EdgeInsets.symmetric(
+            horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10),
+            vertical: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6),
+          ),
           decoration: BoxDecoration(
             color: Colors.green.shade100,
             borderRadius: BorderRadius.circular(12),
@@ -58,12 +62,16 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.cloud_done, size: 14, color: Colors.green.shade700),
-              SizedBox(width: 4),
+              Icon(
+                Icons.cloud_done, 
+                size: ResponsiveHelper.responsiveWidth(context, mobile: 14, tablet: 16), 
+                color: Colors.green.shade700,
+              ),
+              SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
               Text(
                 'Terkirim',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
                   fontWeight: FontWeight.w600,
                   color: Colors.green.shade800,
                 ),
@@ -76,7 +84,10 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
         return GestureDetector(
           onTap: () => _showPendingDetails(),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10),
+              vertical: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6),
+            ),
             decoration: BoxDecoration(
               color: Colors.orange.shade100,
               borderRadius: BorderRadius.circular(12),
@@ -86,23 +97,27 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
-                  width: 12,
-                  height: 12,
+                  width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 14),
+                  height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 14),
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation(Colors.orange.shade700),
                   ),
                 ),
-                SizedBox(width: 4),
+                SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
                 Text(
                   'Menunggu',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
                     fontWeight: FontWeight.w600,
                     color: Colors.orange.shade800,
                   ),
                 ),
-                Icon(Icons.info_outline, size: 12, color: Colors.orange.shade700),
+                Icon(
+                  Icons.info_outline, 
+                  size: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 14), 
+                  color: Colors.orange.shade700,
+                ),
               ],
             ),
           ),
@@ -112,7 +127,10 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
         return GestureDetector(
           onTap: () => _showFailedDetails(),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10),
+              vertical: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6),
+            ),
             decoration: BoxDecoration(
               color: Colors.red.shade100,
               borderRadius: BorderRadius.circular(12),
@@ -121,12 +139,16 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.error_outline, size: 14, color: Colors.red.shade700),
-                SizedBox(width: 4),
+                Icon(
+                  Icons.error_outline, 
+                  size: ResponsiveHelper.responsiveWidth(context, mobile: 14, tablet: 16), 
+                  color: Colors.red.shade700,
+                ),
+                SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
                 Text(
                   'Gagal',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
                     fontWeight: FontWeight.w600,
                     color: Colors.red.shade800,
                   ),
@@ -150,7 +172,7 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
         title: Row(
           children: [
             Icon(Icons.cloud_upload, color: Colors.orange),
-            SizedBox(width: 8),
+            SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10)),
             Text('Status Pengiriman'),
           ],
         ),
@@ -160,11 +182,13 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
           children: [
             Text(
               'Data ini sedang menunggu untuk dikirim ke server.',
-              style: TextStyle(fontSize: 14),
+              style: TextStyle(
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+              ),
             ),
-            SizedBox(height: 12),
+            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
             Container(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
               decoration: BoxDecoration(
                 color: Colors.orange.shade50,
                 borderRadius: BorderRadius.circular(8),
@@ -177,7 +201,7 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
                     'Detail:',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 4),
+                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
                   Text('Percobaan: ${pendingDetails!['retry_count']} kali'),
                   Text('Dibuat: ${_formatDate(pendingDetails!['created_at'])}'),
                   if (pendingDetails!['last_error'] != null)
@@ -185,11 +209,11 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
                 ],
               ),
             ),
-            SizedBox(height: 12),
+            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
             Text(
               '💡 Data akan dikirim otomatis saat koneksi internet stabil.',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
                 fontStyle: FontStyle.italic,
                 color: Colors.grey[600],
               ),
@@ -213,7 +237,7 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
         title: Row(
           children: [
             Icon(Icons.error, color: Colors.red),
-            SizedBox(width: 8),
+            SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10)),
             Text('Pengiriman Gagal'),
           ],
         ),
@@ -223,13 +247,15 @@ class _CatchSyncStatusWidgetState extends State<CatchSyncStatusWidget> {
           children: [
             Text(
               'Data ini gagal dikirim ke server setelah beberapa percobaan.',
-              style: TextStyle(fontSize: 14),
+              style: TextStyle(
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+              ),
             ),
-            SizedBox(height: 12),
+            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
             Text(
               '🔄 Sistem akan terus mencoba mengirim data ini secara otomatis.',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
                 fontStyle: FontStyle.italic,
                 color: Colors.grey[600],
               ),

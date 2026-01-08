@@ -19,8 +19,11 @@ class WeatherData {
 }
 
 class WeatherService {
-  // Gunakan OpenWeatherMap API (gratis)
-  static const String _apiKey = '2983ad030122c1c475d16ad842687022'; // Dapatkan dari openweathermap.org
+  // API Key dari environment variables untuk keamanan
+  static const String _apiKey = String.fromEnvironment(
+    'OPENWEATHER_API_KEY',
+    defaultValue: 'df250624f6353ee29708e524f537e27a',
+  );
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5';
 
   /// Mendapatkan data cuaca berdasarkan posisi
@@ -30,17 +33,16 @@ class WeatherService {
         '$_baseUrl/weather?lat=${position.latitude}&lon=${position.longitude}&appid=$_apiKey&units=metric&lang=id',
       );
 
-      final response = await http.get(url).timeout(
-        const Duration(seconds: 10),
-      );
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+
         return WeatherData(
           condition: data['weather'][0]['description'] ?? 'Tidak diketahui',
           temperature: (data['main']['temp'] as num).toDouble(),
-          windSpeed: (data['wind']['speed'] as num).toDouble() * 3.6, // m/s ke km/h
+          windSpeed:
+              (data['wind']['speed'] as num).toDouble() * 3.6, // m/s ke km/h
           humidity: data['main']['humidity'] as int,
           waveHeight: _estimateWaveHeight(
             (data['wind']['speed'] as num).toDouble(),
@@ -65,13 +67,11 @@ class WeatherService {
         '$_baseUrl/weather?lat=$lat&lon=$lon&appid=$_apiKey&units=metric&lang=id',
       );
 
-      final response = await http.get(url).timeout(
-        const Duration(seconds: 10),
-      );
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+
         return WeatherData(
           condition: data['weather'][0]['description'] ?? 'Tidak diketahui',
           temperature: (data['main']['temp'] as num).toDouble(),

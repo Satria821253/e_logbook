@@ -72,39 +72,62 @@ class CatchModel {
   });
 
   factory CatchModel.fromJson(Map<String, dynamic> json) {
+    // Validasi field kritis
+    if (json['fish_name'] == null || json['fish_name'].toString().trim().isEmpty) {
+      throw ArgumentError('Fish name is required');
+    }
+    
+    final weight = double.tryParse(json['weight'].toString());
+    if (weight == null || weight < 0 || weight > 10000) {
+      throw ArgumentError('Invalid weight value: ${json['weight']}');
+    }
+    
+    final quantity = json['quantity'] as int?;
+    if (quantity == null || quantity < 0 || quantity > 100000) {
+      throw ArgumentError('Invalid quantity value: ${json['quantity']}');
+    }
+    
     return CatchModel(
       id: json['id'],
-      fishName: json['fish_name'] ?? '',
-      fishType: json['fish_type'] ?? '',
-      weight: double.tryParse(json['weight'].toString()) ?? 0.0,
-      quantity: json['quantity'] ?? 0,
-      condition: json['condition'] ?? '',
-      photoPath: json['photo_path'] ?? '',
-      vesselName: json['vessel_name'] ?? '',
-      vesselNumber: json['vessel_number'] ?? '',
-      captainName: json['captain_name'] ?? '',
-      crewCount: json['crew_count'] ?? 0,
-      pricePerKg: double.tryParse(json['price_per_kg'].toString()) ?? 0.0,
-      totalRevenue: double.tryParse(json['total_revenue'].toString()) ?? 0.0,
-      departureDate: DateTime.tryParse(json['departure_date']) ?? DateTime.now(),
-      departureTime: json['departure_time'] ?? '',
-      arrivalDate: DateTime.tryParse(json['arrival_date']) ?? DateTime.now(),
-      arrivalTime: json['arrival_time'] ?? '',
-      tripDurationHours: json['trip_duration_hours'] ?? 0,
-      tripDurationMinutes: json['trip_duration_minutes'] ?? 0,
-      fishingZone: json['fishing_zone'] ?? '',
-      locationName: json['location_name'] ?? '',
-      latitude: double.tryParse(json['latitude'].toString()) ?? 0.0,
-      longitude: double.tryParse(json['longitude'].toString()) ?? 0.0,
-      waterDepth: double.tryParse(json['water_depth'].toString()) ?? 0.0,
-      weatherCondition: json['weather_condition'] ?? '',
-      fuelCost: double.tryParse(json['fuel_cost'].toString()) ?? 0.0,
-      operationalCost: double.tryParse(json['operational_cost'].toString()) ?? 0.0,
-      tax: double.tryParse(json['tax'].toString()) ?? 0.0,
-      totalCost: double.tryParse(json['total_cost'].toString()) ?? 0.0,
-      netProfit: double.tryParse(json['net_profit'].toString()) ?? 0.0,
-      notes: json['notes'],
+      fishName: json['fish_name'].toString().trim(),
+      fishType: json['fish_type']?.toString() ?? '',
+      weight: weight,
+      quantity: quantity,
+      condition: json['condition']?.toString() ?? '',
+      photoPath: json['photo_path']?.toString() ?? '',
+      vesselName: json['vessel_name']?.toString() ?? '',
+      vesselNumber: json['vessel_number']?.toString() ?? '',
+      captainName: json['captain_name']?.toString() ?? '',
+      crewCount: (json['crew_count'] as int?) ?? 0,
+      pricePerKg: _parseAndValidateDouble(json['price_per_kg'], 'price_per_kg', 0, 1000000),
+      totalRevenue: _parseAndValidateDouble(json['total_revenue'], 'total_revenue', 0, 100000000),
+      departureDate: DateTime.tryParse(json['departure_date']?.toString() ?? '') ?? DateTime.now(),
+      departureTime: json['departure_time']?.toString() ?? '',
+      arrivalDate: DateTime.tryParse(json['arrival_date']?.toString() ?? '') ?? DateTime.now(),
+      arrivalTime: json['arrival_time']?.toString() ?? '',
+      tripDurationHours: (json['trip_duration_hours'] as int?) ?? 0,
+      tripDurationMinutes: (json['trip_duration_minutes'] as int?) ?? 0,
+      fishingZone: json['fishing_zone']?.toString() ?? '',
+      locationName: json['location_name']?.toString() ?? '',
+      latitude: _parseAndValidateDouble(json['latitude'], 'latitude', -90, 90),
+      longitude: _parseAndValidateDouble(json['longitude'], 'longitude', -180, 180),
+      waterDepth: _parseAndValidateDouble(json['water_depth'], 'water_depth', 0, 12000),
+      weatherCondition: json['weather_condition']?.toString() ?? '',
+      fuelCost: _parseAndValidateDouble(json['fuel_cost'], 'fuel_cost', 0, 10000000),
+      operationalCost: _parseAndValidateDouble(json['operational_cost'], 'operational_cost', 0, 10000000),
+      tax: _parseAndValidateDouble(json['tax'], 'tax', 0, 10000000),
+      totalCost: _parseAndValidateDouble(json['total_cost'], 'total_cost', 0, 100000000),
+      netProfit: _parseAndValidateDouble(json['net_profit'], 'net_profit', -100000000, 100000000),
+      notes: json['notes']?.toString(),
     );
+  }
+  
+  static double _parseAndValidateDouble(dynamic value, String fieldName, double min, double max) {
+    final parsed = double.tryParse(value.toString()) ?? 0.0;
+    if (parsed < min || parsed > max) {
+      throw ArgumentError('Invalid $fieldName value: $value (must be between $min and $max)');
+    }
+    return parsed;
   }
 
   Map<String, dynamic> toJson() {

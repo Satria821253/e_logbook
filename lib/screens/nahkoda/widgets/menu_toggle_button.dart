@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 class MenuToggleButton extends StatelessWidget {
@@ -15,8 +16,8 @@ class MenuToggleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onToggle,
       child: Container(
-        width: 56,
-        height: 56,
+        width: ResponsiveHelper.responsiveWidth(context, mobile: 56, tablet: 64),
+        height: ResponsiveHelper.responsiveHeight(context, mobile: 56, tablet: 64),
         decoration: BoxDecoration(
           color: const Color(0xFF1B4F9C),
           shape: BoxShape.circle,
@@ -34,7 +35,7 @@ class MenuToggleButton extends StatelessWidget {
           child: Icon(
             isMenuOpen ? Icons.close : Icons.menu,
             color: Colors.white,
-            size: 24,
+            size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
           ),
         ),
       ),

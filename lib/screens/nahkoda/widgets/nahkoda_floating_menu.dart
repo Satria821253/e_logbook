@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'menu_toggle_button.dart';
 import 'nahkoda_menu_items.dart';
@@ -50,8 +51,8 @@ class _NahkodaFloatingMenuState extends State<NahkodaFloatingMenu>
     return Stack(
       children: [
         Positioned(
-          right: 28,
-          bottom: 80,
+          right: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.responsiveHeight(context, mobile: 80, tablet: 96),
           child: MenuToggleButton(
             isMenuOpen: _isMenuOpen,
             onToggle: _toggleMenu,

@@ -1,5 +1,6 @@
 import 'package:e_logbook/screens/tracking/aktif_tracking.dart';
 import 'package:e_logbook/services/weather_service.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
@@ -248,7 +249,7 @@ class _PreTrackingScreenState extends State<PreTrackingScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                fontSize: fs(18),
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
               ),
             ),
           ],
@@ -301,7 +302,7 @@ class _PreTrackingScreenState extends State<PreTrackingScreen> {
                               child: Icon(
                                 Icons.directions_boat,
                                 color: const Color(0xFF1B4F9C),
-                                size: fs(28),
+                                size: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
                               ),
                             ),
                             SizedBox(width: sp(12)),
@@ -312,7 +313,7 @@ class _PreTrackingScreenState extends State<PreTrackingScreen> {
                                   Text(
                                     widget.vesselName,
                                     style: TextStyle(
-                                      fontSize: fs(16),
+                                      fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -329,8 +330,8 @@ class _PreTrackingScreenState extends State<PreTrackingScreen> {
                             Spacer(),
                             Lottie.asset(
                               _getWeatherAnimation(),
-                              width: fs(60),
-                              height: fs(60),
+                              width: ResponsiveHelper.responsiveWidth(context, mobile: 60, tablet: 72),
+                              height: ResponsiveHelper.responsiveHeight(context, mobile: 60, tablet: 72),
                               fit: BoxFit.cover,
                             ),
                           ],

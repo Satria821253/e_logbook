@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 
 class CatchCarousel extends StatefulWidget {
   const CatchCarousel({super.key});
@@ -66,7 +67,7 @@ class _CatchCarouselState extends State<CatchCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 240,
+          height: ResponsiveHelper.responsiveHeight(context, mobile: 240, tablet: 280),
           child: PageView.builder(
             controller: _controller,
             itemCount: null, // Infinite scroll
@@ -91,19 +92,22 @@ class _CatchCarouselState extends State<CatchCarousel> {
                   opacity: _currentPage == imageIndex ? 1.0 : 0.7,
                   duration: const Duration(milliseconds: 300),
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+                    margin: EdgeInsets.symmetric(
+                      horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8),
+                      vertical: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16),
+                    ),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 12),
+                          offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 2, tablet: 3)),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
                       child: Stack(
                         children: [
                           Image.asset(
@@ -135,7 +139,7 @@ class _CatchCarouselState extends State<CatchCarousel> {
           ),
         ),
         
-        const SizedBox(height: 12),
+        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
         
         // Dot indicators dengan animasi
         Row(
@@ -147,14 +151,16 @@ class _CatchCarouselState extends State<CatchCarousel> {
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                height: 8,
-                width: isActive ? 24 : 8,
+                margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
+                height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10),
+                width: isActive 
+                    ? ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)
+                    : ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10),
                 decoration: BoxDecoration(
                   color: isActive 
                       ? Theme.of(context).primaryColor 
                       : Colors.grey.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 5)),
                 ),
               );
             },

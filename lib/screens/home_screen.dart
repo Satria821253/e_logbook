@@ -4,7 +4,9 @@ import 'package:e_logbook/screens/document_completion_screen.dart';
 import 'package:e_logbook/services/admin_notification_service.dart';
 import 'package:e_logbook/services/data_clear_service.dart';
 import 'package:e_logbook/models/document_requirement_model.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -136,6 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   @override
   Widget build(BuildContext context) {
+    final isTablet = ResponsiveHelper.isTablet(context);
+    
     return CustomScrollView(
       slivers: [
         CustomSliverAppBar(),
@@ -144,45 +148,45 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             color: Colors.grey[50],
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: ResponsiveHelper.responsivePadding(context, mobile: 20, tablet: 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Carousel
                   CatchCarousel(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
 
                   // Document Requirements Alert
                   if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
                     _buildDocumentAlert(),
 
-                  const SizedBox(height: 24),
+                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 24, tablet: 32)),
 
                   // Statistics Title
-                  const Text(
+                  Text(
                     'Statistik Hari Ini',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1A1A1A),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
 
                   // Statistics Cards
                   _buildStatisticsCards(),
 
-                  const SizedBox(height: 28),
+                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 28, tablet: 36)),
 
                   // Weekly Activity Chart
                   _buildWeeklyActivity(),
 
-                  const SizedBox(height: 28),
+                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 28, tablet: 36)),
 
                   // Recent Catches
                   _buildRecentCatches(),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 28)),
 
                   // Dummy Data Setup Button (for testing)
                   _buildDummyDataButton(),
@@ -207,8 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
       (sum, catch_) => sum + catch_.totalRevenue,
     );
 
-    // Rata-rata = Total berat dibagi jumlah tangkapan
-    // Ini menunjukkan berapa kg rata-rata per tangkapan hari ini
     final averageWeight = todayCatches.isEmpty
         ? 0.0
         : totalWeight / todayCatches.length;
@@ -226,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 gradientColors: [Color(0xFF4A90E2), Color(0xFF357ABD)],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
             Expanded(
               child: _buildModernStatCard(
                 lottieAsset: 'assets/animations/Weighing.json',
@@ -238,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
         Row(
           children: [
             Expanded(
@@ -250,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 gradientColors: [Color(0xFFF0AD4E), Color(0xFFEC971F)],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
             Expanded(
               child: _buildModernStatCard(
                 lottieAsset: 'assets/animations/chart.json',
@@ -274,19 +276,19 @@ class _HomeScreenState extends State<HomeScreen> {
     required List<Color> gradientColors,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24)),
         boxShadow: [
           BoxShadow(
             color: gradientColors[0].withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 6, tablet: 8)),
           ),
         ],
       ),
@@ -295,56 +297,59 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Lottie Animation
           Container(
-            width: 50,
-            height: 50,
+            width: ResponsiveHelper.responsiveWidth(context, mobile: 50, tablet: 60),
+            height: ResponsiveHelper.responsiveHeight(context, mobile: 50, tablet: 60),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 15)),
             ),
             child: Center(
               child: Lottie.asset(
                 lottieAsset,
-                width: 50,
-                height: 50,
+                width: ResponsiveHelper.responsiveWidth(context, mobile: 50, tablet: 60),
+                height: ResponsiveHelper.responsiveHeight(context, mobile: 50, tablet: 60),
                 fit: BoxFit.contain,
-                // Jika file tidak ada, akan error. Anda bisa tambahkan error builder
                 errorBuilder: (context, error, stackTrace) {
-                  return Icon(Icons.analytics, color: Colors.white, size: 30);
+                  return Icon(
+                    Icons.analytics,
+                    color: Colors.white,
+                    size: ResponsiveHelper.responsiveWidth(context, mobile: 30, tablet: 36),
+                  );
                 },
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
               color: Colors.white.withOpacity(0.9),
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Flexible(
                 child: Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 24, tablet: 28),
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
               Padding(
-                padding: const EdgeInsets.only(bottom: 3),
+                padding: EdgeInsets.only(bottom: ResponsiveHelper.responsiveHeight(context, mobile: 3, tablet: 4)),
                 child: Text(
                   subtitle,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
                     color: Colors.white.withOpacity(0.8),
                   ),
                 ),

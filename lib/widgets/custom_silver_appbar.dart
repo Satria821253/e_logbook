@@ -3,7 +3,9 @@ import 'package:e_logbook/services/weather_service.dart';
 import 'package:e_logbook/screens/notification_screen.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/widgets/custom_e_icon.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:intl/intl.dart';
@@ -683,9 +685,11 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = ResponsiveHelper.isTablet(context);
+    
     return SliverAppBar(
       pinned: true,
-      expandedHeight: 200,
+      expandedHeight: isTablet ? 250.h : 200.h,
       backgroundColor: Colors.transparent,
       elevation: 0,
       flexibleSpace: Container(
@@ -698,7 +702,11 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
         ),
         child: FlexibleSpaceBar(
           background: Padding(
-            padding: const EdgeInsets.only(top: 50, left: 16, right: 16),
+            padding: EdgeInsets.only(
+              top: isTablet ? 60.h : 50.h,
+              left: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 24),
+              right: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 24),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -706,109 +714,120 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       "E-Logbook",
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on,
-                          size: 18,
-                          color: Colors.redAccent,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _currentAddress.length > 20
-                              ? '${_currentAddress.substring(0, 20)}...'
-                              : _currentAddress,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.white,
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: ResponsiveHelper.responsiveWidth(context, mobile: 18, tablet: 20),
+                            color: Colors.redAccent,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 4.w),
+                          Flexible(
+                            child: Text(
+                              _currentAddress.length > (isTablet ? 30 : 20)
+                                  ? '${_currentAddress.substring(0, isTablet ? 30 : 20)}...'
+                                  : _currentAddress,
+                              style: TextStyle(
+                                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15),
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
 
                 // Avatar + sapaan + notif
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const CircleAvatar(
-                            radius: 28,
-                            backgroundColor: Colors.white,
-                            child: Icon(
-                              Icons.person,
-                              size: 32,
-                              color: Color(0xFF1B4F9C),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.w),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "Halo, Selamat Datang",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color.fromARGB(255, 230, 230, 230),
+                            child: CircleAvatar(
+                              radius: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
+                              backgroundColor: Colors.white,
+                              child: Icon(
+                                Icons.person,
+                                size: ResponsiveHelper.responsiveWidth(context, mobile: 32, tablet: 38),
+                                color: Color(0xFF1B4F9C),
                               ),
                             ),
-                            _isLoading
-                                ? const SizedBox(
-                                    width: 100,
-                                    height: 16,
-                                    child: LinearProgressIndicator(
-                                      backgroundColor: Colors.white24,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
+                          ),
+                          SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Halo, Selamat Datang",
+                                  style: TextStyle(
+                                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                                    color: Color.fromARGB(255, 230, 230, 230),
+                                  ),
+                                ),
+                                _isLoading
+                                    ? SizedBox(
+                                        width: ResponsiveHelper.responsiveWidth(context, mobile: 100, tablet: 120),
+                                        height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 18),
+                                        child: const LinearProgressIndicator(
+                                          backgroundColor: Colors.white24,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : Text(
+                                        _userName,
+                                        style: TextStyle(
+                                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                Row(
+                                  children: [
+                                    CustomEIcon(
+                                      size: ResponsiveHelper.responsiveWidth(context, mobile: 14, tablet: 16),
+                                      backgroundColor: Colors.white.withOpacity(0.9),
+                                      textColor: Color(0xFF1B4F9C),
+                                    ),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      "Total Point: 28",
+                                      style: TextStyle(
+                                        fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
+                                        color: Colors.white.withOpacity(0.9),
                                       ),
                                     ),
-                                  )
-                                : Text(
-                                    _userName,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                            Row(
-                              children: [
-                                CustomEIcon(
-                                  size: 14,
-                                  backgroundColor: Colors.white.withOpacity(0.9),
-                                  textColor: Color(0xFF1B4F9C),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "Total Point: 28",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.white.withOpacity(0.9),
-                                  ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                     Consumer<UserProvider>(
                       builder: (context, userProvider, child) {
@@ -835,8 +854,8 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                                         );
                                       },
                                       child: Container(
-                                        height: 45,
-                                        width: 45,
+                                        height: ResponsiveHelper.responsiveHeight(context, mobile: 45, tablet: 50),
+                                        width: ResponsiveHelper.responsiveWidth(context, mobile: 45, tablet: 50),
                                         decoration: const BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: Colors.white,
@@ -844,31 +863,31 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                                         child: Stack(
                                           children: [
                                             Center(
-                                              child: const Icon(
+                                              child: Icon(
                                                 Icons.notifications_none,
-                                                size: 28,
+                                                size: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
                                                 color: Color(0xFF1B4F9C),
                                               ),
                                             ),
                                             if (count > 0)
                                               Positioned(
-                                                right: 8,
-                                                top: 8,
+                                                right: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10),
+                                                top: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10),
                                                 child: Container(
-                                                  padding: EdgeInsets.all(4),
+                                                  padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 5)),
                                                   decoration: BoxDecoration(
                                                     color: Colors.red,
                                                     shape: BoxShape.circle,
                                                   ),
                                                   constraints: BoxConstraints(
-                                                    minWidth: 16,
-                                                    minHeight: 16,
+                                                    minWidth: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 18),
+                                                    minHeight: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 18),
                                                   ),
                                                   child: Text(
                                                     '$count',
                                                     style: TextStyle(
                                                       color: Colors.white,
-                                                      fontSize: 10,
+                                                      fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 10, tablet: 11),
                                                       fontWeight: FontWeight.bold,
                                                     ),
                                                     textAlign: TextAlign.center,
@@ -895,15 +914,15 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                               );
                             },
                             child: Container(
-                              height: 45,
-                              width: 45,
+                              height: ResponsiveHelper.responsiveHeight(context, mobile: 45, tablet: 50),
+                              width: ResponsiveHelper.responsiveWidth(context, mobile: 45, tablet: 50),
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.white,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.notifications_none,
-                                size: 28,
+                                size: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
                                 color: Color(0xFF1B4F9C),
                               ),
                             ),
@@ -919,7 +938,7 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
         ),
       ),
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
+        preferredSize: Size.fromHeight(ResponsiveHelper.responsiveHeight(context, mobile: 70, tablet: 80)),
         child: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -928,41 +947,52 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
               end: Alignment.bottomRight,
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 24),
+            vertical: ResponsiveHelper.responsiveHeight(context, mobile: 10, tablet: 15),
+          ),
           child: Row(
             children: [
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 30, tablet: 35)),
                   ),
-                  child: const TextField(
+                  child: TextField(
                     decoration: InputDecoration(
                       hintText: "Cari tangkapan...",
                       border: InputBorder.none,
-                      icon: Icon(Icons.search, color: Colors.grey),
-                      hintStyle: TextStyle(fontSize: 14),
+                      icon: Icon(
+                        Icons.search,
+                        color: Colors.grey,
+                        size: ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24),
+                      ),
+                      hintStyle: TextStyle(
+                        fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                      ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
               // Weather Animation Button dengan Lottie dan Badge
               InkWell(
                 onTap: _showWeatherDialog,
                 child: Stack(
                   children: [
                     SizedBox(
-                      width: 60,
-                      height: 60,
+                      width: ResponsiveHelper.responsiveWidth(context, mobile: 60, tablet: 70),
+                      height: ResponsiveHelper.responsiveHeight(context, mobile: 60, tablet: 70),
                       child: _isLoadingWeather
-                          ? const Center(
+                          ? Center(
                               child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
+                                width: ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24),
+                                height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 24),
+                                child: const CircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: Colors.white,
                                 ),
@@ -979,15 +1009,18 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                         right: 0,
                         top: 0,
                         child: Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 5)),
                           decoration: BoxDecoration(
                             color: Colors.red,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(
+                              color: Colors.white,
+                              width: ResponsiveHelper.responsiveWidth(context, mobile: 2, tablet: 2.5),
+                            ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.circle,
-                            size: 6,
+                            size: ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8),
                             color: Colors.white,
                           ),
                         ),

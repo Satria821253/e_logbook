@@ -50,7 +50,9 @@ class MyApp extends StatelessWidget {
       designSize: const Size(390, 844),
       minTextAdapt: true,
       splitScreenMode: true,
-      builder: (_, __) {
+      useInheritedMediaQuery: true,
+      ensureScreenSize: true,
+      builder: (context, child) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: ThemeData(

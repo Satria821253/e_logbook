@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 class DataRawScreen extends StatefulWidget {
@@ -28,11 +29,12 @@ class _DataRawScreenState extends State<DataRawScreen>
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Data Raw Detection',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
+            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
           ),
         ),
         backgroundColor: const Color(0xFF2563EB),
@@ -44,40 +46,48 @@ class _DataRawScreenState extends State<DataRawScreen>
           // Standard TabBar
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: EdgeInsets.symmetric(
+              vertical: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20),
+            ),
             child: TabBar(
               controller: _tabController,
               indicatorColor: const Color(0xFF2563EB),
               indicatorWeight: 3,
               labelColor: const Color(0xFF2563EB),
               unselectedLabelColor: Colors.grey.shade600,
-              labelStyle: const TextStyle(
-                fontSize: 11,
+              labelStyle: TextStyle(
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
                 fontWeight: FontWeight.bold,
               ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 11,
+              unselectedLabelStyle: TextStyle(
+                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
                 fontWeight: FontWeight.normal,
               ),
               tabs: [
                 Tab(
-                  height: 60,
+                  height: ResponsiveHelper.responsiveHeight(context, mobile: 60, tablet: 72),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset('assets/icons/iot.png', width: 18, height: 18, color: Color(0xFF2563EB)),
-                      SizedBox(width: 6),
+                      Image.asset('assets/icons/iot.png', 
+                        width: ResponsiveHelper.responsiveWidth(context, mobile: 18, tablet: 22), 
+                        height: ResponsiveHelper.responsiveHeight(context, mobile: 18, tablet: 22), 
+                        color: Color(0xFF2563EB)),
+                      SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8)),
                       Text('Data IoT'),
                     ],
                   ),
                 ),
                 Tab(
-                  height: 60,
+                  height: ResponsiveHelper.responsiveHeight(context, mobile: 60, tablet: 72),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset('assets/icons/icon_ai.png', width: 18, height: 18, color: Color(0xFF2563EB)),
-                      SizedBox(width: 6),
+                      Image.asset('assets/icons/icon_ai.png', 
+                        width: ResponsiveHelper.responsiveWidth(context, mobile: 18, tablet: 22), 
+                        height: ResponsiveHelper.responsiveHeight(context, mobile: 18, tablet: 22), 
+                        color: Color(0xFF2563EB)),
+                      SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8)),
                       Text('Data AI'),
                     ],
                   ),

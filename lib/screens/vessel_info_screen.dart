@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'dart:convert';
 
 class VesselInfoScreen extends StatefulWidget {
@@ -64,18 +66,6 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
     });
     
     print('DEBUG: Loaded vessel data - Fuel: ${_fuelController.text}, Ice: ${_iceController.text}, Certificates: ${_certificateFiles.length}, Submitted: $_isDataSubmitted');
-  }
-  
-  void _checkCompletionStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    bool hasCompletedBefore = prefs.getBool('full_process_completed') ?? false;
-    
-    if (hasCompletedBefore) {
-      _loadSavedData();
-    } else {
-      // Load partial data if exists
-      _loadSavedData();
-    }
   }
   
   void _saveCompletionStatus() async {
@@ -380,25 +370,25 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(height: 30),
+            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 30, tablet: 40)),
             _buildHeaderGradient(),
-            SizedBox(height: 16),
+            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
             Padding(
-              padding: EdgeInsets.all(16),
+              padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 32),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
                     _buildVesselInfoCard(),
-                    SizedBox(height: 16),
+                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
                     if (_documentData != null) _buildDocumentSummary(),
-                    if (_documentData != null) SizedBox(height: 16),
+                    if (_documentData != null) SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
                     _buildSupplySection(),
-                    SizedBox(height: 16),
+                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
                     _buildCertificateSection(),
-                    SizedBox(height: 24),
+                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 24, tablet: 32)),
                     _buildSaveButton(),
-                    SizedBox(height: 16),
+                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
                   ],
                 ),
               ),
@@ -419,25 +409,28 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
               shape: BoxShape.circle,
             ),
             child: Lottie.asset(
-              'assets/animations/PreTrip.json', // ubah sesuai nama file Anda
-              width: 100,
-              height: 100,
+              'assets/animations/PreTrip.json',
+              width: ResponsiveHelper.responsiveWidth(context, mobile: 100, tablet: 120),
+              height: ResponsiveHelper.responsiveHeight(context, mobile: 100, tablet: 120),
             ),
           ),
-          SizedBox(height: 16),
+          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
           Text(
             'Lengkapi Data Kapal',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
               fontWeight: FontWeight.bold,
               color: Colors.grey[800],
             ),
           ),
-          SizedBox(height: 8),
+          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
           Text(
             'Pastikan semua informasi terisi dengan benar',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            style: TextStyle(
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15),
+              color: Colors.grey[600],
+            ),
           ),
         ],
       ),
@@ -1073,17 +1066,17 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
   Widget _buildSaveButton() {
     return Container(
       width: double.infinity,
-      height: 56,
+      height: ResponsiveHelper.responsiveHeight(context, mobile: 56, tablet: 64),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
         boxShadow: [
           BoxShadow(
             color: Color(0xFF1B4F9C).withOpacity(0.3),
-            blurRadius: 12,
-            offset: Offset(0, 6),
+            blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 6, tablet: 8)),
           ),
         ],
       ),
@@ -1093,13 +1086,13 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
           ),
         ),
         child: _isLoading
             ? SizedBox(
-                height: 24,
-                width: 24,
+                height: ResponsiveHelper.responsiveHeight(context, mobile: 24, tablet: 28),
+                width: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
                 child: CircularProgressIndicator(
                   color: Colors.white,
                   strokeWidth: 2.5,
@@ -1108,12 +1101,16 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.send, color: Colors.white, size: 24),
-                  SizedBox(width: 12),
+                  Icon(
+                    Icons.send,
+                    color: Colors.white,
+                    size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                  ),
+                  SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
                   Text(
                     'Kirim ke Admin',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                       letterSpacing: 0.5,
@@ -1121,64 +1118,6 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
                   ),
                 ],
               ),
-      ),
-    );
-  }
-  
-  Widget _buildCompletedStatus() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green.shade400, Colors.green.shade600],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.withOpacity(0.3),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              Icons.check_circle,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Data Berhasil Terkirim',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                'Informasi kapal sudah dikirim ke admin',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withOpacity(0.9),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

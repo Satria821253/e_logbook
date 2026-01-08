@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 class SectionTitle extends StatelessWidget {
@@ -14,28 +15,25 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    double fs(double size) => size * (width / 390);
-    double sp(double size) => size * (width / 390);
-
     return Row(
       children: [
         if (icon != null) ...[
           Icon(
             icon,
             color: color ?? const Color(0xFF1B4F9C),
-            size: fs(22),
+            size: ResponsiveHelper.responsiveWidth(context, mobile: 22, tablet: 26),
           ),
-          SizedBox(width: sp(8)),
+          SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10)),
         ],
         Expanded(
           child: Text(
             title,
             style: TextStyle(
-              fontSize: fs(18),
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
               fontWeight: FontWeight.bold,
               color: color ?? const Color(0xFF1B4F9C),
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

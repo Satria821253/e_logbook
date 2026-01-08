@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 class PhotoExampleWidget extends StatelessWidget {
@@ -19,8 +20,12 @@ class PhotoExampleWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(
+        bottom: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 24),
+      ),
+      padding: EdgeInsets.all(
+        ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -37,13 +42,13 @@ class PhotoExampleWidget extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
               fontWeight: FontWeight.bold,
               color: Color(0xFF1A1A1A),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
           Row(
             children: [
               // Good Example
@@ -51,7 +56,7 @@ class PhotoExampleWidget extends StatelessWidget {
                 child: Column(
                   children: [
                     Container(
-                      height: 120,
+                      height: ResponsiveHelper.responsiveHeight(context, mobile: 120, tablet: 144),
                       decoration: BoxDecoration(
                         color: Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -64,25 +69,26 @@ class PhotoExampleWidget extends StatelessWidget {
                             Icon(
                               Icons.check_circle,
                               color: Colors.green,
-                              size: 32,
+                              size: ResponsiveHelper.responsiveWidth(context, mobile: 32, tablet: 36),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
                             Text(
                               'BAIK',
                               style: TextStyle(
                                 color: Colors.green,
                                 fontWeight: FontWeight.bold,
+                                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
                     Text(
                       goodDescription,
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: TextStyle(
+                        fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
                         color: Color(0xFF666666),
                       ),
                       textAlign: TextAlign.center,
@@ -90,13 +96,13 @@ class PhotoExampleWidget extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
               // Bad Example
               Expanded(
                 child: Column(
                   children: [
                     Container(
-                      height: 120,
+                      height: ResponsiveHelper.responsiveHeight(context, mobile: 120, tablet: 144),
                       decoration: BoxDecoration(
                         color: Colors.red.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -109,25 +115,26 @@ class PhotoExampleWidget extends StatelessWidget {
                             Icon(
                               Icons.cancel,
                               color: Colors.red,
-                              size: 32,
+                              size: ResponsiveHelper.responsiveWidth(context, mobile: 32, tablet: 36),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
                             Text(
                               'BURUK',
                               style: TextStyle(
                                 color: Colors.red,
                                 fontWeight: FontWeight.bold,
+                                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
                     Text(
                       badDescription,
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: TextStyle(
+                        fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
                         color: Color(0xFF666666),
                       ),
                       textAlign: TextAlign.center,

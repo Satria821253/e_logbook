@@ -71,7 +71,14 @@ class LocationTrackingService {
         _onPositionUpdate,
         onError: (error) {
           debugPrint('❌ Error tracking: $error');
+          // Cleanup on error
+          _cleanup();
         },
+        onDone: () {
+          debugPrint('📍 Position stream completed');
+          _cleanup();
+        },
+        cancelOnError: true,
       );
 
       _isTracking = true;
@@ -84,6 +91,7 @@ class LocationTrackingService {
       debugPrint('✅ Location tracking started for $vesselName at $harborName');
     } catch (e) {
       debugPrint('❌ Failed to start tracking: $e');
+      await _cleanup(); // Ensure cleanup on error
       rethrow;
     }
   }
@@ -128,16 +136,26 @@ class LocationTrackingService {
 
   /// Stop tracking (dipanggil saat user akhiri trip)
   static Future<void> stopTracking() async {
-    await _positionStream?.cancel();
-    _positionStream = null;
-    _isTracking = false;
-    _isCurrentlyViolating = false;
-    _selectedHarborName = null;
-    _vesselName = null;
-    _onViolationDetected = null;
-    _onBackToSafeZone = null;
-    _onLocationUpdate = null;
+    await _cleanup();
     debugPrint('🛑 Location tracking stopped');
+  }
+  
+  /// Internal cleanup method
+  static Future<void> _cleanup() async {
+    try {
+      await _positionStream?.cancel();
+    } catch (e) {
+      debugPrint('⚠️ Error cancelling position stream: $e');
+    } finally {
+      _positionStream = null;
+      _isTracking = false;
+      _isCurrentlyViolating = false;
+      _selectedHarborName = null;
+      _vesselName = null;
+      _onViolationDetected = null;
+      _onBackToSafeZone = null;
+      _onLocationUpdate = null;
+    }
   }
 
   /// Getter

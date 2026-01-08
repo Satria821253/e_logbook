@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import '../../../routes/crew_routes.dart';
 import 'crew_floating_action_button.dart';
@@ -18,8 +19,8 @@ class CrewMenuItems extends StatelessWidget {
       children: [
         // Emergency
         Positioned(
-          right: 28,
-          bottom: 150,
+          right: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.responsiveHeight(context, mobile: 150, tablet: 180),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -34,8 +35,8 @@ class CrewMenuItems extends StatelessWidget {
         ),
         // Daftar Hadir
         Positioned(
-          right: 28,
-          bottom: 220,
+          right: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.responsiveHeight(context, mobile: 220, tablet: 264),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -50,8 +51,8 @@ class CrewMenuItems extends StatelessWidget {
         ),
         // Data Raw
         Positioned(
-          right: 28,
-          bottom: 290,
+          right: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.responsiveHeight(context, mobile: 290, tablet: 348),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(

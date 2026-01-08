@@ -3,7 +3,9 @@ import 'package:e_logbook/screens/nahkoda/screens/crew_attendance_screen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
 import 'package:e_logbook/services/auth_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
@@ -112,9 +114,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           children: [
             _buildProfileHeader(),
-            const SizedBox(height: 20),
+            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 28)),
             _buildStatsCard(),
-            const SizedBox(height: 20),
+            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 28)),
             _buildMenuSection(),
           ],
         ),
@@ -125,71 +127,81 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildProfileHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: ResponsiveHelper.responsivePadding(context, mobile: 24, tablet: 32),
       color: Colors.transparent,
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.black87, width: 2),
+              border: Border.all(color: Colors.black87, width: 2.w),
             ),
-            child: const CircleAvatar(
-              radius: 50,
+            child: CircleAvatar(
+              radius: ResponsiveHelper.responsiveWidth(context, mobile: 50, tablet: 60),
               backgroundColor: Colors.white,
               child: Icon(
                 Icons.person_rounded,
-                size: 60,
+                size: ResponsiveHelper.responsiveWidth(context, mobile: 60, tablet: 72),
                 color: Colors.black87,
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
           Consumer<UserProvider>(
             builder: (context, userProvider, child) {
               final user = userProvider.user;
               return Text(
                 user?.name ?? 'Budi Santoso',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.black,
-                  fontSize: 24,
+                  fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 24, tablet: 28),
                   fontWeight: FontWeight.bold,
                 ),
               );
             },
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
           Consumer<UserProvider>(
             builder: (context, userProvider, child) {
               final user = userProvider.user;
               return Text(
                 user?.role ?? 'Nelayan Profesional',
-                style: const TextStyle(color: Colors.black54, fontSize: 14),
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                ),
               );
             },
           ),
-          const SizedBox(height: 8),
-
-          // ⬇ Lokasi otomatis dari GPS
+          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: EdgeInsets.symmetric(
+              horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+              vertical: ResponsiveHelper.responsiveHeight(context, mobile: 6, tablet: 8),
+            ),
             decoration: BoxDecoration(
               color: Colors.black12,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.location_on_rounded,
                   color: Colors.black87,
-                  size: 16,
+                  size: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 18),
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  _isLoadingLocation ? "Mengambil lokasi..." : _currentAddress,
-                  style: const TextStyle(color: Colors.black87, fontSize: 12),
+                SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
+                Flexible(
+                  child: Text(
+                    _isLoadingLocation ? "Mengambil lokasi..." : _currentAddress,
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -201,17 +213,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatsCard() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: ResponsiveHelper.responsiveHorizontalPadding(context, mobile: 16, tablet: 32),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: ResponsiveHelper.responsivePadding(context, mobile: 20, tablet: 28),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+              blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 10, tablet: 14),
+              offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 2, tablet: 3)),
             ),
           ],
         ),
@@ -219,9 +231,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildStatItem('Total Trip', '145', Icons.directions_boat_rounded),
-            Container(width: 1, height: 50, color: Colors.grey[300]),
+            Container(
+              width: 1.w,
+              height: ResponsiveHelper.responsiveHeight(context, mobile: 50, tablet: 60),
+              color: Colors.grey[300],
+            ),
             _buildStatItem('Total Tangkapan', '1.2 Ton', Icons.scale_rounded),
-            Container(width: 1, height: 50, color: Colors.grey[300]),
+            Container(
+              width: 1.w,
+              height: ResponsiveHelper.responsiveHeight(context, mobile: 50, tablet: 60),
+              color: Colors.grey[300],
+            ),
             _buildStatItem('Pengalaman', '8 Tahun', Icons.star_rounded),
           ],
         ),
@@ -232,20 +252,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: const Color(0xFF1B4F9C), size: 28),
-        const SizedBox(height: 8),
+        Icon(
+          icon,
+          color: const Color(0xFF1B4F9C),
+          size: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
+        ),
+        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
+          style: TextStyle(
+            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
             fontWeight: FontWeight.bold,
             color: Color(0xFF1B4F9C),
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+          style: TextStyle(
+            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
+            color: Colors.grey[600],
+          ),
           textAlign: TextAlign.center,
         ),
       ],
