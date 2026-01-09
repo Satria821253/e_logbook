@@ -110,7 +110,7 @@ class _CrewAttendanceScreenState extends State<CrewAttendanceScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+                fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
               ),
             ),
           ),
@@ -171,15 +171,15 @@ class _CrewAttendanceScreenState extends State<CrewAttendanceScreen> {
             ),
             child: Lottie.asset(
               'assets/animations/PreTrip.json',
-              width: ResponsiveHelper.responsiveWidth(context, mobile: 100, tablet: 120),
-              height: ResponsiveHelper.responsiveHeight(context, mobile: 100, tablet: 120),
+              width: ResponsiveHelper.width(context, mobile: 100, tablet: 120),
+              height: ResponsiveHelper.height(context, mobile: 100, tablet: 120),
             ),
           ),
           SizedBox(height: 16),
           Text(
             'KM Bahari Jaya',
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
+              fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
               fontWeight: FontWeight.bold,
               color: Colors.grey[800],
             ),

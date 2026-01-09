@@ -669,13 +669,13 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.white,
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+              fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
             ),
           ),
           Text(
             widget.vesselName,
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
+              fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
               color: Colors.white.withOpacity(0.9),
             ),
           ),

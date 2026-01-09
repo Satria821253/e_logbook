@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:e_logbook/screens/Login/welcome_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
 import 'package:e_logbook/services/auth_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/models/user_model.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -48,11 +48,9 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
-    // Load user data
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     await userProvider.loadUser();
     
-    // Set dummy user data if no user exists (for testing)
     if (userProvider.user == null) {
       final dummyUser = UserModel(
         id: 1,
@@ -60,20 +58,17 @@ class _SplashScreenState extends State<SplashScreen>
         email: 'budi@example.com',
         phone: '081234567890',
         token: 'dummy_token',
-        role: 'Nahkoda', // Default role
+        role: 'Nahkoda',
       );
       userProvider.setUser(dummyUser);
     }
 
-    // Check if user is already logged in
     final token = await AuthService.getToken();
     
     Widget nextScreen;
     if (token != null && token.isNotEmpty) {
-      // User has token, go to main screen
       nextScreen = const MainScreen();
     } else {
-      // No token, go to welcome screen
       nextScreen = const WelcomeScreen();
     }
 
@@ -97,10 +92,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Responsive breakpoints
-    final isTablet = MediaQuery.of(context).size.width > 600;
-    final logoSize = isTablet ? 280.w : 220.w;
-    
     return Scaffold(
       body: Container(
         color: Colors.white,
@@ -109,40 +100,91 @@ class _SplashScreenState extends State<SplashScreen>
           child: ScaleTransition(
             scale: _scaleAnimation,
             child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  /// LOGO RESPONSIVE
-                  Image.asset(
-                    'assets/OIP.png',
-                    width: logoSize,
-                    height: logoSize,
-                    fit: BoxFit.contain,
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: ResponsiveHelper.padding(
+                    context,
+                    mobile: 20,
+                    tablet: 32,
+                    mobileLandscape: 16,
+                    tabletLandscape: 24,
                   ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      /// LOGO RESPONSIVE - ukuran menyesuaikan screen
+                      Image.asset(
+                        'assets/OIP.png',
+                        width: ResponsiveHelper.imageSize(
+                          context,
+                          mobile: 200,
+                          tablet: 280,
+                          mobileLandscape: 140,
+                          tabletLandscape: 180,
+                        ),
+                        height: ResponsiveHelper.imageSize(
+                          context,
+                          mobile: 200,
+                          tablet: 280,
+                          mobileLandscape: 140,
+                          tabletLandscape: 180,
+                        ),
+                        fit: BoxFit.contain,
+                      ),
 
-                  SizedBox(height: isTablet ? 30.h : 20.h),
+                      SizedBox(
+                        height: ResponsiveHelper.spacing(
+                          context,
+                          mobile: 20,
+                          tablet: 30,
+                          mobileLandscape: 12,
+                          tabletLandscape: 16,
+                        ),
+                      ),
 
-                  /// TEXT TITLE RESPONSIVE
-                  Text(
-                    'e-Logbook',
-                    style: TextStyle(
-                      fontSize: isTablet ? 36.sp : 28.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue[800],
-                    ),
+                      /// TEXT TITLE RESPONSIVE
+                      Text(
+                        'e-Logbook',
+                        style: TextStyle(
+                          fontSize: ResponsiveHelper.font(
+                            context,
+                            mobile: 28,
+                            tablet: 36,
+                            mobileLandscape: 24,
+                            tabletLandscape: 30,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[800],
+                        ),
+                      ),
+
+                      SizedBox(
+                        height: ResponsiveHelper.spacing(
+                          context,
+                          mobile: 8,
+                          tablet: 12,
+                          mobileLandscape: 6,
+                          tabletLandscape: 8,
+                        ),
+                      ),
+
+                      /// VERSION RESPONSIVE
+                      Text(
+                        'V1.0',
+                        style: TextStyle(
+                          fontSize: ResponsiveHelper.font(
+                            context,
+                            mobile: 16,
+                            tablet: 20,
+                            mobileLandscape: 14,
+                            tabletLandscape: 16,
+                          ),
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
-
-                  SizedBox(height: isTablet ? 12.h : 8.h),
-
-                  /// VERSION RESPONSIVE
-                  Text(
-                    'V1.0',
-                    style: TextStyle(
-                      fontSize: isTablet ? 20.sp : 16.sp,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

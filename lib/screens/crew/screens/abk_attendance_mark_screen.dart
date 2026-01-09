@@ -184,8 +184,8 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: EdgeInsets.symmetric(
-            vertical: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 24),
-            horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            vertical: ResponsiveHelper.height(context, mobile: 20, tablet: 24),
+            horizontal: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
           ),
           decoration: BoxDecoration(
             color: isSelected ? color.withOpacity(0.1) : Colors.white,
@@ -207,14 +207,14 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
             children: [
               Icon(
                 icon,
-                size: ResponsiveHelper.responsiveWidth(context, mobile: 32, tablet: 36),
+                size: ResponsiveHelper.width(context, mobile: 32, tablet: 36),
                 color: isSelected ? color : Colors.grey.shade400,
               ),
-              SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
+              SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                  fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                   color: isSelected ? color : Colors.grey.shade600,
                 ),
@@ -242,7 +242,7 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+                fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
               ),
             ),
             backgroundColor: Colors.transparent,
@@ -277,10 +277,10 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                   ),
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
-                      ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24),
+                      ResponsiveHelper.width(context, mobile: 20, tablet: 24),
                       0,
-                      ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24),
-                      ResponsiveHelper.responsiveHeight(context, mobile: 30, tablet: 36),
+                      ResponsiveHelper.width(context, mobile: 20, tablet: 24),
+                      ResponsiveHelper.height(context, mobile: 30, tablet: 36),
                     ),
                     child: Column(
                       children: [
@@ -293,8 +293,8 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                               child: Transform.rotate(
                                 angle: _hasMarkedToday ? _rotationAnimation.value * 0.1 : 0,
                                 child: Container(
-                                  width: ResponsiveHelper.responsiveWidth(context, mobile: 140, tablet: 160),
-                                  height: ResponsiveHelper.responsiveHeight(context, mobile: 140, tablet: 160),
+                                  width: ResponsiveHelper.width(context, mobile: 140, tablet: 160),
+                                  height: ResponsiveHelper.height(context, mobile: 140, tablet: 160),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: Colors.white,
@@ -320,7 +320,7 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                                     child: Icon(
                                       _hasMarkedToday ? Icons.check_circle_rounded : Icons.access_time_rounded,
                                       key: ValueKey(_hasMarkedToday),
-                                      size: ResponsiveHelper.responsiveWidth(context, mobile: 90, tablet: 110),
+                                      size: ResponsiveHelper.width(context, mobile: 90, tablet: 110),
                                       color: _hasMarkedToday ? Colors.green : Colors.orange,
                                     ),
                                   ),
@@ -330,23 +330,23 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                           },
                         ),
                         
-                        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 24)),
+                        SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 24)),
                         
                         Text(
                           _hasMarkedToday ? 'Sudah Absen' : 'Belum Absen',
                           style: TextStyle(
-                            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 28, tablet: 32),
+                            fontSize: ResponsiveHelper.font(context, mobile: 28, tablet: 32),
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
                         
-                        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
+                        SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
                         
                         Text(
                           formattedDate,
                           style: TextStyle(
-                            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                            fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                             color: Colors.white.withOpacity(0.9),
                           ),
                         ),
@@ -356,14 +356,14 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                 ),
                 
                 Padding(
-                  padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24)),
+                  padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 20, tablet: 24)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Info Card
                       Container(
                         width: double.infinity,
-                        padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24)),
+                        padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 20, tablet: 24)),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
@@ -381,7 +381,7 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                             Row(
                               children: [
                                 Container(
-                                  padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 10, tablet: 12)),
+                                  padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 10, tablet: 12)),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF1B4F9C).withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12),
@@ -389,56 +389,56 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                                   child: Icon(
                                     Icons.person,
                                     color: Color(0xFF1B4F9C),
-                                    size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                                    size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                                   ),
                                 ),
-                                SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                                SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                                 Text(
                                   'Informasi ABK',
                                   style: TextStyle(
-                                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+                                    fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
                             ),
-                            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 24)),
+                            SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 24)),
                             _buildInfoRow(Icons.badge_outlined, 'Nama', user?.name ?? "-"),
-                            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+                            SizedBox(height: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
                             _buildInfoRow(Icons.directions_boat_outlined, 'Kapal', user?.vesselName ?? "Belum terdaftar"),
-                            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+                            SizedBox(height: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
                             _buildInfoRow(Icons.calendar_today_outlined, 'Tanggal', '${now.day}/${now.month}/${now.year}'),
                           ],
                         ),
                       ),
                       
-                      SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 24, tablet: 28)),
+                      SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 28)),
                       
                       // Status Selection
                       if (!_hasMarkedToday) ...[
                         Text(
                           'Pilih Status Kehadiran',
                           style: TextStyle(
-                            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+                            fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1B4F9C),
                           ),
                         ),
-                        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
+                        SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 20)),
                         Row(
                           children: [
                             _buildStatusCard('hadir', 'Hadir', Icons.check_circle_rounded, Colors.green),
-                            SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                            SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                             _buildStatusCard('izin', 'Izin', Icons.event_note_rounded, Colors.blue),
-                            SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                            SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                             _buildStatusCard('sakit', 'Sakit', Icons.local_hospital_rounded, Colors.red),
                           ],
                         ),
                         
                         if (_selectedStatus != 'hadir') ...[
-                          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 24)),
+                          SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 24)),
                           Container(
-                            padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24)),
+                            padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 20, tablet: 24)),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
@@ -458,20 +458,20 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                                     Icon(
                                       Icons.edit_note_rounded,
                                       color: _selectedStatus == 'izin' ? Colors.blue : Colors.red,
-                                      size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                                      size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                                     ),
-                                    SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 12)),
+                                    SizedBox(width: ResponsiveHelper.width(context, mobile: 8, tablet: 12)),
                                     Text(
                                       'Alasan ${_selectedStatus == 'izin' ? 'Izin' : 'Sakit'}',
                                       style: TextStyle(
-                                        fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                                        fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                                         fontWeight: FontWeight.bold,
                                         color: _selectedStatus == 'izin' ? Colors.blue : Colors.red,
                                       ),
                                     ),
                                   ],
                                 ),
-                                SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+                                SizedBox(height: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
                                 TextField(
                                   controller: _reasonController,
                                   decoration: InputDecoration(
@@ -501,12 +501,12 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                           ),
                         ],
                         
-                        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 24, tablet: 28)),
+                        SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 28)),
                         
                         // Mark Attendance Button
                         SizedBox(
                           width: double.infinity,
-                          height: ResponsiveHelper.responsiveHeight(context, mobile: 56, tablet: 64),
+                          height: ResponsiveHelper.height(context, mobile: 56, tablet: 64),
                           child: ElevatedButton(
                             onPressed: _isMarking ? null : _markAttendance,
                             style: ElevatedButton.styleFrom(
@@ -523,18 +523,18 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       SizedBox(
-                                        width: ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24),
-                                        height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 24),
+                                        width: ResponsiveHelper.width(context, mobile: 20, tablet: 24),
+                                        height: ResponsiveHelper.height(context, mobile: 20, tablet: 24),
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2.5,
                                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                         ),
                                       ),
-                                      SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                                      SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                                       Text(
                                         'Mencatat...',
                                         style: TextStyle(
-                                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                                          fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -543,12 +543,12 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                                 : Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.check_circle_rounded, size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
-                                      SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                                      Icon(Icons.check_circle_rounded, size: ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
+                                      SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                                       Text(
                                         'CATAT ${_selectedStatus.toUpperCase()}',
                                         style: TextStyle(
-                                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                                          fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                                           fontWeight: FontWeight.bold,
                                           letterSpacing: 0.5,
                                         ),
@@ -561,7 +561,7 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                         // Already marked message
                         Container(
                           width: double.infinity,
-                          padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
+                          padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
                           decoration: BoxDecoration(
                             color: Colors.green.shade50,
                             borderRadius: BorderRadius.circular(20),
@@ -571,23 +571,23 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                             children: [
                               Icon(
                                 Icons.check_circle_rounded,
-                                size: ResponsiveHelper.responsiveWidth(context, mobile: 60, tablet: 72),
+                                size: ResponsiveHelper.width(context, mobile: 60, tablet: 72),
                                 color: Colors.green.shade600,
                               ),
-                              SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
+                              SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 20)),
                               Text(
                                 'Kehadiran Tercatat',
                                 style: TextStyle(
-                                  fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
+                                  fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
                                   fontWeight: FontWeight.bold,
                                   color: Colors.green.shade800,
                                 ),
                               ),
-                              SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
+                              SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 12)),
                               Text(
                                 'Terima kasih sudah melakukan absensi hari ini',
                                 style: TextStyle(
-                                  fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                                  fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                                   color: Colors.green.shade700,
                                 ),
                                 textAlign: TextAlign.center,
@@ -597,7 +597,7 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                         ),
                       ],
                       
-                      SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 24)),
+                      SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 24)),
                     ],
                   ),
                 ),
@@ -612,15 +612,15 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24), color: Colors.grey.shade600),
-        SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+        Icon(icon, size: ResponsiveHelper.width(context, mobile: 20, tablet: 24), color: Colors.grey.shade600),
+        SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
         Expanded(
           child: Row(
             children: [
               Text(
                 '$label: ',
                 style: TextStyle(
-                  fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                  fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                   color: Colors.grey.shade600,
                   fontWeight: FontWeight.w500,
                 ),
@@ -629,7 +629,7 @@ class _ABKAttendanceMarkScreenState extends State<ABKAttendanceMarkScreen> with 
                 child: Text(
                   value,
                   style: TextStyle(
-                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                    fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                   ),

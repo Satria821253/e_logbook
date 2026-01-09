@@ -74,9 +74,9 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
               Padding(
                 padding: EdgeInsets.only(
                   left: 0,
-                  right: ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 32),
-                  top: ResponsiveHelper.responsiveHeight(context, mobile: 10, tablet: 16),
-                  bottom: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 28),
+                  right: ResponsiveHelper.width(context, mobile: 20, tablet: 32),
+                  top: ResponsiveHelper.height(context, mobile: 10, tablet: 16),
+                  bottom: ResponsiveHelper.height(context, mobile: 20, tablet: 28),
                 ),
                 child: Row(
                   children: [
@@ -85,49 +85,49 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                       icon: Icon(
                         Icons.arrow_back,
                         color: Colors.white,
-                        size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                        size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                       ),
                     ),
                     Expanded(
                       child: Text(
                         'Kelengkapan Dokumen',
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
+                          fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                         textAlign: TextAlign.left,
                       ),
                     ),
-                    SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 48, tablet: 56)),
+                    SizedBox(width: ResponsiveHelper.width(context, mobile: 48, tablet: 56)),
                   ],
                 ),
               ),
 
               // Status Summary
               Container(
-                margin: ResponsiveHelper.responsiveHorizontalPadding(context, mobile: 20, tablet: 32),
+                margin: ResponsiveHelper.paddingHorizontal(context, mobile: 20, tablet: 32),
                 child: Row(
                   children: [
                     Expanded(
                       child: Container(
-                        padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 20),
+                        padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                          borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                         ),
                         child: Column(
                           children: [
                             Icon(
                               Icons.upload_file,
                               color: Colors.white,
-                              size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                              size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                             ),
-                            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
+                            SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 12)),
                             Text(
                               '$uploadedCount',
                               style: TextStyle(
-                                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
+                                fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -135,7 +135,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                             Text(
                               'Selesai',
                               style: TextStyle(
-                                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
+                                fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
                                 color: Colors.white.withOpacity(0.8),
                               ),
                             ),
@@ -143,26 +143,26 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                         ),
                       ),
                     ),
-                    SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                    SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                     Expanded(
                       child: Container(
-                        padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 20),
+                        padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                          borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                         ),
                         child: Column(
                           children: [
                             Icon(
                               Icons.pending_actions,
                               color: Colors.white,
-                              size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                              size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                             ),
-                            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
+                            SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 12)),
                             Text(
                               '${_documents.length - uploadedCount}',
                               style: TextStyle(
-                                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
+                                fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -170,7 +170,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                             Text(
                               'Tersisa',
                               style: TextStyle(
-                                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
+                                fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
                                 color: Colors.white.withOpacity(0.8),
                               ),
                             ),
@@ -182,20 +182,20 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                 ),
               ),
 
-              SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 28)),
+              SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 28)),
 
               // Progress Card
               Container(
-                margin: ResponsiveHelper.responsiveHorizontalPadding(context, mobile: 20, tablet: 32),
-                padding: ResponsiveHelper.responsivePadding(context, mobile: 20, tablet: 28),
+                margin: ResponsiveHelper.paddingHorizontal(context, mobile: 20, tablet: 32),
+                padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 28),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
+                  borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 16, tablet: 20)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
-                      blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 10, tablet: 14),
-                      offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
+                      blurRadius: ResponsiveHelper.width(context, mobile: 10, tablet: 14),
+                      offset: Offset(0, ResponsiveHelper.height(context, mobile: 4, tablet: 6)),
                     ),
                   ],
                 ),
@@ -207,7 +207,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                         Text(
                           'Progress Dokumen',
                           style: TextStyle(
-                            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),  
@@ -215,25 +215,25 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                         Text(
                           '${(completionPercentage * 100).toInt()}%',
                           style: TextStyle(
-                            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1B4F9C),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+                    SizedBox(height: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
                     LinearProgressIndicator(
                       value: completionPercentage,
                       backgroundColor: Colors.grey[300],
                       valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1B4F9C)),
-                      minHeight: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10),
+                      minHeight: ResponsiveHelper.height(context, mobile: 8, tablet: 10),
                     ),
-                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
+                    SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 12)),
                     Text(
                       '$uploadedCount dari ${_documents.length} dokumen telah diunggah',
                       style: TextStyle(
-                        fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                        fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                         color: Colors.grey[600],
                       ),
                     ),
@@ -241,7 +241,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                 ),
               ),
 
-              SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 28)),
+              SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 28)),
 
               // Document List
               Expanded(
@@ -249,22 +249,22 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 32)),
-                      topRight: Radius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 32)),
+                      topLeft: Radius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 32)),
+                      topRight: Radius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 32)),
                     ),
                   ),
                   child: ListView.builder(
-                    padding: ResponsiveHelper.responsivePadding(context, mobile: 20, tablet: 32),
+                    padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 32),
                     itemCount: _documents.length,
                     itemBuilder: (context, index) {
                       final document = _documents[index];
                       final isUploaded = document['isUploaded'];
                       
                       return Container(
-                        margin: EdgeInsets.only(bottom: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
+                        margin: EdgeInsets.only(bottom: ResponsiveHelper.height(context, mobile: 16, tablet: 20)),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                          borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                           border: Border.all(
                             color: isUploaded ? Colors.green : Colors.grey.shade300,
                             width: isUploaded ? 2 : 1,
@@ -272,32 +272,32 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.05),
-                              blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 12),
-                              offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 2, tablet: 3)),
+                              blurRadius: ResponsiveHelper.width(context, mobile: 8, tablet: 12),
+                              offset: Offset(0, ResponsiveHelper.height(context, mobile: 2, tablet: 3)),
                             ),
                           ],
                         ),
                         child: Padding(
-                          padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 20),
+                          padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
                           child: Row(
                             children: [
                               // Document Icon
                               Container(
-                                width: ResponsiveHelper.responsiveWidth(context, mobile: 48, tablet: 56),
-                                height: ResponsiveHelper.responsiveHeight(context, mobile: 48, tablet: 56),
+                                width: ResponsiveHelper.width(context, mobile: 48, tablet: 56),
+                                height: ResponsiveHelper.height(context, mobile: 48, tablet: 56),
                                 decoration: BoxDecoration(
                                   color: isUploaded 
                                       ? Colors.green.withOpacity(0.1)
                                       : Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
+                                  borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
                                 ),
                                 child: Icon(
                                   isUploaded ? Icons.check_circle : Icons.description,
                                   color: isUploaded ? Colors.green : Colors.grey[600],
-                                  size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                                  size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                                 ),
                               ),
-                              SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
+                              SizedBox(width: ResponsiveHelper.width(context, mobile: 16, tablet: 20)),
                               // Document Info
                               Expanded(
                                 child: Column(
@@ -306,23 +306,23 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                                     Text(
                                       document['name'],
                                       style: TextStyle(
-                                        fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                                        fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                                         fontWeight: FontWeight.bold,
                                         color: Colors.black87,
                                       ),
                                     ),
                                     if (isUploaded && document['filePath'] != null) ...[
-                                      SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
+                                      SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
                                       GestureDetector(
                                         onTap: () => _viewDocument(document['filePath']),
                                         child: Container(
                                           padding: EdgeInsets.symmetric(
-                                            horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10),
-                                            vertical: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6),
+                                            horizontal: ResponsiveHelper.width(context, mobile: 8, tablet: 10),
+                                            vertical: ResponsiveHelper.height(context, mobile: 4, tablet: 6),
                                           ),
                                           decoration: BoxDecoration(
                                             color: Colors.blue.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8)),
+                                            borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
                                             border: Border.all(color: Colors.blue.withOpacity(0.3)),
                                           ),
                                           child: Row(
@@ -330,15 +330,15 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                                             children: [
                                               Icon(
                                                 _getFileIcon(document['filePath']),
-                                                size: ResponsiveHelper.responsiveWidth(context, mobile: 14, tablet: 16),
+                                                size: ResponsiveHelper.width(context, mobile: 14, tablet: 16),
                                                 color: Colors.blue,
                                               ),
-                                              SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
+                                              SizedBox(width: ResponsiveHelper.width(context, mobile: 4, tablet: 6)),
                                               Flexible(
                                                 child: Text(
                                                   _truncateFileName(document['filePath'].split('/').last, isTablet ? 20 : 15),
                                                   style: TextStyle(
-                                                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
+                                                    fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
                                                     color: Colors.blue,
                                                     fontWeight: FontWeight.w500,
                                                   ),
@@ -360,17 +360,17 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isUploaded ? Colors.orange : const Color.fromARGB(255, 39, 117, 235),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10)),
+                                    borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 8, tablet: 10)),
                                   ),
                                   padding: EdgeInsets.symmetric(
-                                    horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20),
-                                    vertical: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12),
+                                    horizontal: ResponsiveHelper.width(context, mobile: 16, tablet: 20),
+                                    vertical: ResponsiveHelper.height(context, mobile: 8, tablet: 12),
                                   ),
                                 ),
                                 child: _uploadingDocuments.contains(index)
                                     ? SizedBox(
-                                        width: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 18),
-                                        height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 18),
+                                        width: ResponsiveHelper.width(context, mobile: 16, tablet: 18),
+                                        height: ResponsiveHelper.height(context, mobile: 16, tablet: 18),
                                         child: const CircularProgressIndicator(
                                           color: Colors.white,
                                           strokeWidth: 2,
@@ -381,7 +381,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
-                                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                                          fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                                         ),
                                       ),
                               ),
@@ -397,18 +397,18 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
               // Submit Buttons
               Container(
                 color: Colors.white,
-                padding: ResponsiveHelper.responsivePadding(context, mobile: 20, tablet: 32),
+                padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 32),
                 child: Column(
                   children: [
                     SizedBox(
                       width: double.infinity,
-                      height: ResponsiveHelper.responsiveHeight(context, mobile: 56, tablet: 64),
+                      height: ResponsiveHelper.height(context, mobile: 56, tablet: 64),
                       child: ElevatedButton(
                         onPressed: () => _submitDocuments(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1B4F9C),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                            borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                           ),
                         ),
                         child: Row(
@@ -417,13 +417,13 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                             Icon(
                               Icons.arrow_forward,
                               color: Colors.white,
-                              size: ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24),
+                              size: ResponsiveHelper.width(context, mobile: 20, tablet: 24),
                             ),
-                            SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 12)),
+                            SizedBox(width: ResponsiveHelper.width(context, mobile: 8, tablet: 12)),
                             Text(
                               'Lanjut',
                               style: TextStyle(
-                                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                                fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),

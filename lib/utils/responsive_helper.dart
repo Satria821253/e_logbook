@@ -1,109 +1,254 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+enum DeviceType { mobile, tablet }
 
 class ResponsiveHelper {
+  // ======================
   // Breakpoints
-  static const double tabletBreakpoint = 600.0;
-  static const double desktopBreakpoint = 1024.0;
-  
-  // Device type detection
-  static bool isTablet(BuildContext context) {
-    return MediaQuery.of(context).size.width >= tabletBreakpoint;
+  // ======================
+  static const double tabletMin = 600;
+
+  // ======================
+  // Device Type (berdasarkan dimensi terkecil untuk stabilitas orientasi)
+  // ======================
+  static DeviceType deviceType(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final shortestSide = size.shortestSide;
+
+    if (shortestSide >= tabletMin) return DeviceType.tablet;
+    return DeviceType.mobile;
   }
-  
-  static bool isDesktop(BuildContext context) {
-    return MediaQuery.of(context).size.width >= desktopBreakpoint;
+
+  static bool isMobile(BuildContext context) =>
+      deviceType(context) == DeviceType.mobile;
+
+  static bool isTablet(BuildContext context) =>
+      deviceType(context) == DeviceType.tablet;
+
+  // ======================
+  // Orientation Detection
+  // ======================
+  static bool isPortrait(BuildContext context) {
+    return MediaQuery.of(context).orientation == Orientation.portrait;
   }
-  
-  static bool isMobile(BuildContext context) {
-    return MediaQuery.of(context).size.width < tabletBreakpoint;
+
+  static bool isLandscape(BuildContext context) {
+    return MediaQuery.of(context).orientation == Orientation.landscape;
   }
-  
-  // Responsive values with validation
-  static double responsiveWidth(BuildContext context, {
+
+  // ======================
+  // Responsive Value Core dengan Orientation Support
+  // ======================
+  static double value(
+    BuildContext context, {
     required double mobile,
     double? tablet,
-    double? desktop,
+    double? mobileLandscape,
+    double? tabletLandscape,
   }) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    if (screenWidth <= 0) return mobile.w; // Fallback for invalid screen size
-    
-    if (isDesktop(context)) return (desktop ?? tablet ?? mobile).w;
-    if (isTablet(context)) return (tablet ?? mobile).w;
-    return mobile.w;
+    final type = deviceType(context);
+    final landscape = isLandscape(context);
+
+    switch (type) {
+      case DeviceType.tablet:
+        if (landscape && tabletLandscape != null) return tabletLandscape;
+        return tablet ?? mobile * 1.4;
+      case DeviceType.mobile:
+        if (landscape && mobileLandscape != null) return mobileLandscape;
+        return mobile;
+    }
   }
-  
-  static double responsiveHeight(BuildContext context, {
+
+  // ======================
+  // Size Helpers - Menggunakan shortestSide untuk konsistensi
+  // ======================
+  static double width(
+    BuildContext context, {
     required double mobile,
     double? tablet,
-    double? desktop,
+    double? mobileLandscape,
+    double? tabletLandscape,
   }) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    if (screenHeight <= 0) return mobile.h; // Fallback for invalid screen size
+    final val = value(
+      context,
+      mobile: mobile,
+      tablet: tablet,
+      mobileLandscape: mobileLandscape,
+      tabletLandscape: tabletLandscape,
+    );
     
-    if (isDesktop(context)) return (desktop ?? tablet ?? mobile).h;
-    if (isTablet(context)) return (tablet ?? mobile).h;
-    return mobile.h;
+    // Gunakan shortestSide untuk kalkulasi yang lebih stabil
+    final size = MediaQuery.sizeOf(context);
+    final baseSize = size.shortestSide;
+    final baseMobile = 375.0; // Base mobile width
+    return (val / baseMobile) * baseSize;
   }
-  
-  static double responsiveFontSize(BuildContext context, {
+
+  static double height(
+    BuildContext context, {
     required double mobile,
     double? tablet,
-    double? desktop,
+    double? mobileLandscape,
+    double? tabletLandscape,
   }) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    if (screenWidth <= 0) return mobile.sp; // Fallback for invalid screen size
+    final val = value(
+      context,
+      mobile: mobile,
+      tablet: tablet,
+      mobileLandscape: mobileLandscape,
+      tabletLandscape: tabletLandscape,
+    );
     
-    if (isDesktop(context)) return (desktop ?? tablet ?? mobile).sp;
-    if (isTablet(context)) return (tablet ?? mobile).sp;
-    return mobile.sp;
+    // Untuk height, gunakan longestSide di portrait, shortestSide di landscape
+    final size = MediaQuery.sizeOf(context);
+    final baseSize = isPortrait(context) ? size.longestSide : size.shortestSide;
+    final baseHeight = isPortrait(context) ? 812.0 : 375.0; // iPhone X base
+    return (val / baseHeight) * baseSize;
   }
-  
-  // Container constraints for centering content on larger screens
-  static BoxConstraints getContentConstraints(BuildContext context) {
+
+  static double font(
+    BuildContext context, {
+    required double mobile,
+    double? tablet,
+    double? mobileLandscape,
+    double? tabletLandscape,
+    double min = 10,
+    double max = 40,
+  }) {
+    final val = value(
+      context,
+      mobile: mobile,
+      tablet: tablet,
+      mobileLandscape: mobileLandscape,
+      tabletLandscape: tabletLandscape,
+    );
+    
+    // Font size berdasarkan shortestSide untuk konsistensi
+    final size = MediaQuery.sizeOf(context);
+    final scaleFactor = isLandscape(context)
+    ? size.shortestSide / 420.0
+    : size.shortestSide / 375.0;
+
+    return (val * scaleFactor).clamp(min, max);
+  }
+
+  // ======================
+  // Image/Widget Size Helper (proporsi terhadap screen)
+  // ======================
+  static double imageSize(
+    BuildContext context, {
+    required double mobile,
+    double? tablet,
+    double? mobileLandscape,
+    double? tabletLandscape,
+  }) {
+    final val = value(
+      context,
+      mobile: mobile,
+      tablet: tablet,
+      mobileLandscape: mobileLandscape,
+      tabletLandscape: tabletLandscape,
+    );
+    
+    final size = MediaQuery.sizeOf(context);
+    final baseSize = size.shortestSide;
+    return (val / 375.0) * baseSize;
+  }
+
+  // ======================
+  // Padding Helpers
+  // ======================
+  static EdgeInsets padding(
+    BuildContext context, {
+    required double mobile,
+    double? tablet,
+    double? mobileLandscape,
+    double? tabletLandscape,
+  }) {
+    final v = width(
+      context,
+      mobile: mobile,
+      tablet: tablet,
+      mobileLandscape: mobileLandscape,
+      tabletLandscape: tabletLandscape,
+    );
+    return EdgeInsets.all(v);
+  }
+
+  static EdgeInsets paddingHorizontal(
+    BuildContext context, {
+    required double mobile,
+    double? tablet,
+    double? mobileLandscape,
+    double? tabletLandscape,
+  }) {
+    final v = width(
+      context,
+      mobile: mobile,
+      tablet: tablet,
+      mobileLandscape: mobileLandscape,
+      tabletLandscape: tabletLandscape,
+    );
+    return EdgeInsets.symmetric(horizontal: v);
+  }
+
+  static EdgeInsets paddingVertical(
+    BuildContext context, {
+    required double mobile,
+    double? tablet,
+    double? mobileLandscape,
+    double? tabletLandscape,
+  }) {
+    final v = height(
+      context,
+      mobile: mobile,
+      tablet: tablet,
+      mobileLandscape: mobileLandscape,
+      tabletLandscape: tabletLandscape,
+    );
+    return EdgeInsets.symmetric(vertical: v);
+  }
+
+  // ======================
+  // Content Constraints
+  // ======================
+  static BoxConstraints contentConstraints(BuildContext context) {
     if (isTablet(context)) {
-      return const BoxConstraints(maxWidth: 500);
+      return const BoxConstraints(maxWidth: 800);
     }
     return const BoxConstraints();
   }
-  
-  // Padding helpers
-  static EdgeInsets responsivePadding(BuildContext context, {
+
+  // ======================
+  // Spacing Helper (lebih natural untuk spacing antar widget)
+  // ======================
+  static double spacing(
+    BuildContext context, {
     required double mobile,
     double? tablet,
-    double? desktop,
+    double? mobileLandscape,
+    double? tabletLandscape,
   }) {
-    final value = responsiveWidth(context, 
-      mobile: mobile, 
-      tablet: tablet, 
-      desktop: desktop
+    return height(
+      context,
+      mobile: mobile,
+      tablet: tablet ?? mobile * 1.3,
+      mobileLandscape: mobileLandscape ?? mobile * 0.6,
+      tabletLandscape: tabletLandscape ?? (tablet ?? mobile * 1.3) * 0.7,
     );
-    return EdgeInsets.all(value);
   }
-  
-  static EdgeInsets responsiveHorizontalPadding(BuildContext context, {
-    required double mobile,
-    double? tablet,
-    double? desktop,
-  }) {
-    final value = responsiveWidth(context, 
-      mobile: mobile, 
-      tablet: tablet, 
-      desktop: desktop
-    );
-    return EdgeInsets.symmetric(horizontal: value);
+  static double buttonWidth(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+
+  if (isTablet(context)) {
+    return isLandscape(context)
+        ? size.shortestSide * 0.6
+        : size.shortestSide * 0.7;
   }
-  
-  static EdgeInsets responsiveVerticalPadding(BuildContext context, {
-    required double mobile,
-    double? tablet,
-    double? desktop,
-  }) {
-    final value = responsiveHeight(context, 
-      mobile: mobile, 
-      tablet: tablet, 
-      desktop: desktop
-    );
-    return EdgeInsets.symmetric(vertical: value);
-  }
+
+  return isLandscape(context)
+      ? size.shortestSide * 0.8
+      : double.infinity;
+}
+
 }

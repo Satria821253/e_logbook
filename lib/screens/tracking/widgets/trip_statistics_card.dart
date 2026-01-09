@@ -28,7 +28,7 @@ class TripStatisticsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20),
+        horizontal: ResponsiveHelper.width(context, mobile: 16, tablet: 20),
       ),
       child: Row(
         children: [
@@ -40,7 +40,7 @@ class TripStatisticsCard extends StatelessWidget {
               color: Colors.blue,
             ),
           ),
-          SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+          SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
           Expanded(
             child: _buildStatCard(
               lottieAsset: isViolating
@@ -67,16 +67,16 @@ class TripStatisticsCard extends StatelessWidget {
     return Builder(
       builder: (context) => Container(
         constraints: BoxConstraints(
-          minHeight: ResponsiveHelper.responsiveHeight(context, mobile: 170, tablet: 200),
+          minHeight: ResponsiveHelper.height(context, mobile: 170, tablet: 200),
         ),
         padding: EdgeInsets.symmetric(
-          vertical: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 24),
-          horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20),
+          vertical: ResponsiveHelper.height(context, mobile: 20, tablet: 24),
+          horizontal: ResponsiveHelper.width(context, mobile: 16, tablet: 20),
         ),
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(
-            ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            ResponsiveHelper.width(context, mobile: 12, tablet: 16),
           ),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
@@ -84,8 +84,8 @@ class TripStatisticsCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              width: ResponsiveHelper.responsiveWidth(context, mobile: 36, tablet: 44),
-              height: ResponsiveHelper.responsiveHeight(context, mobile: 36, tablet: 44),
+              width: ResponsiveHelper.width(context, mobile: 36, tablet: 44),
+              height: ResponsiveHelper.height(context, mobile: 36, tablet: 44),
               child: Transform.scale(
                 scale: lottieAsset.contains('GPS') ? 3.5 : 2.0,
                 child: Lottie.asset(
@@ -96,20 +96,20 @@ class TripStatisticsCard extends StatelessWidget {
               ),
             ),
 
-            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 25, tablet: 30)),
+            SizedBox(height: ResponsiveHelper.height(context, mobile: 25, tablet: 30)),
             Text(
               label,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
+                fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 13),
                 color: Colors.grey[700],
               ),
             ),
-            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
+            SizedBox(height: ResponsiveHelper.height(context, mobile: 4, tablet: 6)),
             Text(
               value,
               style: TextStyle(
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                 fontWeight: FontWeight.bold,
                 color: color,
               ),

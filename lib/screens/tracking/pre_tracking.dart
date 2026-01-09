@@ -249,7 +249,7 @@ class _PreTrackingScreenState extends State<PreTrackingScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+                fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
               ),
             ),
           ],
@@ -302,7 +302,7 @@ class _PreTrackingScreenState extends State<PreTrackingScreen> {
                               child: Icon(
                                 Icons.directions_boat,
                                 color: const Color(0xFF1B4F9C),
-                                size: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
+                                size: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
                               ),
                             ),
                             SizedBox(width: sp(12)),
@@ -313,7 +313,7 @@ class _PreTrackingScreenState extends State<PreTrackingScreen> {
                                   Text(
                                     widget.vesselName,
                                     style: TextStyle(
-                                      fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                                      fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -330,8 +330,8 @@ class _PreTrackingScreenState extends State<PreTrackingScreen> {
                             Spacer(),
                             Lottie.asset(
                               _getWeatherAnimation(),
-                              width: ResponsiveHelper.responsiveWidth(context, mobile: 60, tablet: 72),
-                              height: ResponsiveHelper.responsiveHeight(context, mobile: 60, tablet: 72),
+                              width: ResponsiveHelper.width(context, mobile: 60, tablet: 72),
+                              height: ResponsiveHelper.height(context, mobile: 60, tablet: 72),
                               fit: BoxFit.cover,
                             ),
                           ],

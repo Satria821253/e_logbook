@@ -16,8 +16,8 @@ class MenuToggleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onToggle,
       child: Container(
-        width: ResponsiveHelper.responsiveWidth(context, mobile: 56, tablet: 64),
-        height: ResponsiveHelper.responsiveHeight(context, mobile: 56, tablet: 64),
+        width: ResponsiveHelper.width(context, mobile: 56, tablet: 64),
+        height: ResponsiveHelper.height(context, mobile: 56, tablet: 64),
         decoration: BoxDecoration(
           color: const Color(0xFF1B4F9C),
           shape: BoxShape.circle,
@@ -35,7 +35,7 @@ class MenuToggleButton extends StatelessWidget {
           child: Icon(
             isMenuOpen ? Icons.close : Icons.menu,
             color: Colors.white,
-            size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+            size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
           ),
         ),
       ),

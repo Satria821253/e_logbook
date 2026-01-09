@@ -37,8 +37,8 @@ class CrewFloatingActionButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: ResponsiveHelper.responsiveWidth(context, mobile: 56, tablet: 64),
-        height: ResponsiveHelper.responsiveHeight(context, mobile: 56, tablet: 64),
+        width: ResponsiveHelper.width(context, mobile: 56, tablet: 64),
+        height: ResponsiveHelper.height(context, mobile: 56, tablet: 64),
         decoration: BoxDecoration(
           color: useLottie ? Colors.white : color,
           shape: BoxShape.circle,
@@ -63,7 +63,7 @@ class CrewFloatingActionButton extends StatelessWidget {
             : Icon(
                 icon,
                 color: Colors.white,
-                size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
               ),
       ),
     );

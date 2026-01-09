@@ -34,7 +34,7 @@ class _DataRawScreenState extends State<DataRawScreen>
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+            fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
           ),
         ),
         backgroundColor: const Color(0xFF2563EB),
@@ -47,7 +47,7 @@ class _DataRawScreenState extends State<DataRawScreen>
           Container(
             color: Colors.white,
             padding: EdgeInsets.symmetric(
-              vertical: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20),
+              vertical: ResponsiveHelper.height(context, mobile: 16, tablet: 20),
             ),
             child: TabBar(
               controller: _tabController,
@@ -56,38 +56,38 @@ class _DataRawScreenState extends State<DataRawScreen>
               labelColor: const Color(0xFF2563EB),
               unselectedLabelColor: Colors.grey.shade600,
               labelStyle: TextStyle(
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
+                fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 13),
                 fontWeight: FontWeight.bold,
               ),
               unselectedLabelStyle: TextStyle(
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
+                fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 13),
                 fontWeight: FontWeight.normal,
               ),
               tabs: [
                 Tab(
-                  height: ResponsiveHelper.responsiveHeight(context, mobile: 60, tablet: 72),
+                  height: ResponsiveHelper.height(context, mobile: 60, tablet: 72),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Image.asset('assets/icons/iot.png', 
-                        width: ResponsiveHelper.responsiveWidth(context, mobile: 18, tablet: 22), 
-                        height: ResponsiveHelper.responsiveHeight(context, mobile: 18, tablet: 22), 
+                        width: ResponsiveHelper.width(context, mobile: 18, tablet: 22), 
+                        height: ResponsiveHelper.height(context, mobile: 18, tablet: 22), 
                         color: Color(0xFF2563EB)),
-                      SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8)),
+                      SizedBox(width: ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
                       Text('Data IoT'),
                     ],
                   ),
                 ),
                 Tab(
-                  height: ResponsiveHelper.responsiveHeight(context, mobile: 60, tablet: 72),
+                  height: ResponsiveHelper.height(context, mobile: 60, tablet: 72),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Image.asset('assets/icons/icon_ai.png', 
-                        width: ResponsiveHelper.responsiveWidth(context, mobile: 18, tablet: 22), 
-                        height: ResponsiveHelper.responsiveHeight(context, mobile: 18, tablet: 22), 
+                        width: ResponsiveHelper.width(context, mobile: 18, tablet: 22), 
+                        height: ResponsiveHelper.height(context, mobile: 18, tablet: 22), 
                         color: Color(0xFF2563EB)),
-                      SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8)),
+                      SizedBox(width: ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
                       Text('Data AI'),
                     ],
                   ),

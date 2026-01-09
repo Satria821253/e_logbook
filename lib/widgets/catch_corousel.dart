@@ -67,7 +67,7 @@ class _CatchCarouselState extends State<CatchCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: ResponsiveHelper.responsiveHeight(context, mobile: 240, tablet: 280),
+          height: ResponsiveHelper.height(context, mobile: 240, tablet: 280),
           child: PageView.builder(
             controller: _controller,
             itemCount: null, // Infinite scroll
@@ -93,21 +93,21 @@ class _CatchCarouselState extends State<CatchCarousel> {
                   duration: const Duration(milliseconds: 300),
                   child: Container(
                     margin: EdgeInsets.symmetric(
-                      horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8),
-                      vertical: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16),
+                      horizontal: ResponsiveHelper.width(context, mobile: 6, tablet: 8),
+                      vertical: ResponsiveHelper.height(context, mobile: 12, tablet: 16),
                     ),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
+                      borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.08),
-                          blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 12),
-                          offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 2, tablet: 3)),
+                          blurRadius: ResponsiveHelper.width(context, mobile: 8, tablet: 12),
+                          offset: Offset(0, ResponsiveHelper.height(context, mobile: 2, tablet: 3)),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
+                      borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
                       child: Stack(
                         children: [
                           Image.asset(
@@ -139,7 +139,7 @@ class _CatchCarouselState extends State<CatchCarousel> {
           ),
         ),
         
-        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+        SizedBox(height: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
         
         // Dot indicators dengan animasi
         Row(
@@ -151,16 +151,16 @@ class _CatchCarouselState extends State<CatchCarousel> {
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
-                height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10),
+                margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.width(context, mobile: 4, tablet: 6)),
+                height: ResponsiveHelper.height(context, mobile: 8, tablet: 10),
                 width: isActive 
-                    ? ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)
-                    : ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10),
+                    ? ResponsiveHelper.width(context, mobile: 24, tablet: 28)
+                    : ResponsiveHelper.width(context, mobile: 8, tablet: 10),
                 decoration: BoxDecoration(
                   color: isActive 
                       ? Theme.of(context).primaryColor 
                       : Colors.grey.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 5)),
+                  borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 4, tablet: 5)),
                 ),
               );
             },

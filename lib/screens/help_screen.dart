@@ -33,7 +33,7 @@ class HelpScreen extends StatelessWidget {
         ),
       ),
       body: SingleChildScrollView(
-        padding: ResponsiveHelper.responsivePadding(
+        padding: ResponsiveHelper.padding(
           context,
           mobile: 20,
           tablet: 32,

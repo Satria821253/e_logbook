@@ -268,7 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildProfileHeader(),
             SizedBox(
-              height: ResponsiveHelper.responsiveHeight(
+              height: ResponsiveHelper.width(
                 context,
                 mobile: 20,
                 tablet: 28,
@@ -276,7 +276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             _buildStatsCard(),
             SizedBox(
-              height: ResponsiveHelper.responsiveHeight(
+              height: ResponsiveHelper.height(
                 context,
                 mobile: 20,
                 tablet: 28,
@@ -292,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildProfileHeader() {
     return Container(
       width: double.infinity,
-      padding: ResponsiveHelper.responsivePadding(
+      padding: ResponsiveHelper.padding(
         context,
         mobile: 24,
         tablet: 32,
@@ -306,7 +306,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Container(
                   padding: EdgeInsets.all(
-                    ResponsiveHelper.responsiveWidth(
+                    ResponsiveHelper.width(
                       context,
                       mobile: 4,
                       tablet: 6,
@@ -320,7 +320,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     builder: (context, userProvider, child) {
                       final user = userProvider.user;
                       return CircleAvatar(
-                        radius: ResponsiveHelper.responsiveWidth(
+                        radius: ResponsiveHelper.width(
                           context,
                           mobile: 50,
                           tablet: 60,
@@ -332,7 +332,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: user?.profilePicture == null
                             ? Icon(
                                 Icons.person_rounded,
-                                size: ResponsiveHelper.responsiveWidth(
+                                size: ResponsiveHelper.width(
                                   context,
                                   mobile: 60,
                                   tablet: 72,
@@ -364,7 +364,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           SizedBox(
-            height: ResponsiveHelper.responsiveHeight(
+            height: ResponsiveHelper.height(
               context,
               mobile: 16,
               tablet: 20,
@@ -377,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 user?.name ?? 'Budi Santoso',
                 style: TextStyle(
                   color: Colors.black,
-                  fontSize: ResponsiveHelper.responsiveFontSize(
+                  fontSize: ResponsiveHelper.font(
                     context,
                     mobile: 24,
                     tablet: 28,
@@ -388,7 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
           SizedBox(
-            height: ResponsiveHelper.responsiveHeight(
+            height: ResponsiveHelper.height(
               context,
               mobile: 4,
               tablet: 6,
@@ -401,7 +401,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 user?.role ?? 'Nelayan Profesional',
                 style: TextStyle(
                   color: Colors.black54,
-                  fontSize: ResponsiveHelper.responsiveFontSize(
+                  fontSize: ResponsiveHelper.font(
                     context,
                     mobile: 14,
                     tablet: 16,
@@ -411,7 +411,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
           SizedBox(
-            height: ResponsiveHelper.responsiveHeight(
+            height: ResponsiveHelper.height(
               context,
               mobile: 8,
               tablet: 12,
@@ -419,12 +419,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           Container(
             padding: EdgeInsets.symmetric(
-              horizontal: ResponsiveHelper.responsiveWidth(
+              horizontal: ResponsiveHelper.width(
                 context,
                 mobile: 12,
                 tablet: 16,
               ),
-              vertical: ResponsiveHelper.responsiveHeight(
+              vertical: ResponsiveHelper.height(
                 context,
                 mobile: 6,
                 tablet: 8,
@@ -433,7 +433,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(
               color: Colors.black12,
               borderRadius: BorderRadius.circular(
-                ResponsiveHelper.responsiveWidth(
+                ResponsiveHelper.width(
                   context,
                   mobile: 20,
                   tablet: 24,
@@ -446,14 +446,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Icon(
                   Icons.location_on_rounded,
                   color: Colors.black87,
-                  size: ResponsiveHelper.responsiveWidth(
+                  size: ResponsiveHelper.width(
                     context,
                     mobile: 16,
                     tablet: 18,
                   ),
                 ),
                 SizedBox(
-                  width: ResponsiveHelper.responsiveWidth(
+                  width: ResponsiveHelper.width(
                     context,
                     mobile: 4,
                     tablet: 6,
@@ -466,7 +466,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : _currentAddress,
                     style: TextStyle(
                       color: Colors.black87,
-                      fontSize: ResponsiveHelper.responsiveFontSize(
+                      fontSize: ResponsiveHelper.font(
                         context,
                         mobile: 12,
                         tablet: 14,
@@ -485,13 +485,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatsCard() {
     return Padding(
-      padding: ResponsiveHelper.responsiveHorizontalPadding(
+      padding: ResponsiveHelper.paddingHorizontal(
         context,
         mobile: 16,
         tablet: 32,
       ),
       child: Container(
-        padding: ResponsiveHelper.responsivePadding(
+        padding: ResponsiveHelper.padding(
           context,
           mobile: 20,
           tablet: 28,
@@ -499,19 +499,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(
-            ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20),
+            ResponsiveHelper.width(context, mobile: 16, tablet: 20),
           ),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.1),
-              blurRadius: ResponsiveHelper.responsiveWidth(
+              blurRadius: ResponsiveHelper.width(
                 context,
                 mobile: 10,
                 tablet: 14,
               ),
               offset: Offset(
                 0,
-                ResponsiveHelper.responsiveHeight(
+                ResponsiveHelper.height(
                   context,
                   mobile: 2,
                   tablet: 3,
@@ -526,7 +526,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildStatItem('Total Trip', '145', Icons.directions_boat_rounded),
             Container(
               width: 1.w,
-              height: ResponsiveHelper.responsiveHeight(
+              height: ResponsiveHelper.height(
                 context,
                 mobile: 50,
                 tablet: 60,
@@ -536,7 +536,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildStatItem('Total Tangkapan', '1.2 Ton', Icons.scale_rounded),
             Container(
               width: 1.w,
-              height: ResponsiveHelper.responsiveHeight(
+              height: ResponsiveHelper.height(
                 context,
                 mobile: 50,
                 tablet: 60,
@@ -556,14 +556,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Icon(
           icon,
           color: const Color(0xFF1B4F9C),
-          size: ResponsiveHelper.responsiveWidth(
+          size: ResponsiveHelper.width(
             context,
             mobile: 28,
             tablet: 32,
           ),
         ),
         SizedBox(
-          height: ResponsiveHelper.responsiveHeight(
+          height: ResponsiveHelper.height(
             context,
             mobile: 8,
             tablet: 12,
@@ -572,7 +572,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           value,
           style: TextStyle(
-            fontSize: ResponsiveHelper.responsiveFontSize(
+            fontSize: ResponsiveHelper.font(
               context,
               mobile: 18,
               tablet: 20,
@@ -582,7 +582,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         SizedBox(
-          height: ResponsiveHelper.responsiveHeight(
+          height: ResponsiveHelper.height(
             context,
             mobile: 4,
             tablet: 6,
@@ -591,7 +591,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: ResponsiveHelper.responsiveFontSize(
+            fontSize: ResponsiveHelper.font(
               context,
               mobile: 11,
               tablet: 13,

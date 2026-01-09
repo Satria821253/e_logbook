@@ -37,7 +37,7 @@ class _FishPhotoTipsScreenState extends State<FishPhotoTipsScreen> with SingleTi
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+            fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
           ),
         ),
         backgroundColor: Colors.transparent,
@@ -58,11 +58,11 @@ class _FishPhotoTipsScreenState extends State<FishPhotoTipsScreen> with SingleTi
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           labelStyle: TextStyle(
-            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15), 
+            fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 15), 
             fontWeight: FontWeight.bold,
           ),
           unselectedLabelStyle: TextStyle(
-            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15),
+            fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 15),
           ),
           tabs: const [
             Tab(text: 'Teknik Foto'),

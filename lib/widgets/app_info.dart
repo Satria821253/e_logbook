@@ -15,22 +15,50 @@ class AppInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min, // Penting untuk tidak mengambil ruang berlebih
       children: [
-        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
+        SizedBox(
+          height: ResponsiveHelper.spacing(
+            context,
+            mobile: 8,
+            tablet: 12,
+            mobileLandscape: 4,
+            tabletLandscape: 6,
+          ),
+        ),
         Text(
           "V $version",
           style: TextStyle(
-            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16), 
-            color: Color.fromARGB(255, 129, 129, 129),
+            fontSize: ResponsiveHelper.font(
+              context,
+              mobile: 14,
+              tablet: 16,
+              mobileLandscape: 12,
+              tabletLandscape: 14,
+            ),
+            color: const Color.fromARGB(255, 129, 129, 129),
           ),
         ),
-
-        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
+        SizedBox(
+          height: ResponsiveHelper.spacing(
+            context,
+            mobile: 4,
+            tablet: 6,
+            mobileLandscape: 2,
+            tabletLandscape: 4,
+          ),
+        ),
         Text(
           "© $releaseYear E-Logbook",
           style: TextStyle(
-            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14), 
-            color: Color.fromARGB(255, 129, 129, 129),
+            fontSize: ResponsiveHelper.font(
+              context,
+              mobile: 12,
+              tablet: 14,
+              mobileLandscape: 10,
+              tabletLandscape: 12,
+            ),
+            color: const Color.fromARGB(255, 129, 129, 129),
           ),
         ),
       ],

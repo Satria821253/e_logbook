@@ -46,7 +46,7 @@ class HarborZoneSelector extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(
-              ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+              ResponsiveHelper.width(context, mobile: 12, tablet: 16),
             ),
             border: Border.all(color: Colors.blue.withOpacity(0.3)),
             boxShadow: [
@@ -58,7 +58,7 @@ class HarborZoneSelector extends StatelessWidget {
             ],
           ),
           padding: EdgeInsets.symmetric(
-            horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            horizontal: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
           ),
           child: DropdownButtonFormField<String>(
             value: selectedHarbor,
@@ -66,13 +66,13 @@ class HarborZoneSelector extends StatelessWidget {
               prefixIcon: const Icon(Icons.anchor, color: Color(0xFF1B4F9C)),
               border: InputBorder.none,
               labelStyle: TextStyle(
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
               ),
             ),
             isExpanded: true,
             icon: const Icon(Icons.arrow_drop_down),
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16), 
+              fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16), 
               color: Colors.black87,
             ),
             items: IndonesiaHarbors.harborNames.map((harborName) {

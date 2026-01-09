@@ -69,7 +69,7 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
                       child: Text(
                         'Info Trip',
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
+                          fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -112,15 +112,15 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: ResponsiveHelper.responsiveWidth(context, mobile: 120, tablet: 144),
-            height: ResponsiveHelper.responsiveHeight(context, mobile: 120, tablet: 144),
+            width: ResponsiveHelper.width(context, mobile: 120, tablet: 144),
+            height: ResponsiveHelper.height(context, mobile: 120, tablet: 144),
             decoration: BoxDecoration(
               color: Colors.grey[100],
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.schedule,
-              size: ResponsiveHelper.responsiveWidth(context, mobile: 60, tablet: 72),
+              size: ResponsiveHelper.width(context, mobile: 60, tablet: 72),
               color: Colors.grey[400],
             ),
           ),
@@ -128,7 +128,7 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
           Text(
             'Belum Ada Penjadwalan Trip',
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
+              fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
               fontWeight: FontWeight.bold,
               color: Colors.grey[800],
             ),

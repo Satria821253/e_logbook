@@ -369,25 +369,25 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 30, tablet: 40)),
+            SizedBox(height: ResponsiveHelper.height(context, mobile: 30, tablet: 40)),
             _buildHeaderGradient(),
-            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
+            SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 24)),
             Padding(
-              padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 32),
+              padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 32),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
                     _buildVesselInfoCard(),
-                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
+                    SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 24)),
                     if (_documentData != null) _buildDocumentSummary(),
-                    if (_documentData != null) SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
+                    if (_documentData != null) SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 24)),
                     _buildSupplySection(),
-                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
+                    SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 24)),
                     _buildCertificateSection(),
-                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 24, tablet: 32)),
+                    SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 32)),
                     _buildSaveButton(),
-                    SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 24)),
+                    SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 24)),
                   ],
                 ),
               ),
@@ -409,25 +409,25 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
             ),
             child: Lottie.asset(
               'assets/animations/PreTrip.json',
-              width: ResponsiveHelper.responsiveWidth(context, mobile: 100, tablet: 120),
-              height: ResponsiveHelper.responsiveHeight(context, mobile: 100, tablet: 120),
+              width: ResponsiveHelper.width(context, mobile: 100, tablet: 120),
+              height: ResponsiveHelper.height(context, mobile: 100, tablet: 120),
             ),
           ),
-          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
+          SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 20)),
           Text(
             'Lengkapi Data Kapal',
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 20, tablet: 24),
+              fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
               fontWeight: FontWeight.bold,
               color: Colors.grey[800],
             ),
           ),
-          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
+          SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 12)),
           Text(
             'Pastikan semua informasi terisi dengan benar',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 13, tablet: 15),
+              fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 15),
               color: Colors.grey[600],
             ),
           ),
@@ -1065,17 +1065,17 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
   Widget _buildSaveButton() {
     return Container(
       width: double.infinity,
-      height: ResponsiveHelper.responsiveHeight(context, mobile: 56, tablet: 64),
+      height: ResponsiveHelper.height(context, mobile: 56, tablet: 64),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
         ),
-        borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 16, tablet: 20)),
         boxShadow: [
           BoxShadow(
             color: Color(0xFF1B4F9C).withOpacity(0.3),
-            blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
-            offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 6, tablet: 8)),
+            blurRadius: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
+            offset: Offset(0, ResponsiveHelper.height(context, mobile: 6, tablet: 8)),
           ),
         ],
       ),
@@ -1085,13 +1085,13 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
+            borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 16, tablet: 20)),
           ),
         ),
         child: _isLoading
             ? SizedBox(
-                height: ResponsiveHelper.responsiveHeight(context, mobile: 24, tablet: 28),
-                width: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                height: ResponsiveHelper.height(context, mobile: 24, tablet: 28),
+                width: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                 child: CircularProgressIndicator(
                   color: Colors.white,
                   strokeWidth: 2.5,
@@ -1103,13 +1103,13 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
                   Icon(
                     Icons.send,
                     color: Colors.white,
-                    size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                    size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                   ),
-                  SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                  SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                   Text(
                     'Kirim ke Admin',
                     style: TextStyle(
-                      fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                      fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                       letterSpacing: 0.5,

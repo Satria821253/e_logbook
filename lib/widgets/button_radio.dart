@@ -32,7 +32,7 @@ class ButtonRadioSelector extends StatelessWidget {
                 }, 
               ),
             ),
-            Text("Email", style: TextStyle(fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14))),
+            Text("Email", style: TextStyle(fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14))),
             const SizedBox(width: 16),
             Transform.scale(
               scale: 0.8,
@@ -46,7 +46,7 @@ class ButtonRadioSelector extends StatelessWidget {
                 },
               ),
             ),
-            Text("No Telp", style: TextStyle(fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14))),
+            Text("No Telp", style: TextStyle(fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14))),
           ],
         );
       },

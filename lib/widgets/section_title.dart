@@ -21,15 +21,15 @@ class SectionTitle extends StatelessWidget {
           Icon(
             icon,
             color: color ?? const Color(0xFF1B4F9C),
-            size: ResponsiveHelper.responsiveWidth(context, mobile: 22, tablet: 26),
+            size: ResponsiveHelper.width(context, mobile: 22, tablet: 26),
           ),
-          SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 10)),
+          SizedBox(width: ResponsiveHelper.width(context, mobile: 8, tablet: 10)),
         ],
         Expanded(
           child: Text(
             title,
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+              fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
               fontWeight: FontWeight.bold,
               color: color ?? const Color(0xFF1B4F9C),
             ),

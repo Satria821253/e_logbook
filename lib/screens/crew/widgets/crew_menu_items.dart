@@ -19,8 +19,8 @@ class CrewMenuItems extends StatelessWidget {
       children: [
         // Emergency
         Positioned(
-          right: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.responsiveHeight(context, mobile: 150, tablet: 180),
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 150, tablet: 180),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -35,8 +35,8 @@ class CrewMenuItems extends StatelessWidget {
         ),
         // Daftar Hadir
         Positioned(
-          right: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.responsiveHeight(context, mobile: 220, tablet: 264),
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 220, tablet: 264),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -51,8 +51,8 @@ class CrewMenuItems extends StatelessWidget {
         ),
         // Data Raw
         Positioned(
-          right: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.responsiveHeight(context, mobile: 290, tablet: 348),
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 348),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(

@@ -51,8 +51,8 @@ class _NahkodaFloatingMenuState extends State<NahkodaFloatingMenu>
     return Stack(
       children: [
         Positioned(
-          right: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.responsiveHeight(context, mobile: 80, tablet: 96),
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 80, tablet: 96),
           child: MenuToggleButton(
             isMenuOpen: _isMenuOpen,
             onToggle: _toggleMenu,

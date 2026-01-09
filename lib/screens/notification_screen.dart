@@ -227,7 +227,7 @@ class _NotificationScreenState extends State<NotificationScreen>
           // Standard TabBar
           Container(
             color: Colors.white,
-            padding: ResponsiveHelper.responsiveVerticalPadding(context, mobile: 16, tablet: 20),
+            padding: ResponsiveHelper.paddingVertical(context, mobile: 16, tablet: 20),
             child: TabBar(
               controller: _tabController,
               indicatorColor: const Color(0xFF1B4F9C),
@@ -235,16 +235,16 @@ class _NotificationScreenState extends State<NotificationScreen>
               labelColor: const Color(0xFF1B4F9C),
               unselectedLabelColor: Colors.grey.shade600,
               labelStyle: TextStyle(
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
+                fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 13),
                 fontWeight: FontWeight.bold,
               ),
               unselectedLabelStyle: TextStyle(
-                fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
+                fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 13),
                 fontWeight: FontWeight.normal,
               ),
               tabs: [
                 Tab(
-                  height: ResponsiveHelper.responsiveHeight(context, mobile: 60, tablet: 70),
+                  height: ResponsiveHelper.height(context, mobile: 60, tablet: 70),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -253,27 +253,27 @@ class _NotificationScreenState extends State<NotificationScreen>
                         children: [
                           Icon(
                             Icons.notifications_active,
-                            size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                            size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                           ),
                           if (_getAllUnreadCount() > 0)
                             Positioned(
                               right: -8.w,
                               top: -4.h,
                               child: Container(
-                                padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 2, tablet: 3)),
+                                padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 2, tablet: 3)),
                                 decoration: const BoxDecoration(
                                   color: Colors.red,
                                   shape: BoxShape.circle,
                                 ),
                                 constraints: BoxConstraints(
-                                  minWidth: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 18),
-                                  minHeight: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 18),
+                                  minWidth: ResponsiveHelper.width(context, mobile: 16, tablet: 18),
+                                  minHeight: ResponsiveHelper.height(context, mobile: 16, tablet: 18),
                                 ),
                                 child: Text(
                                   '${_getAllUnreadCount()}',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 9, tablet: 10),
+                                    fontSize: ResponsiveHelper.font(context, mobile: 9, tablet: 10),
                                     fontWeight: FontWeight.bold,
                                   ),
                                   textAlign: TextAlign.center,
@@ -282,13 +282,13 @@ class _NotificationScreenState extends State<NotificationScreen>
                             ),
                         ],
                       ),
-                      SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8)),
+                      SizedBox(width: ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
                       const Text('Semua'),
                     ],
                   ),
                 ),
                 Tab(
-                  height: ResponsiveHelper.responsiveHeight(context, mobile: 60, tablet: 70),
+                  height: ResponsiveHelper.height(context, mobile: 60, tablet: 70),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -297,27 +297,27 @@ class _NotificationScreenState extends State<NotificationScreen>
                         children: [
                           Icon(
                             Icons.info_outline,
-                            size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                            size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                           ),
                           if (_unreadSystemCount > 0)
                             Positioned(
                               right: -8.w,
                               top: -4.h,
                               child: Container(
-                                padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 2, tablet: 3)),
+                                padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 2, tablet: 3)),
                                 decoration: const BoxDecoration(
                                   color: Colors.red,
                                   shape: BoxShape.circle,
                                 ),
                                 constraints: BoxConstraints(
-                                  minWidth: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 18),
-                                  minHeight: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 18),
+                                  minWidth: ResponsiveHelper.width(context, mobile: 16, tablet: 18),
+                                  minHeight: ResponsiveHelper.height(context, mobile: 16, tablet: 18),
                                 ),
                                 child: Text(
                                   '$_unreadSystemCount',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 9, tablet: 10),
+                                    fontSize: ResponsiveHelper.font(context, mobile: 9, tablet: 10),
                                     fontWeight: FontWeight.bold,
                                   ),
                                   textAlign: TextAlign.center,
@@ -326,7 +326,7 @@ class _NotificationScreenState extends State<NotificationScreen>
                             ),
                         ],
                       ),
-                      SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 6, tablet: 8)),
+                      SizedBox(width: ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
                       const Text('Sistem'),
                     ],
                   ),
@@ -516,23 +516,23 @@ class _NotificationScreenState extends State<NotificationScreen>
     final isSelected = _selectedNotifications.contains(notificationId);
 
     return Container(
-      margin: EdgeInsets.only(bottom: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+      margin: EdgeInsets.only(bottom: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
         border: isSelected ? Border.all(color: Colors.blue, width: 2) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 12),
-            offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 2, tablet: 3)),
+            blurRadius: ResponsiveHelper.width(context, mobile: 8, tablet: 12),
+            offset: Offset(0, ResponsiveHelper.height(context, mobile: 2, tablet: 3)),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+          borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
           onTap: _isSelectionMode
               ? () => _toggleSelection(id, 'system', null)
               : () async {
@@ -551,39 +551,39 @@ class _NotificationScreenState extends State<NotificationScreen>
                 },
           onLongPress: () => _toggleSelection(id, 'system', null),
           child: Padding(
-            padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 20),
+            padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Selection checkbox
                 if (_isSelectionMode)
                   Padding(
-                    padding: EdgeInsets.only(right: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                    padding: EdgeInsets.only(right: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                     child: Icon(
                       isSelected
                           ? Icons.check_circle
                           : Icons.radio_button_unchecked,
                       color: isSelected ? Colors.blue : Colors.grey,
-                      size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                      size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                     ),
                   ),
                 // System Icon
                 Container(
-                  width: ResponsiveHelper.responsiveWidth(context, mobile: 48, tablet: 56),
-                  height: ResponsiveHelper.responsiveHeight(context, mobile: 48, tablet: 56),
+                  width: ResponsiveHelper.width(context, mobile: 48, tablet: 56),
+                  height: ResponsiveHelper.height(context, mobile: 48, tablet: 56),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
+                    borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
                   ),
                   child: Center(
                     child: Icon(
                       icon, 
                       color: color, 
-                      size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)
+                      size: ResponsiveHelper.width(context, mobile: 24, tablet: 28)
                     ),
                   ),
                 ),
-                SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                 // Content
                 Expanded(
                   child: Column(
@@ -592,28 +592,28 @@ class _NotificationScreenState extends State<NotificationScreen>
                       Text(
                         title,
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                          fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1B4F9C),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
+                      SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                          fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                           color: Colors.grey[700],
                           height: 1.4,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
+                      SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
                       Text(
                         _getTimeAgo(dateTime),
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14), 
+                          fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14), 
                           color: Colors.grey[500]
                         ),
                       ),
@@ -631,34 +631,34 @@ class _NotificationScreenState extends State<NotificationScreen>
   Widget _buildEmptyState(String title, String subtitle, IconData icon) {
     return Container(
       width: double.infinity,
-      padding: ResponsiveHelper.responsivePadding(context, mobile: 32, tablet: 40),
+      padding: ResponsiveHelper.padding(context, mobile: 32, tablet: 40),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 16, tablet: 20)),
         border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Column(
         children: [
           Icon(
             icon, 
-            size: ResponsiveHelper.responsiveWidth(context, mobile: 64, tablet: 80), 
+            size: ResponsiveHelper.width(context, mobile: 64, tablet: 80), 
             color: Colors.grey[400]
           ),
-          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
+          SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 20)),
           Text(
             title,
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 22),
+              fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 22),
               fontWeight: FontWeight.bold,
               color: Color(0xFF1B4F9C),
             ),
           ),
-          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
+          SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 12)),
           Text(
             subtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16), 
+              fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16), 
               color: Colors.grey[600]
             ),
           ),
@@ -691,23 +691,23 @@ class _NotificationScreenState extends State<NotificationScreen>
     final dateTime = DateTime.parse(notification['created_at']);
 
     return Container(
-      margin: EdgeInsets.only(bottom: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+      margin: EdgeInsets.only(bottom: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
         border: isSelected ? Border.all(color: Colors.blue, width: 2) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 12),
-            offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 2, tablet: 3)),
+            blurRadius: ResponsiveHelper.width(context, mobile: 8, tablet: 12),
+            offset: Offset(0, ResponsiveHelper.height(context, mobile: 2, tablet: 3)),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+          borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
           onTap: _isSelectionMode
               ? () => _toggleSelection(notification['id'].toString(), 'admin', notification)
               : () async {
@@ -726,35 +726,35 @@ class _NotificationScreenState extends State<NotificationScreen>
                 },
           onLongPress: () => _toggleSelection(notification['id'].toString(), 'admin', notification),
           child: Padding(
-            padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 20),
+            padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (_isSelectionMode)
                   Padding(
-                    padding: EdgeInsets.only(right: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                    padding: EdgeInsets.only(right: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                     child: Icon(
                       isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
                       color: isSelected ? Colors.blue : Colors.grey,
-                      size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                      size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                     ),
                   ),
                 Container(
-                  width: ResponsiveHelper.responsiveWidth(context, mobile: 48, tablet: 56),
-                  height: ResponsiveHelper.responsiveHeight(context, mobile: 48, tablet: 56),
+                  width: ResponsiveHelper.width(context, mobile: 48, tablet: 56),
+                  height: ResponsiveHelper.height(context, mobile: 48, tablet: 56),
                   decoration: BoxDecoration(
                     color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
+                    borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
                   ),
                   child: Center(
                     child: Icon(
                       Icons.admin_panel_settings, 
                       color: Colors.orange, 
-                      size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)
+                      size: ResponsiveHelper.width(context, mobile: 24, tablet: 28)
                     ),
                   ),
                 ),
-                SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -762,28 +762,28 @@ class _NotificationScreenState extends State<NotificationScreen>
                       Text(
                         notification['title'] ?? 'Admin Notification',
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                          fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1B4F9C),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
+                      SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
                       Text(
                         notification['message'] ?? '',
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                          fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                           color: Colors.grey[700],
                           height: 1.4,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
+                      SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
                       Text(
                         _getTimeAgo(dateTime),
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14), 
+                          fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14), 
                           color: Colors.grey[500]
                         ),
                       ),
@@ -803,57 +803,57 @@ class _NotificationScreenState extends State<NotificationScreen>
     final isSelected = _selectedNotifications.contains(notificationId);
 
     return Container(
-      margin: EdgeInsets.only(bottom: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16)),
+      margin: EdgeInsets.only(bottom: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
         border: isSelected ? Border.all(color: Colors.blue, width: 2) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 8, tablet: 12),
-            offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 2, tablet: 3)),
+            blurRadius: ResponsiveHelper.width(context, mobile: 8, tablet: 12),
+            offset: Offset(0, ResponsiveHelper.height(context, mobile: 2, tablet: 3)),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+          borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
           onTap: _isSelectionMode
               ? () => _toggleSelection(requirement.id, 'document', requirement)
               : null,
           onLongPress: () => _toggleSelection(requirement.id, 'document', requirement),
           child: Padding(
-            padding: ResponsiveHelper.responsivePadding(context, mobile: 16, tablet: 20),
+            padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (_isSelectionMode)
                   Padding(
-                    padding: EdgeInsets.only(right: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                    padding: EdgeInsets.only(right: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                     child: Icon(
                       isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
                       color: isSelected ? Colors.blue : Colors.grey,
-                      size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                      size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                     ),
                   ),
                 Container(
-                  width: ResponsiveHelper.responsiveWidth(context, mobile: 48, tablet: 56),
-                  height: ResponsiveHelper.responsiveHeight(context, mobile: 48, tablet: 56),
+                  width: ResponsiveHelper.width(context, mobile: 48, tablet: 56),
+                  height: ResponsiveHelper.height(context, mobile: 48, tablet: 56),
                   decoration: BoxDecoration(
                     color: requirement.isCompleted ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28)),
+                    borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
                   ),
                   child: Center(
                     child: Icon(
                       requirement.isCompleted ? Icons.check_circle : Icons.description,
                       color: requirement.isCompleted ? Colors.green : Colors.red,
-                      size: ResponsiveHelper.responsiveWidth(context, mobile: 24, tablet: 28),
+                      size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                     ),
                   ),
                 ),
-                SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16)),
+                SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -861,26 +861,26 @@ class _NotificationScreenState extends State<NotificationScreen>
                       Text(
                         requirement.title,
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 16, tablet: 18),
+                          fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1B4F9C),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
+                      SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
                       Text(
                         requirement.isCompleted ? 'Dokumen telah dilengkapi' : 'Dokumen perlu dilengkapi',
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                          fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
                           color: requirement.isCompleted ? Colors.green[700] : Colors.red[700],
                           height: 1.4,
                         ),
                       ),
-                      SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 10)),
+                      SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
                       Text(
                         _getTimeAgo(requirement.createdAt),
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14), 
+                          fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14), 
                           color: Colors.grey[500]
                         ),
                       ),

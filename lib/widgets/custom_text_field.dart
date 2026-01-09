@@ -36,7 +36,7 @@ class CustomTextField extends StatelessWidget {
       readOnly: readOnly,
       onChanged: onChanged,
       style: TextStyle(
-        fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+        fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
       ),
       decoration: InputDecoration(
         labelText: label,
@@ -44,44 +44,44 @@ class CustomTextField extends StatelessWidget {
         prefixIcon: Icon(
           icon, 
           color: const Color(0xFF1B4F9C), 
-          size: ResponsiveHelper.responsiveWidth(context, mobile: 18, tablet: 22),
+          size: ResponsiveHelper.width(context, mobile: 18, tablet: 22),
         ),
         suffixIcon: suffixWidget,
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(
-            ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            ResponsiveHelper.width(context, mobile: 12, tablet: 16),
           ),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(
-            ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            ResponsiveHelper.width(context, mobile: 12, tablet: 16),
           ),
           borderSide: BorderSide(color: Colors.grey[200]!),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(
-            ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            ResponsiveHelper.width(context, mobile: 12, tablet: 16),
           ),
           borderSide: BorderSide(
             color: const Color(0xFF1B4F9C), 
-            width: ResponsiveHelper.responsiveWidth(context, mobile: 2, tablet: 3),
+            width: ResponsiveHelper.width(context, mobile: 2, tablet: 3),
           ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(
-            ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
+            ResponsiveHelper.width(context, mobile: 12, tablet: 16),
           ),
           borderSide: BorderSide(
             color: Colors.red, 
-            width: ResponsiveHelper.responsiveWidth(context, mobile: 1, tablet: 2),
+            width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
           ),
         ),
         contentPadding: EdgeInsets.symmetric(
-          horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
-          vertical: ResponsiveHelper.responsiveHeight(context, mobile: 12, tablet: 16),
+          horizontal: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
+          vertical: ResponsiveHelper.height(context, mobile: 12, tablet: 16),
         ),
       ),
       validator: required

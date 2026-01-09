@@ -15,8 +15,8 @@ class EmergencyButtonWidget extends StatelessWidget {
     return GestureDetector(
       onTap: onPressed,
       child: SizedBox(
-        width: ResponsiveHelper.responsiveWidth(context, mobile: 100, tablet: 120),
-        height: ResponsiveHelper.responsiveHeight(context, mobile: 100, tablet: 120),
+        width: ResponsiveHelper.width(context, mobile: 100, tablet: 120),
+        height: ResponsiveHelper.height(context, mobile: 100, tablet: 120),
         child: Lottie.asset(
           'assets/animations/alert.json',
           repeat: true,
