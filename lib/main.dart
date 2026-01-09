@@ -7,7 +7,7 @@ import 'package:e_logbook/services/offline_sync_service.dart';
 import 'package:e_logbook/screens/profile_screen.dart';
 import 'package:e_logbook/screens/tracking/pre_trip_fromscreen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
-import 'package:e_logbook/screens/document_completion_screen.dart';
+import 'package:e_logbook/screens/document_completion_screen.dart'; 
 import 'package:e_logbook/screens/main_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';

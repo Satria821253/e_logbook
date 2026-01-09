@@ -6,7 +6,6 @@ import 'package:e_logbook/services/data_clear_service.dart';
 import 'package:e_logbook/models/document_requirement_model.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -138,8 +137,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   @override
   Widget build(BuildContext context) {
-    final isTablet = ResponsiveHelper.isTablet(context);
-    
     return CustomScrollView(
       slivers: [
         CustomSliverAppBar(),
