@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'package:e_logbook/screens/Login/welcome_screen.dart';
+import 'package:e_logbook/screens/help_screen.dart';
+import 'package:image_picker/image_picker.dart';
+
 import 'package:e_logbook/screens/nahkoda/screens/crew_attendance_screen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
 import 'package:e_logbook/services/auth_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
+import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -88,6 +93,153 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        if (!mounted) return;
+
+        // Update provider with new image path
+        await Provider.of<UserProvider>(
+          context,
+          listen: false,
+        ).updateProfilePicture(image.path);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Foto profil berhasil diperbarui'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengambil gambar: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showImageSourcePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Ubah Foto Profil',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                _buildOptionTile(
+                  icon: Icons.camera_alt,
+                  title: 'Ambil Foto',
+                  subtitle: 'Gunakan kamera untuk mengambil foto',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildOptionTile(
+                  icon: Icons.photo_library,
+                  title: 'Pilih dari Galeri',
+                  subtitle: 'Pilih gambar dari galeri',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOptionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B4F9C).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Icon(icon, color: const Color(0xFF1B4F9C), size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -115,9 +267,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           children: [
             _buildProfileHeader(),
-            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 28)),
+            SizedBox(
+              height: ResponsiveHelper.responsiveHeight(
+                context,
+                mobile: 20,
+                tablet: 28,
+              ),
+            ),
             _buildStatsCard(),
-            SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 20, tablet: 28)),
+            SizedBox(
+              height: ResponsiveHelper.responsiveHeight(
+                context,
+                mobile: 20,
+                tablet: 28,
+              ),
+            ),
             _buildMenuSection(),
           ],
         ),
@@ -128,27 +292,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildProfileHeader() {
     return Container(
       width: double.infinity,
-      padding: ResponsiveHelper.responsivePadding(context, mobile: 24, tablet: 32),
+      padding: ResponsiveHelper.responsivePadding(
+        context,
+        mobile: 24,
+        tablet: 32,
+      ),
       color: Colors.transparent,
       child: Column(
         children: [
-          Container(
-            padding: EdgeInsets.all(ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.black87, width: 2.w),
-            ),
-            child: CircleAvatar(
-              radius: ResponsiveHelper.responsiveWidth(context, mobile: 50, tablet: 60),
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.person_rounded,
-                size: ResponsiveHelper.responsiveWidth(context, mobile: 60, tablet: 72),
-                color: Colors.black87,
-              ),
+          GestureDetector(
+            onTap: _showImageSourcePicker,
+            child: Stack(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(
+                    ResponsiveHelper.responsiveWidth(
+                      context,
+                      mobile: 4,
+                      tablet: 6,
+                    ),
+                  ),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.black87, width: 2.w),
+                  ),
+                  child: Consumer<UserProvider>(
+                    builder: (context, userProvider, child) {
+                      final user = userProvider.user;
+                      return CircleAvatar(
+                        radius: ResponsiveHelper.responsiveWidth(
+                          context,
+                          mobile: 50,
+                          tablet: 60,
+                        ),
+                        backgroundColor: Colors.white,
+                        backgroundImage: user?.profilePicture != null
+                            ? FileImage(File(user!.profilePicture!))
+                            : null,
+                        child: user?.profilePicture == null
+                            ? Icon(
+                                Icons.person_rounded,
+                                size: ResponsiveHelper.responsiveWidth(
+                                  context,
+                                  mobile: 60,
+                                  tablet: 72,
+                                ),
+                                color: Colors.black87,
+                              )
+                            : null,
+                      );
+                    },
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1B4F9C),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 16, tablet: 20)),
+          SizedBox(
+            height: ResponsiveHelper.responsiveHeight(
+              context,
+              mobile: 16,
+              tablet: 20,
+            ),
+          ),
           Consumer<UserProvider>(
             builder: (context, userProvider, child) {
               final user = userProvider.user;
@@ -156,13 +377,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 user?.name ?? 'Budi Santoso',
                 style: TextStyle(
                   color: Colors.black,
-                  fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 24, tablet: 28),
+                  fontSize: ResponsiveHelper.responsiveFontSize(
+                    context,
+                    mobile: 24,
+                    tablet: 28,
+                  ),
                   fontWeight: FontWeight.bold,
                 ),
               );
             },
           ),
-          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
+          SizedBox(
+            height: ResponsiveHelper.responsiveHeight(
+              context,
+              mobile: 4,
+              tablet: 6,
+            ),
+          ),
           Consumer<UserProvider>(
             builder: (context, userProvider, child) {
               final user = userProvider.user;
@@ -170,20 +401,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 user?.role ?? 'Nelayan Profesional',
                 style: TextStyle(
                   color: Colors.black54,
-                  fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 14, tablet: 16),
+                  fontSize: ResponsiveHelper.responsiveFontSize(
+                    context,
+                    mobile: 14,
+                    tablet: 16,
+                  ),
                 ),
               );
             },
           ),
-          SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
+          SizedBox(
+            height: ResponsiveHelper.responsiveHeight(
+              context,
+              mobile: 8,
+              tablet: 12,
+            ),
+          ),
           Container(
             padding: EdgeInsets.symmetric(
-              horizontal: ResponsiveHelper.responsiveWidth(context, mobile: 12, tablet: 16),
-              vertical: ResponsiveHelper.responsiveHeight(context, mobile: 6, tablet: 8),
+              horizontal: ResponsiveHelper.responsiveWidth(
+                context,
+                mobile: 12,
+                tablet: 16,
+              ),
+              vertical: ResponsiveHelper.responsiveHeight(
+                context,
+                mobile: 6,
+                tablet: 8,
+              ),
             ),
             decoration: BoxDecoration(
               color: Colors.black12,
-              borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 20, tablet: 24)),
+              borderRadius: BorderRadius.circular(
+                ResponsiveHelper.responsiveWidth(
+                  context,
+                  mobile: 20,
+                  tablet: 24,
+                ),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -191,15 +446,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Icon(
                   Icons.location_on_rounded,
                   color: Colors.black87,
-                  size: ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 18),
+                  size: ResponsiveHelper.responsiveWidth(
+                    context,
+                    mobile: 16,
+                    tablet: 18,
+                  ),
                 ),
-                SizedBox(width: ResponsiveHelper.responsiveWidth(context, mobile: 4, tablet: 6)),
+                SizedBox(
+                  width: ResponsiveHelper.responsiveWidth(
+                    context,
+                    mobile: 4,
+                    tablet: 6,
+                  ),
+                ),
                 Flexible(
                   child: Text(
-                    _isLoadingLocation ? "Mengambil lokasi..." : _currentAddress,
+                    _isLoadingLocation
+                        ? "Mengambil lokasi..."
+                        : _currentAddress,
                     style: TextStyle(
                       color: Colors.black87,
-                      fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 12, tablet: 14),
+                      fontSize: ResponsiveHelper.responsiveFontSize(
+                        context,
+                        mobile: 12,
+                        tablet: 14,
+                      ),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -214,17 +485,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatsCard() {
     return Padding(
-      padding: ResponsiveHelper.responsiveHorizontalPadding(context, mobile: 16, tablet: 32),
+      padding: ResponsiveHelper.responsiveHorizontalPadding(
+        context,
+        mobile: 16,
+        tablet: 32,
+      ),
       child: Container(
-        padding: ResponsiveHelper.responsivePadding(context, mobile: 20, tablet: 28),
+        padding: ResponsiveHelper.responsivePadding(
+          context,
+          mobile: 20,
+          tablet: 28,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20)),
+          borderRadius: BorderRadius.circular(
+            ResponsiveHelper.responsiveWidth(context, mobile: 16, tablet: 20),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.1),
-              blurRadius: ResponsiveHelper.responsiveWidth(context, mobile: 10, tablet: 14),
-              offset: Offset(0, ResponsiveHelper.responsiveHeight(context, mobile: 2, tablet: 3)),
+              blurRadius: ResponsiveHelper.responsiveWidth(
+                context,
+                mobile: 10,
+                tablet: 14,
+              ),
+              offset: Offset(
+                0,
+                ResponsiveHelper.responsiveHeight(
+                  context,
+                  mobile: 2,
+                  tablet: 3,
+                ),
+              ),
             ),
           ],
         ),
@@ -234,13 +526,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildStatItem('Total Trip', '145', Icons.directions_boat_rounded),
             Container(
               width: 1.w,
-              height: ResponsiveHelper.responsiveHeight(context, mobile: 50, tablet: 60),
+              height: ResponsiveHelper.responsiveHeight(
+                context,
+                mobile: 50,
+                tablet: 60,
+              ),
               color: Colors.grey[300],
             ),
             _buildStatItem('Total Tangkapan', '1.2 Ton', Icons.scale_rounded),
             Container(
               width: 1.w,
-              height: ResponsiveHelper.responsiveHeight(context, mobile: 50, tablet: 60),
+              height: ResponsiveHelper.responsiveHeight(
+                context,
+                mobile: 50,
+                tablet: 60,
+              ),
               color: Colors.grey[300],
             ),
             _buildStatItem('Pengalaman', '8 Tahun', Icons.star_rounded),
@@ -256,22 +556,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Icon(
           icon,
           color: const Color(0xFF1B4F9C),
-          size: ResponsiveHelper.responsiveWidth(context, mobile: 28, tablet: 32),
+          size: ResponsiveHelper.responsiveWidth(
+            context,
+            mobile: 28,
+            tablet: 32,
+          ),
         ),
-        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 8, tablet: 12)),
+        SizedBox(
+          height: ResponsiveHelper.responsiveHeight(
+            context,
+            mobile: 8,
+            tablet: 12,
+          ),
+        ),
         Text(
           value,
           style: TextStyle(
-            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 18, tablet: 20),
+            fontSize: ResponsiveHelper.responsiveFontSize(
+              context,
+              mobile: 18,
+              tablet: 20,
+            ),
             fontWeight: FontWeight.bold,
             color: Color(0xFF1B4F9C),
           ),
         ),
-        SizedBox(height: ResponsiveHelper.responsiveHeight(context, mobile: 4, tablet: 6)),
+        SizedBox(
+          height: ResponsiveHelper.responsiveHeight(
+            context,
+            mobile: 4,
+            tablet: 6,
+          ),
+        ),
         Text(
           label,
           style: TextStyle(
-            fontSize: ResponsiveHelper.responsiveFontSize(context, mobile: 11, tablet: 13),
+            fontSize: ResponsiveHelper.responsiveFontSize(
+              context,
+              mobile: 11,
+              tablet: 13,
+            ),
             color: Colors.grey[600],
           ),
           textAlign: TextAlign.center,
@@ -335,13 +659,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.assessment_outlined,
             title: 'Laporan',
             subtitle: 'Lihat laporan statistik lengkap',
-            onTap: () {},
+            onTap: () {
+              Provider.of<NavigationProvider>(
+                context,
+                listen: false,
+              ).setIndex(1);
+            },
           ),
           _buildMenuItem(
             icon: Icons.help_outline_rounded,
             title: 'Bantuan',
             subtitle: 'Pusat bantuan dan FAQ',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HelpScreen()),
+              );
+            },
           ),
           _buildMenuItem(
             icon: Icons.info_outline_rounded,

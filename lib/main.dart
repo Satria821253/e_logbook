@@ -1,6 +1,7 @@
 import 'package:e_logbook/provider/catch_provider.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/zone_alert.dart';
+import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/services/auth_service.dart';
 import 'package:e_logbook/services/data_clear_service.dart';
 import 'package:e_logbook/services/offline_sync_service.dart';
@@ -16,7 +17,7 @@ import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
- 
+
   try {
     AuthService.init();
 
@@ -35,6 +36,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => CatchProvider()),
         ChangeNotifierProvider(create: (_) => ZoneAlertProvider()),
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
       ],
       child: const MyApp(),
     ),
@@ -74,10 +76,15 @@ class MyApp extends StatelessWidget {
                 );
               case '/vessel-info':
                 final arguments = settings.arguments as Map<String, dynamic>?;
-                return MaterialPageRoute(builder: (_) => VesselInfoScreen(arguments: arguments));
+                return MaterialPageRoute(
+                  builder: (_) => VesselInfoScreen(arguments: arguments),
+                );
               case '/document-completion':
                 final arguments = settings.arguments as String?;
-                return MaterialPageRoute(builder: (_) => DocumentCompletionScreen(), settings: RouteSettings(arguments: arguments));
+                return MaterialPageRoute(
+                  builder: (_) => DocumentCompletionScreen(),
+                  settings: RouteSettings(arguments: arguments),
+                );
               default:
                 return null;
             }

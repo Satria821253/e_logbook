@@ -6,7 +6,7 @@ class ApiConfig {
   static const String geminiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
 
-  // Model terbaru dan terbaik: Gemini 2.5 Flash (1M tokens, 65K output)
+  // Model terbaru dan terbaik: Gemini 1.5 Flash
   static const String geminiModel = 'gemini-2.5-flash';
 
   // Timeout yang cukup untuk processing gambar

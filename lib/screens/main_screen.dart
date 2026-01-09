@@ -3,6 +3,7 @@ import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_floating_menu.dart';
 import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_tracking_button.dart';
 import 'package:e_logbook/screens/crew/widgets/crew_floating_menu.dart';
+import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'home_screen.dart';
@@ -18,21 +19,12 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-
   final List<Widget> _screens = [
     const HomeScreen(),
     const StatisticsScreen(),
     const HistoryScreen(),
     const ProfileScreen(),
   ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   double rs(BuildContext context, double size) {
     double width = MediaQuery.of(context).size.width;
 
@@ -49,10 +41,11 @@ class _MainScreenState extends State<MainScreen> {
     double iconSize = rs(context, 26);
     double fontSize = rs(context, 11);
 
-    return Consumer<UserProvider>(
-      builder: (context, userProvider, child) {
+    return Consumer2<UserProvider, NavigationProvider>(
+      builder: (context, userProvider, navProvider, child) {
         final user = userProvider.user;
         final isABK = user?.isABK == true;
+        final selectedIndex = navProvider.selectedIndex;
 
         return Scaffold(
           resizeToAvoidBottomInset: false,
@@ -60,7 +53,7 @@ class _MainScreenState extends State<MainScreen> {
 
           body: Stack(
             children: [
-              _screens[_selectedIndex],
+              _screens[selectedIndex],
               // Role-based floating menu
               if (!isABK) const NahkodaFloatingMenu(),
               if (isABK) const CrewFloatingMenu(),
@@ -68,8 +61,11 @@ class _MainScreenState extends State<MainScreen> {
           ),
 
           // FAB - role based
-          floatingActionButton: isABK ? _buildCatchFAB(fabSize) : const NahkodaTrackingButton(),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+          floatingActionButton: isABK
+              ? _buildCatchFAB(fabSize)
+              : const NahkodaTrackingButton(),
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerDocked,
 
           bottomNavigationBar: BottomAppBar(
             shape: const CircularNotchedRectangle(),
@@ -80,11 +76,39 @@ class _MainScreenState extends State<MainScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildNavItem(Icons.home_rounded, 'Beranda', 0, iconSize, fontSize),
-                  _buildNavItem(Icons.bar_chart_rounded, 'Statistik', 1, iconSize, fontSize),
+                  _buildNavItem(
+                    Icons.home_rounded,
+                    'Beranda',
+                    0,
+                    iconSize,
+                    fontSize,
+                    navProvider,
+                  ),
+                  _buildNavItem(
+                    Icons.bar_chart_rounded,
+                    'Statistik',
+                    1,
+                    iconSize,
+                    fontSize,
+                    navProvider,
+                  ),
                   SizedBox(width: rs(context, 40)),
-                  _buildNavItem(Icons.history_rounded, 'Riwayat', 2, iconSize, fontSize),
-                  _buildNavItem(Icons.person_rounded, 'Profil', 3, iconSize, fontSize),
+                  _buildNavItem(
+                    Icons.history_rounded,
+                    'Riwayat',
+                    2,
+                    iconSize,
+                    fontSize,
+                    navProvider,
+                  ),
+                  _buildNavItem(
+                    Icons.person_rounded,
+                    'Profil',
+                    3,
+                    iconSize,
+                    fontSize,
+                    navProvider,
+                  ),
                 ],
               ),
             ),
@@ -95,12 +119,18 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   // NAVIGATION ITEM
-  Widget _buildNavItem(IconData icon, String label, int index,
-      double iconSize, double fontSize) {
-    final bool isSelected = _selectedIndex == index;
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    int index,
+    double iconSize,
+    double fontSize,
+    NavigationProvider navProvider,
+  ) {
+    final bool isSelected = navProvider.selectedIndex == index;
 
     return InkWell(
-      onTap: () => _onItemTapped(index),
+      onTap: () => navProvider.setIndex(index),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 12),
@@ -151,18 +181,12 @@ class _MainScreenState extends State<MainScreen> {
         onPressed: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const CreateCatchScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const CreateCatchScreen()),
           );
         },
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: Icon(
-          Icons.add,
-          size: rs(context, 36),
-          color: Colors.white,
-        ),
+        child: Icon(Icons.add, size: rs(context, 36), color: Colors.white),
       ),
     );
   }

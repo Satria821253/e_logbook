@@ -64,6 +64,27 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateProfilePicture(String path) async {
+    if (_user != null) {
+      _user = UserModel(
+        id: _user!.id,
+        name: _user!.name,
+        email: _user!.email,
+        phone: _user!.phone,
+        token: _user!.token,
+        role: _user!.role,
+        vesselName: _user!.vesselName,
+        vesselNumber: _user!.vesselNumber,
+        captainName: _user!.captainName,
+        crewCount: _user!.crewCount,
+        crewNames: _user!.crewNames,
+        profilePicture: path,
+      );
+      await UserService.saveUser(_user!);
+      notifyListeners();
+    }
+  }
+
   Future<void> clearUser() async {
     _user = null;
     await UserService.clearUser();
