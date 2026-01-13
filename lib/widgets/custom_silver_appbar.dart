@@ -651,10 +651,13 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
 
   @override
   Widget build(BuildContext context) {
-    // Fixed constants for "paten" layout
-    const double expandedHeight = 280.0;
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+    
+    // Fixed constants for responsive layout
+    final double expandedHeight = isTablet ? 250.0 : 230.0;
     const double toolbarHeight = 0.0;
-    const double horizontalPadding = 24.0;
+    final double horizontalPadding = isTablet ? 32.0 : 20.0;
 
     return SliverAppBar(
       pinned: true,
@@ -674,9 +677,9 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
           titlePadding: EdgeInsets.zero,
           expandedTitleScale: 1.0,
           background: Padding(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               horizontalPadding,
-              60.0, // Top Safe Area + Spacing
+              isTablet ? 50.0 : 25.0, // Top Safe Area + Spacing
               horizontalPadding,
               0,
             ),
@@ -732,7 +735,7 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                   ],
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
                 // User Profile Section
                 Row(
@@ -789,7 +792,7 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                                   color: Colors.white,
                                 ),
                               ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -868,14 +871,17 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
         ),
       ),
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(80.0),
+        preferredSize: Size.fromHeight(isTablet ? 70.0 : 60.0),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, isTablet ? 20 : 16),
           child: Row(
             children: [
               Expanded(
                 child: Container(
-                  height: 50,
+                  height: isTablet ? 48 : 44,
+                  constraints: BoxConstraints(
+                    maxWidth: size.width - horizontalPadding * 2 - (isTablet ? 66 : 58),
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(25),
@@ -901,14 +907,14 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               // Weather Button
               InkWell(
                 onTap: _showWeatherDialog,
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  width: 50,
-                  height: 50,
+                  width: isTablet ? 48 : 44,
+                  height: isTablet ? 48 : 44,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),

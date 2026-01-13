@@ -1,11 +1,9 @@
-import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 enum ButtonRadio { email, phone }
 
 class ButtonRadioController extends ValueNotifier<ButtonRadio> {
-  ButtonRadioController([ButtonRadio value = ButtonRadio.email])
-    : super(value);
+  ButtonRadioController([ButtonRadio value = ButtonRadio.email]) : super(value);
 }
 
 class ButtonRadioSelector extends StatelessWidget {
@@ -19,38 +17,46 @@ class ButtonRadioSelector extends StatelessWidget {
       valueListenable: controller,
       builder: (context, value, _) {
         return Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Transform.scale(
-              scale: 0.8,
-              child: Radio<ButtonRadio>(
-                value: ButtonRadio.email,
-                groupValue: value,
-                activeColor: Colors.blueAccent,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                onChanged: (newValue) {
-                  if (newValue != null) controller.value = newValue;
-                }, 
+            GestureDetector(
+              onTap: () => controller.value = ButtonRadio.email,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Radio<ButtonRadio>(
+                    value: ButtonRadio.email,
+                    groupValue: value,
+                    activeColor: const Color(0xFF1B4F9C),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    onChanged: (val) => controller.value = val!,
+                  ),
+                  const Text('Email', style: TextStyle(fontSize: 12)),
+                ],
               ),
             ),
-            Text("Email", style: TextStyle(fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14))),
-            const SizedBox(width: 16),
-            Transform.scale(
-              scale: 0.8,
-              child: Radio<ButtonRadio>(
-                value: ButtonRadio.phone,
-                groupValue: value,
-                activeColor: Colors.blueAccent,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                onChanged: (newValue) {
-                  if (newValue != null) controller.value = newValue;
-                },
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => controller.value = ButtonRadio.phone,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Radio<ButtonRadio>(
+                    value: ButtonRadio.phone,
+                    groupValue: value,
+                    activeColor: const Color(0xFF1B4F9C),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    onChanged: (val) => controller.value = val!,
+                  ),
+                  const Text('Phone', style: TextStyle(fontSize: 12)),
+                ],
               ),
             ),
-            Text("No Telp", style: TextStyle(fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14))),
           ],
         );
       },
     );
   }
 }
-

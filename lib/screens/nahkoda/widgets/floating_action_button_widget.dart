@@ -37,12 +37,12 @@ class FloatingActionButtonWidget extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: ResponsiveHelper.width(context, mobile: 56, tablet: 64),
-        height: ResponsiveHelper.height(context, mobile: 56, tablet: 64),
+        width: ResponsiveHelper.width(context, mobile: 48, tablet: 64),
+        height: ResponsiveHelper.height(context, mobile: 48, tablet: 64),
         decoration: BoxDecoration(
-          color: useLottie ? Colors.white : color,
+          color: useLottie ? Colors.transparent : color,
           shape: BoxShape.circle,
-          border: useLottie ? Border.all(color: color, width: 3) : null,
+          border: useLottie ? Border.all(color: color, width: 2) : null,
           boxShadow: [
             BoxShadow(
               color: color.withOpacity(useLottie ? 0.4 : 0.3),

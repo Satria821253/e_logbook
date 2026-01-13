@@ -11,7 +11,7 @@ class CatchCarousel extends StatefulWidget {
 
 class _CatchCarouselState extends State<CatchCarousel> {
   final PageController _controller = PageController(
-    viewportFraction: 0.94,
+    viewportFraction: 1.0,
     initialPage: 1000, // Mulai dari tengah untuk infinite scroll
   );
   Timer? _timer;
@@ -67,7 +67,7 @@ class _CatchCarouselState extends State<CatchCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: ResponsiveHelper.height(context, mobile: 240, tablet: 280),
+          height: ResponsiveHelper.height(context, mobile: 285, tablet: 500),
           child: PageView.builder(
             controller: _controller,
             itemCount: null, // Infinite scroll
@@ -152,14 +152,14 @@ class _CatchCarouselState extends State<CatchCarousel> {
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
                 margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.width(context, mobile: 4, tablet: 6)),
-                height: ResponsiveHelper.height(context, mobile: 8, tablet: 10),
+                height: ResponsiveHelper.height(context, mobile: 10, tablet: 12),
                 width: isActive 
-                    ? ResponsiveHelper.width(context, mobile: 24, tablet: 28)
-                    : ResponsiveHelper.width(context, mobile: 8, tablet: 10),
+                    ? ResponsiveHelper.width(context, mobile: 28, tablet: 32)
+                    : ResponsiveHelper.width(context, mobile: 10, tablet: 12),
                 decoration: BoxDecoration(
                   color: isActive 
                       ? Theme.of(context).primaryColor 
-                      : Colors.grey.withOpacity(0.4),
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 4, tablet: 5)),
                 ),
               );

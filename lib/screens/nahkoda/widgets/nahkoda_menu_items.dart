@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import '../../../routes/nahkoda_routes.dart';
 import 'floating_action_button_widget.dart';
@@ -18,8 +19,8 @@ class NahkodaMenuItems extends StatelessWidget {
       children: [
         // Emergency
         Positioned(
-          right: 28,
-          bottom: 150,
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 140, tablet: 180),
           child: ScaleTransition(
             scale: animation,
             child: FloatingActionButtonWidget(
@@ -34,8 +35,8 @@ class NahkodaMenuItems extends StatelessWidget {
         ),
         // Kehadiran Crew
         Positioned(
-          right: 28,
-          bottom: 220,
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 200, tablet: 264),
           child: ScaleTransition(
             scale: animation,
             child: FloatingActionButtonWidget(
@@ -48,26 +49,10 @@ class NahkodaMenuItems extends StatelessWidget {
             ),
           ),
         ),
-        // Info Trip
-        Positioned(
-          right: 28,
-          bottom: 360,
-          child: ScaleTransition(
-            scale: animation,
-            child: FloatingActionButtonWidget(
-              icon: Icons.info_outline,
-              color: Colors.orange,
-              onTap: () {
-                onMenuToggle();
-                NahkodaRoutes.navigateToTripInfo(context);
-              },
-            ),
-          ),
-        ),
         // Data Raw
         Positioned(
-          right: 28,
-          bottom: 290,
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 260, tablet: 348),
           child: ScaleTransition(
             scale: animation,
             child: FloatingActionButtonWidget(
@@ -76,6 +61,22 @@ class NahkodaMenuItems extends StatelessWidget {
               onTap: () {
                 onMenuToggle();
                 NahkodaRoutes.navigateToDataRaw(context);
+              },
+            ),
+          ),
+        ),
+        // Info Trip
+        Positioned(
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 320, tablet: 432),
+          child: ScaleTransition(
+            scale: animation,
+            child: FloatingActionButtonWidget(
+              icon: Icons.info_outline,
+              color: Colors.orange,
+              onTap: () {
+                onMenuToggle();
+                NahkodaRoutes.navigateToTripInfo(context);
               },
             ),
           ),

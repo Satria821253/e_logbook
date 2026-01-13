@@ -145,6 +145,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = ResponsiveHelper.isTablet(context);
+    
+    if (isTablet) {
+      // Tablet layout dengan SingleChildScrollView
+      return SingleChildScrollView(
+        child: Container(
+          color: const Color.fromARGB(255, 158, 157, 157),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: _buildTabletLayout(),
+          ),
+        ),
+      );
+    }
+    
+    // Mobile layout dengan SliverAppBar
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
@@ -279,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             SizedBox(
-              width: ResponsiveHelper.width(
+              width:ResponsiveHelper.width(
                 context,
                 mobile: 12,
                 tablet: 16,
@@ -346,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: ResponsiveHelper.padding(
         context,
-        mobile: 16,
+        mobile: 12,
         tablet: 20,
       ),
       decoration: BoxDecoration(
@@ -380,12 +396,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             width: ResponsiveHelper.width(
               context,
-              mobile: 50,
+              mobile: 40,
               tablet: 60,
             ),
             height: ResponsiveHelper.height(
               context,
-              mobile: 50,
+              mobile: 40,
               tablet: 60,
             ),
             decoration: BoxDecoration(
@@ -403,12 +419,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 lottieAsset,
                 width: ResponsiveHelper.width(
                   context,
-                  mobile: 50,
+                  mobile: 40,
                   tablet: 60,
                 ),
                 height: ResponsiveHelper.height(
                   context,
-                  mobile: 50,
+                  mobile: 40,
                   tablet: 60,
                 ),
                 fit: BoxFit.contain,
@@ -418,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.white,
                     size: ResponsiveHelper.width(
                       context,
-                      mobile: 30,
+                      mobile: 24,
                       tablet: 36,
                     ),
                   );
@@ -429,7 +445,7 @@ class _HomeScreenState extends State<HomeScreen> {
           SizedBox(
             height: ResponsiveHelper.height(
               context,
-              mobile: 12,
+              mobile: 8,
               tablet: 16,
             ),
           ),
@@ -1098,6 +1114,126 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTabletLayout() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Carousel - Full width
+        CatchCarousel(),
+        const SizedBox(height: 24),
+        
+        // Document Alert if exists
+        if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
+          _buildDocumentAlert(),
+        if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
+          const SizedBox(height: 24),
+        
+        // Statistics Title and Cards in white container
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Statistik Hari Ini',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildTabletStatisticsCards(),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32),
+        
+        // Weekly Activity Chart - Full width
+        _buildWeeklyActivity(),
+        const SizedBox(height: 32),
+        
+        // Recent Catches - Full width below chart
+        _buildRecentCatches(),
+        const SizedBox(height: 32),
+        
+        // Dummy Data Button
+        _buildDummyDataButton(),
+      ],
+    );
+  }
+  
+  Widget _buildTabletStatisticsCards() {
+    final provider = Provider.of<CatchProvider>(context);
+    final todayCatches = provider.todayCatches;
+    final totalWeight = todayCatches.fold<double>(
+      0,
+      (sum, catch_) => sum + catch_.weight,
+    );
+    final totalRevenue = todayCatches.fold<double>(
+      0,
+      (sum, catch_) => sum + catch_.totalRevenue,
+    );
+    final averageWeight = todayCatches.isEmpty
+        ? 0.0
+        : totalWeight / todayCatches.length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _buildModernStatCard(
+            lottieAsset: 'assets/animations/fish.json',
+            label: 'Tangkapan',
+            value: '${todayCatches.length}',
+            subtitle: 'ikan',
+            gradientColors: [Color(0xFF4A90E2), Color(0xFF357ABD)],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildModernStatCard(
+            lottieAsset: 'assets/animations/Weighing.json',
+            label: 'Total Berat',
+            value: totalWeight.toStringAsFixed(1),
+            subtitle: 'kg',
+            gradientColors: [Color(0xFF5CB85C), Color(0xFF449D44)],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildModernStatCard(
+            lottieAsset: 'assets/animations/money.json',
+            label: 'Pendapatan',
+            value: '${(totalRevenue / 1000).toStringAsFixed(0)}k',
+            subtitle: 'Rupiah',
+            gradientColors: [Color(0xFFF0AD4E), Color(0xFFEC971F)],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildModernStatCard(
+            lottieAsset: 'assets/animations/chart.json',
+            label: 'Rata-rata',
+            value: averageWeight.toStringAsFixed(1),
+            subtitle: 'kg/ikan',
+            gradientColors: [Color(0xFF9B59B6), Color(0xFF8E44AD)],
+          ),
+        ),
+      ],
     );
   }
 }

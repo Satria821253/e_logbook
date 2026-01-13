@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:e_logbook/utils/responsive_helper.dart';
 import 'dart:convert';
 
 class DocumentCompletionScreen extends StatefulWidget {
@@ -54,19 +53,21 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+    
     final uploadedCount = _documents.where((doc) => doc['isUploaded']).length;
     final completionPercentage = uploadedCount / _documents.length;
-    final isTablet = ResponsiveHelper.isTablet(context);
 
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+          gradient: LinearGradient(
+            colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+        ),
         child: SafeArea(
           child: Column(
             children: [
@@ -74,9 +75,9 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
               Padding(
                 padding: EdgeInsets.only(
                   left: 0,
-                  right: ResponsiveHelper.width(context, mobile: 20, tablet: 32),
-                  top: ResponsiveHelper.height(context, mobile: 10, tablet: 16),
-                  bottom: ResponsiveHelper.height(context, mobile: 20, tablet: 28),
+                  right: isTablet ? 32 : 20,
+                  top: isTablet ? 16 : 10,
+                  bottom: isTablet ? 28 : 20,
                 ),
                 child: Row(
                   children: [
@@ -85,163 +86,177 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                       icon: Icon(
                         Icons.arrow_back,
                         color: Colors.white,
-                        size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
+                        size: isTablet ? 28 : 24,
                       ),
                     ),
                     Expanded(
                       child: Text(
                         'Kelengkapan Dokumen',
                         style: TextStyle(
-                          fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
+                          fontSize: isTablet ? 24 : 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                         textAlign: TextAlign.left,
                       ),
                     ),
-                    SizedBox(width: ResponsiveHelper.width(context, mobile: 48, tablet: 56)),
+                    SizedBox(width: isTablet ? 56 : 48),
                   ],
                 ),
               ),
 
               // Status Summary
-              Container(
-                margin: ResponsiveHelper.paddingHorizontal(context, mobile: 20, tablet: 32),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.upload_file,
-                              color: Colors.white,
-                              size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
-                            ),
-                            SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 12)),
-                            Text(
-                              '$uploadedCount',
-                              style: TextStyle(
-                                fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              'Selesai',
-                              style: TextStyle(
-                                fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
-                                color: Colors.white.withOpacity(0.8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
-                    Expanded(
-                      child: Container(
-                        padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.pending_actions,
-                              color: Colors.white,
-                              size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
-                            ),
-                            SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 12)),
-                            Text(
-                              '${_documents.length - uploadedCount}',
-                              style: TextStyle(
-                                fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              'Tersisa',
-                              style: TextStyle(
-                                fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
-                                color: Colors.white.withOpacity(0.8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 28)),
-
-              // Progress Card
-              Container(
-                margin: ResponsiveHelper.paddingHorizontal(context, mobile: 20, tablet: 32),
-                padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 28),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 16, tablet: 20)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: ResponsiveHelper.width(context, mobile: 10, tablet: 14),
-                      offset: Offset(0, ResponsiveHelper.height(context, mobile: 4, tablet: 6)),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: isTablet ? 800 : double.infinity,
+                  ),
+                  child: Container(
+                    margin: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 20),
+                    child: Row(
                       children: [
-                        Text(
-                          'Progress Dokumen',
-                          style: TextStyle(
-                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),  
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.upload_file,
+                                  color: Colors.white,
+                                  size: isTablet ? 28 : 24,
+                                ),
+                                SizedBox(height: isTablet ? 12 : 8),
+                                Text(
+                                  '$uploadedCount',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 24 : 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Selesai',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 14 : 12,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        Text(
-                          '${(completionPercentage * 100).toInt()}%',
-                          style: TextStyle(
-                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1B4F9C),
+                        SizedBox(width: isTablet ? 16 : 12),
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.pending_actions,
+                                  color: Colors.white,
+                                  size: isTablet ? 28 : 24,
+                                ),
+                                SizedBox(height: isTablet ? 12 : 8),
+                                Text(
+                                  '${_documents.length - uploadedCount}',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 24 : 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Tersisa',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 14 : 12,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
-                    LinearProgressIndicator(
-                      value: completionPercentage,
-                      backgroundColor: Colors.grey[300],
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1B4F9C)),
-                      minHeight: ResponsiveHelper.height(context, mobile: 8, tablet: 10),
-                    ),
-                    SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 12)),
-                    Text(
-                      '$uploadedCount dari ${_documents.length} dokumen telah diunggah',
-                      style: TextStyle(
-                        fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
 
-              SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 28)),
+              SizedBox(height: isTablet ? 28 : 20),
+
+              // Progress Card
+              Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: isTablet ? 800 : double.infinity,
+                  ),
+                  child: Container(
+                    margin: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 20),
+                    padding: EdgeInsets.all(isTablet ? 28 : 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: isTablet ? 14 : 10,
+                          offset: Offset(0, isTablet ? 6 : 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Progress Dokumen',
+                              style: TextStyle(
+                                fontSize: isTablet ? 18 : 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              '${(completionPercentage * 100).toInt()}%',
+                              style: TextStyle(
+                                fontSize: isTablet ? 18 : 16,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1B4F9C),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: isTablet ? 16 : 12),
+                        LinearProgressIndicator(
+                          value: completionPercentage,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1B4F9C)),
+                          minHeight: isTablet ? 10 : 8,
+                        ),
+                        SizedBox(height: isTablet ? 12 : 8),
+                        Text(
+                          '$uploadedCount dari ${_documents.length} dokumen telah diunggah',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: isTablet ? 28 : 20),
 
               // Document List
               Expanded(
@@ -249,166 +264,182 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 32)),
-                      topRight: Radius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 32)),
+                      topLeft: Radius.circular(isTablet ? 32 : 24),
+                      topRight: Radius.circular(isTablet ? 32 : 24),
                     ),
                   ),
-                  child: ListView.builder(
-                    padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 32),
-                    itemCount: _documents.length,
-                    itemBuilder: (context, index) {
-                      final document = _documents[index];
-                      final isUploaded = document['isUploaded'];
-                      
-                      return Container(
-                        margin: EdgeInsets.only(bottom: ResponsiveHelper.height(context, mobile: 16, tablet: 20)),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
-                          border: Border.all(
-                            color: isUploaded ? Colors.green : Colors.grey.shade300,
-                            width: isUploaded ? 2 : 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: ResponsiveHelper.width(context, mobile: 8, tablet: 12),
-                              offset: Offset(0, ResponsiveHelper.height(context, mobile: 2, tablet: 3)),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
-                          child: Row(
-                            children: [
-                              // Document Icon
-                              Container(
-                                width: ResponsiveHelper.width(context, mobile: 48, tablet: 56),
-                                height: ResponsiveHelper.height(context, mobile: 48, tablet: 56),
-                                decoration: BoxDecoration(
-                                  color: isUploaded 
-                                      ? Colors.green.withOpacity(0.1)
-                                      : Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
-                                ),
-                                child: Icon(
-                                  isUploaded ? Icons.check_circle : Icons.description,
-                                  color: isUploaded ? Colors.green : Colors.grey[600],
-                                  size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
-                                ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: isTablet ? 800 : double.infinity,
+                      ),
+                      child: ListView.builder(
+                        padding: EdgeInsets.all(isTablet ? 32 : 20),
+                        itemCount: _documents.length,
+                        itemBuilder: (context, index) {
+                          final document = _documents[index];
+                          final isUploaded = document['isUploaded'];
+
+                          return Container(
+                            margin: EdgeInsets.only(bottom: isTablet ? 20 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                              border: Border.all(
+                                color: isUploaded ? Colors.green : Colors.grey.shade300,
+                                width: isUploaded ? 2 : 1,
                               ),
-                              SizedBox(width: ResponsiveHelper.width(context, mobile: 16, tablet: 20)),
-                              // Document Info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      document['name'],
-                                      style: TextStyle(
-                                        fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: isTablet ? 12 : 8,
+                                  offset: Offset(0, isTablet ? 3 : 2),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(isTablet ? 20 : 16),
+                              child: Row(
+                                children: [
+                                  // Document Icon
+                                  Container(
+                                    width: isTablet ? 56 : 48,
+                                    height: isTablet ? 56 : 48,
+                                    decoration: BoxDecoration(
+                                      color: isUploaded
+                                          ? Colors.green.withOpacity(0.1)
+                                          : Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(isTablet ? 28 : 24),
+                                    ),
+                                    child: Icon(
+                                      isUploaded ? Icons.check_circle : Icons.description,
+                                      color: isUploaded ? Colors.green : Colors.grey[600],
+                                      size: isTablet ? 28 : 24,
+                                    ),
+                                  ),
+                                  SizedBox(width: isTablet ? 20 : 16),
+                                  // Document Info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          document['name'],
+                                          style: TextStyle(
+                                            fontSize: isTablet ? 18 : 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        if (isUploaded && document['filePath'] != null) ...[
+                                          SizedBox(height: isTablet ? 10 : 8),
+                                          GestureDetector(
+                                            onTap: () => _viewDocument(document['filePath']),
+                                            child: Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: isTablet ? 10 : 8,
+                                                vertical: isTablet ? 6 : 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
+                                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    _getFileIcon(document['filePath']),
+                                                    size: isTablet ? 16 : 14,
+                                                    color: Colors.blue,
+                                                  ),
+                                                  SizedBox(width: isTablet ? 6 : 4),
+                                                  Flexible(
+                                                    child: Text(
+                                                      _truncateFileName(
+                                                        document['filePath'].split('/').last,
+                                                        isTablet ? 25 : 15,
+                                                      ),
+                                                      style: TextStyle(
+                                                        fontSize: isTablet ? 14 : 12,
+                                                        color: Colors.blue,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(width: isTablet ? 12 : 8),
+                                  // Upload/Replace Button
+                                  ElevatedButton(
+                                    onPressed: _uploadingDocuments.contains(index)
+                                        ? null
+                                        : () => _uploadDocument(index),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isUploaded ? Colors.orange : const Color(0xFF2563EB),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 20 : 16,
+                                        vertical: isTablet ? 12 : 8,
                                       ),
                                     ),
-                                    if (isUploaded && document['filePath'] != null) ...[
-                                      SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
-                                      GestureDetector(
-                                        onTap: () => _viewDocument(document['filePath']),
-                                        child: Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: ResponsiveHelper.width(context, mobile: 8, tablet: 10),
-                                            vertical: ResponsiveHelper.height(context, mobile: 4, tablet: 6),
+                                    child: _uploadingDocuments.contains(index)
+                                        ? SizedBox(
+                                            width: isTablet ? 18 : 16,
+                                            height: isTablet ? 18 : 16,
+                                            child: const CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : Text(
+                                            isUploaded ? 'Ganti' : 'Upload',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: isTablet ? 16 : 14,
+                                            ),
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
-                                            border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                _getFileIcon(document['filePath']),
-                                                size: ResponsiveHelper.width(context, mobile: 14, tablet: 16),
-                                                color: Colors.blue,
-                                              ),
-                                              SizedBox(width: ResponsiveHelper.width(context, mobile: 4, tablet: 6)),
-                                              Flexible(
-                                                child: Text(
-                                                  _truncateFileName(document['filePath'].split('/').last, isTablet ? 20 : 15),
-                                                  style: TextStyle(
-                                                    fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
-                                                    color: Colors.blue,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              // Upload/Replace Button
-                              ElevatedButton(
-                                onPressed: _uploadingDocuments.contains(index) ? null : () => _uploadDocument(index),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isUploaded ? Colors.orange : const Color.fromARGB(255, 39, 117, 235),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 8, tablet: 10)),
                                   ),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: ResponsiveHelper.width(context, mobile: 16, tablet: 20),
-                                    vertical: ResponsiveHelper.height(context, mobile: 8, tablet: 12),
-                                  ),
-                                ),
-                                child: _uploadingDocuments.contains(index)
-                                    ? SizedBox(
-                                        width: ResponsiveHelper.width(context, mobile: 16, tablet: 18),
-                                        height: ResponsiveHelper.height(context, mobile: 16, tablet: 18),
-                                        child: const CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(
-                                        isUploaded ? 'Ganti' : 'Upload',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
-                                        ),
-                                      ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
 
-              // Submit Buttons
+              // Submit Button
               Container(
                 color: Colors.white,
-                padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 32),
-                child: Column(
-                  children: [
-                    SizedBox(
+                padding: EdgeInsets.all(isTablet ? 32 : 20),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isTablet ? 800 : double.infinity,
+                    ),
+                    child: SizedBox(
                       width: double.infinity,
-                      height: ResponsiveHelper.height(context, mobile: 56, tablet: 64),
+                      height: isTablet ? 64 : 56,
                       child: ElevatedButton(
                         onPressed: () => _submitDocuments(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1B4F9C),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 12, tablet: 16)),
+                            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                           ),
                         ),
                         child: Row(
@@ -417,13 +448,13 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                             Icon(
                               Icons.arrow_forward,
                               color: Colors.white,
-                              size: ResponsiveHelper.width(context, mobile: 20, tablet: 24),
+                              size: isTablet ? 24 : 20,
                             ),
-                            SizedBox(width: ResponsiveHelper.width(context, mobile: 8, tablet: 12)),
+                            SizedBox(width: isTablet ? 12 : 8),
                             Text(
                               'Lanjut',
                               style: TextStyle(
-                                fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
+                                fontSize: isTablet ? 18 : 16,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -432,7 +463,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -461,52 +492,58 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
   }
 
   Widget _buildUploadOptions(int index) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+    
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isTablet ? 28 : 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 40,
+            width: isTablet ? 50 : 40,
             height: 4,
             decoration: BoxDecoration(
               color: Colors.grey[300],
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 20),
-          const Text(
+          SizedBox(height: isTablet ? 24 : 20),
+          Text(
             'Pilih Sumber File',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: isTablet ? 20 : 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: isTablet ? 24 : 20),
           
           _buildOptionTile(
             icon: Icons.camera_alt,
             title: 'Ambil Gambar',
             subtitle: 'Gunakan kamera untuk mengambil foto',
             onTap: () => _takePhoto(index),
+            isTablet: isTablet,
           ),
           
-          const SizedBox(height: 12),
+          SizedBox(height: isTablet ? 16 : 12),
           
           _buildOptionTile(
             icon: Icons.photo_library,
             title: 'Pilih Foto dari Galeri',
             subtitle: 'Pilih gambar dari galeri',
             onTap: () => _pickImage(index),
+            isTablet: isTablet,
           ),
           
-          const SizedBox(height: 12),
+          SizedBox(height: isTablet ? 16 : 12),
           
           _buildOptionTile(
             icon: Icons.folder,
             title: 'File Dokumen',
             subtitle: 'Pilih PDF, Word, atau file lainnya',
             onTap: () => _pickFile(index),
+            isTablet: isTablet,
           ),
         ],
       ),
@@ -518,57 +555,58 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    required bool isTablet,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isTablet ? 20 : 16),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
         ),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: isTablet ? 56 : 48,
+              height: isTablet ? 56 : 48,
               decoration: BoxDecoration(
                 color: const Color(0xFF1B4F9C).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(isTablet ? 28 : 24),
               ),
               child: Icon(
                 icon,
                 color: const Color(0xFF1B4F9C),
-                size: 24,
+                size: isTablet ? 28 : 24,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: isTablet ? 20 : 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: isTablet ? 18 : 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: isTablet ? 6 : 4),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: isTablet ? 15 : 14,
                       color: Colors.grey[600],
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_forward_ios,
-              size: 16,
+              size: isTablet ? 18 : 16,
               color: Colors.grey,
             ),
           ],
@@ -641,7 +679,6 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
         _documents[index]['filePath'] = filePath;
         _uploadingDocuments.remove(index);
       });
-      // Save documents immediately after upload
       _saveDocuments();
     });
   }
@@ -656,7 +693,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
     
     final extension = parts.last;
     final nameWithoutExt = parts.sublist(0, parts.length - 1).join('.');
-    final maxNameLength = maxLength - extension.length - 4; // 4 for "...."
+    final maxNameLength = maxLength - extension.length - 4;
     
     if (maxNameLength <= 0) {
       return '....$extension';
@@ -692,7 +729,6 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
     final uploadedCount = _documents.where((doc) => doc['isUploaded']).length;
     
     if (uploadedCount == _documents.length) {
-      // Documents complete, go to vessel info
       Navigator.pushNamed(context, '/vessel-info', arguments: {
         'source': 'document-completion',
         'documents': _documents,
@@ -706,5 +742,4 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
       );
     }
   }
-  
 }

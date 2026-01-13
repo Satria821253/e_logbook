@@ -122,6 +122,7 @@ flutter:
      - assets/animations/AI.json
      - assets/icons/icon_ai.png
      - assets/icons/iot.png
+     - assets/oipb.png
      
 
   #   - images/a_dot_ham.jpeg

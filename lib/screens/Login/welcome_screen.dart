@@ -1,4 +1,3 @@
-import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/screens/Login/login_screen.dart';
 import 'package:e_logbook/widgets/app_info.dart';
@@ -13,119 +12,215 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(
-          ResponsiveHelper.height(
-            context,
-            mobile: 200,
-            tablet: 250,
-            mobileLandscape: 100,
-            tabletLandscape: 120,
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+    final isLandscape = size.width > size.height;
+    
+    return Theme(
+      data: Theme.of(context).copyWith(
+        hoverColor: Colors.transparent,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+      ),
+      child: Scaffold(
+        body: _buildLayout(isTablet, isLandscape),
+      ),
+    );
+  }
+
+  Widget _buildLayout(bool isTablet, bool isLandscape) {
+    if (!isTablet && !isLandscape) {
+      return _buildMobilePortraitLayout();
+    } else {
+      return _buildHorizontalLayout(isTablet, isLandscape);
+    }
+  }
+
+  Widget _buildMobilePortraitLayout() {
+    return Column(
+      children: [
+        _buildHeader(false, false),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 24),
+                        _buildTitle(false, false),
+                        const SizedBox(height: 32),
+                        _buildLoginButton(false, false),
+                      ],
+                    ),
+                  ),
+                ),
+                _buildFooter(false, false),
+              ],
+            ),
           ),
         ),
-        child: AppBar(
-          automaticallyImplyLeading: false,
-          elevation: 0,
-          flexibleSpace: Image.asset(
-            "assets/bgipb.jpg",
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
+      ],
+    );
+  }
+
+  Widget _buildHorizontalLayout(bool isTablet, bool isLandscape) {
+    final imageFlex = isTablet ? 3 : 2;
+    final contentFlex = isTablet ? 2 : 3;
+    final maxWidth = isTablet ? 400.0 : 350.0;
+    final padding = isTablet ? 40.0 : 24.0;
+    
+    return Stack(
+      children: [
+        Row(
+          children: [
+            // Left side - Image
+            Expanded(
+              flex: imageFlex,
+              child: Container(
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage("assets/bgipb.jpg"),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Colors.black.withOpacity(0.4),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Right side - Spacer
+            Expanded(
+              flex: contentFlex,
+              child: const SizedBox(),
+            ),
+          ],
+        ),
+        // White content container overlaying
+        Positioned(
+          top: 0,
+          bottom: 0,
+          right: 0,
+          left: MediaQuery.of(context).size.width * (imageFlex / (imageFlex + contentFlex)) - 30,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+              ),
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: Padding(
+                  padding: EdgeInsets.all(padding),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildTitle(isTablet, isLandscape),
+                      SizedBox(height: isTablet ? 40 : 24),
+                      _buildLoginButton(isTablet, isLandscape),
+                      SizedBox(height: isTablet ? 60 : 32),
+                      _buildFooter(isTablet, isLandscape),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(bool isTablet, bool isLandscape) {
+    final height = isLandscape ? 120.0 : 300.0;
+    
+    return Container(
+      height: height,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage("assets/bgipb.jpg"),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withOpacity(0.3),
+              Colors.transparent,
+            ],
           ),
         ),
       ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: ResponsiveHelper.contentConstraints(context),
-            child: Padding(
-              padding: ResponsiveHelper.padding(
-                context,
-                mobile: 20,
-                tablet: 32,
-                mobileLandscape: 16,
-                tabletLandscape: 24,
-              ),
-              child: Column(
-                children: [
-                  /// SCROLL AREA
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: ResponsiveHelper.spacing(
-                              context,
-                              mobile: 20,
-                              tablet: 40,
-                              mobileLandscape: 12,
-                              tabletLandscape: 16,
-                            ),
-                          ),
+    );
+  }
 
-                          /// TITLE - font responsif
-                          Text(
-                            'Selamat Datang di E-Logbook',
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            style: TextStyle(
-                              fontSize: ResponsiveHelper.font(
-                                context,
-                                mobile: 26,
-                                tablet: 32,
-                                mobileLandscape: 20,
-                                tabletLandscape: 24,
-                              ),
-                              height: 1.2,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
+  Widget _buildTitle(bool isTablet, bool isLandscape) {
+    final fontSize = isTablet ? 32.0 : (isLandscape ? 24.0 : 26.0);
+    
+    return Text(
+      'Selamat Datang di\nE-Logbook',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: fontSize,
+        height: 1.2,
+        fontWeight: FontWeight.bold,
+        color: const Color(0xFF1B4F9C),
+      ),
+    );
+  }
 
-                          SizedBox(
-                            height: ResponsiveHelper.spacing(
-                              context,
-                              mobile: 30,
-                              tablet: 50,
-                              mobileLandscape: 16,
-                              tabletLandscape: 30,
-                            ),
-                          ),
-
-                          /// BUTTON MASUK - ukuran realistis di landscape
-                          _SecondaryButton(
-                            label: 'Masuk',
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const LoginScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // foter
-                  Padding(
-                    padding: EdgeInsets.only(
-                      bottom: ResponsiveHelper.isLandscape(context)
-                          ? ResponsiveHelper.spacing(
-                              context,
-                              mobile: 0,
-                              tablet: 0,
-                              mobileLandscape: 6,
-                              tabletLandscape: 9,
-                            )
-                          : 0,
-                    ),
-                    child: const AppInfo(version: "1.0", releaseYear: "2025"),
-                  ),
-                ],
+  Widget _buildLoginButton(bool isTablet, bool isLandscape) {
+    final height = isTablet ? 56.0 : (isLandscape ? 48.0 : 52.0);
+    final fontSize = isTablet ? 20.0 : (isLandscape ? 16.0 : 18.0);
+    final borderRadius = isTablet ? 16.0 : 14.0;
+    final buttonWidth = isTablet ? 280.0 : (isLandscape ? 240.0 : double.infinity);
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        },
+        child: Container(
+          width: buttonWidth,
+          height: height,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(borderRadius),
+          ),
+          child: Center(
+            child: Text(
+              'Masuk',
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                letterSpacing: 0.5,
               ),
             ),
           ),
@@ -133,74 +228,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       ),
     );
   }
-}
 
-class _SecondaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _SecondaryButton({
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(
-      ResponsiveHelper.width(
-        context,
-        mobile: 14,
-        tablet: 20,
-      ),
-    );
-
-    return SizedBox(
-      width: ResponsiveHelper.buttonWidth(context),
-      height: ResponsiveHelper.height(
-        context,
-        mobile: 52,
-        tablet: 56,
-        mobileLandscape: 38,
-        tabletLandscape: 40,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: borderRadius,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: borderRadius,
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: borderRadius, // ✅ INI YANG KURANG
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF1B4F9C),
-                  Color(0xFF2563EB),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: ResponsiveHelper.font(
-                    context,
-                    mobile: 18,
-                    tablet: 20,
-                    mobileLandscape: 16,
-                    tabletLandscape: 17,
-                  ),
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+  Widget _buildFooter(bool isTablet, bool isLandscape) {
+    final bottomPadding = isTablet ? 0.0 : (isLandscape ? 8.0 : 16.0);
+    
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: const AppInfo(version: "1.0", releaseYear: "2025"),
     );
   }
 }

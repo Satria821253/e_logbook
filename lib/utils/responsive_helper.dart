@@ -55,7 +55,7 @@ class ResponsiveHelper {
         return tablet ?? mobile * 1.4;
       case DeviceType.mobile:
         if (landscape && mobileLandscape != null) return mobileLandscape;
-        return mobile;
+        return mobile; // Gunakan ukuran mobile asli
     }
   }
 
@@ -77,11 +77,16 @@ class ResponsiveHelper {
       tabletLandscape: tabletLandscape,
     );
     
-    // Gunakan shortestSide untuk kalkulasi yang lebih stabil
+    // Gunakan MediaQuery.textScaleFactor untuk konsistensi
     final size = MediaQuery.sizeOf(context);
-    final baseSize = size.shortestSide;
-    final baseMobile = 375.0; // Base mobile width
-    return (val / baseMobile) * baseSize;
+    final textScale = MediaQuery.textScaleFactorOf(context);
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    
+    // Normalisasi berdasarkan density
+    final normalizedWidth = size.width / devicePixelRatio;
+    final scaleFactor = (normalizedWidth / 375.0).clamp(0.8, 1.5);
+    
+    return val * scaleFactor / textScale;
   }
 
   static double height(
@@ -99,11 +104,15 @@ class ResponsiveHelper {
       tabletLandscape: tabletLandscape,
     );
     
-    // Untuk height, gunakan longestSide di portrait, shortestSide di landscape
     final size = MediaQuery.sizeOf(context);
-    final baseSize = isPortrait(context) ? size.longestSide : size.shortestSide;
-    final baseHeight = isPortrait(context) ? 812.0 : 375.0; // iPhone X base
-    return (val / baseHeight) * baseSize;
+    final textScale = MediaQuery.textScaleFactorOf(context);
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    
+    // Normalisasi berdasarkan density
+    final normalizedHeight = size.height / devicePixelRatio;
+    final scaleFactor = (normalizedHeight / 812.0).clamp(0.8, 1.5);
+    
+    return val * scaleFactor / textScale;
   }
 
   static double font(
@@ -123,13 +132,15 @@ class ResponsiveHelper {
       tabletLandscape: tabletLandscape,
     );
     
-    // Font size berdasarkan shortestSide untuk konsistensi
+    // Font size dengan normalisasi device pixel ratio
     final size = MediaQuery.sizeOf(context);
-    final scaleFactor = isLandscape(context)
-    ? size.shortestSide / 420.0
-    : size.shortestSide / 375.0;
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final textScale = MediaQuery.textScaleFactorOf(context);
+    
+    final normalizedWidth = size.width / devicePixelRatio;
+    final scaleFactor = (normalizedWidth / 375.0).clamp(0.85, 1.3);
 
-    return (val * scaleFactor).clamp(min, max);
+    return (val * scaleFactor / textScale).clamp(min, max);
   }
 
   // ======================
@@ -237,18 +248,18 @@ class ResponsiveHelper {
       tabletLandscape: tabletLandscape ?? (tablet ?? mobile * 1.3) * 0.7,
     );
   }
+  
   static double buttonWidth(BuildContext context) {
-  final size = MediaQuery.sizeOf(context);
+    final size = MediaQuery.sizeOf(context);
 
-  if (isTablet(context)) {
+    if (isTablet(context)) {
+      return isLandscape(context)
+          ? size.shortestSide * 0.6
+          : size.shortestSide * 0.7;
+    }
+
     return isLandscape(context)
-        ? size.shortestSide * 0.6
-        : size.shortestSide * 0.7;
+        ? size.shortestSide * 0.8
+        : double.infinity;
   }
-
-  return isLandscape(context)
-      ? size.shortestSide * 0.8
-      : double.infinity;
-}
-
 }

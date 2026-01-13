@@ -2,17 +2,19 @@ import 'package:e_logbook/provider/catch_provider.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/zone_alert.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
-import 'package:e_logbook/services/auth_service.dart';
+import 'package:e_logbook/services/getAPi/auth_service.dart';
 import 'package:e_logbook/services/data_clear_service.dart';
 import 'package:e_logbook/services/offline_sync_service.dart';
 import 'package:e_logbook/screens/profile_screen.dart';
 import 'package:e_logbook/screens/tracking/pre_trip_fromscreen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
-import 'package:e_logbook/screens/document_completion_screen.dart'; 
+import 'package:e_logbook/screens/document_completion_screen.dart';
+import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -20,6 +22,9 @@ void main() async {
 
   try {
     AuthService.init();
+    
+    // Initialize Indonesian locale for date formatting
+    await initializeDateFormatting('id_ID', null);
 
     // Clear all dummy data on app start (fresh start every time)
     await DataClearService.clearAllDummyData();
@@ -84,6 +89,10 @@ class MyApp extends StatelessWidget {
                 return MaterialPageRoute(
                   builder: (_) => DocumentCompletionScreen(),
                   settings: RouteSettings(arguments: arguments),
+                );
+              case '/create-catch':
+                return MaterialPageRoute(
+                  builder: (_) => const CreateCatchScreen(),
                 );
               default:
                 return null;

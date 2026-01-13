@@ -65,29 +65,29 @@ class _DataRawScreenState extends State<DataRawScreen>
               ),
               tabs: [
                 Tab(
-                  height: ResponsiveHelper.height(context, mobile: 60, tablet: 72),
+                  height: ResponsiveHelper.height(context, mobile: 40, tablet: 72),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Image.asset('assets/icons/iot.png', 
-                        width: ResponsiveHelper.width(context, mobile: 18, tablet: 22), 
-                        height: ResponsiveHelper.height(context, mobile: 18, tablet: 22), 
+                        width: ResponsiveHelper.width(context, mobile: 14, tablet: 22), 
+                        height: ResponsiveHelper.height(context, mobile: 14, tablet: 22), 
                         color: Color(0xFF2563EB)),
-                      SizedBox(width: ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
+                      SizedBox(width: ResponsiveHelper.width(context, mobile: 4, tablet: 8)),
                       Text('Data IoT'),
                     ],
                   ),
                 ),
                 Tab(
-                  height: ResponsiveHelper.height(context, mobile: 60, tablet: 72),
+                  height: ResponsiveHelper.height(context, mobile: 40, tablet: 72),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Image.asset('assets/icons/icon_ai.png', 
-                        width: ResponsiveHelper.width(context, mobile: 18, tablet: 22), 
-                        height: ResponsiveHelper.height(context, mobile: 18, tablet: 22), 
+                        width: ResponsiveHelper.width(context, mobile: 14, tablet: 22), 
+                        height: ResponsiveHelper.height(context, mobile: 14, tablet: 22), 
                         color: Color(0xFF2563EB)),
-                      SizedBox(width: ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
+                      SizedBox(width: ResponsiveHelper.width(context, mobile: 4, tablet: 8)),
                       Text('Data AI'),
                     ],
                   ),

@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user_model.dart';
-import 'admin_notification_service.dart';
+import '../../models/user_model.dart';
+import '../admin_notification_service.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://192.168.1.22:8000/api';
+  static const String baseUrl = 'http://192.168.1.6:5000/api/';
   static late Dio _dio;
 
   static void init() {
@@ -37,62 +37,54 @@ class AuthService {
     await prefs.remove('auth_token');
   }
 
-  static Future<Map<String, dynamic>> register({
-    required String name,
-    required String email,
-    required String phone,
-    required String password,
-    bool rememberMe = false,
-  }) async {
-    try {
-      final response = await _dio.post('/register', data: {
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'password': password,
-        'remember_me': rememberMe,
-      });
-
-      if (response.statusCode == 201) {
-        return {
-          'success': true,
-          'message': response.data['message'] ?? 'Registrasi berhasil',
-        };
-      } else {
-        return {
-          'success': false,
-          'message': response.data['message'] ?? 'Registrasi gagal',
-        };
-      }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout) {
-        return {'success': false, 'message': 'Koneksi timeout'};
-      } else if (e.type == DioExceptionType.connectionError) {
-        return {'success': false, 'message': 'Tidak dapat terhubung ke server'};
-      } else {
-        return {'success': false, 'message': 'Terjadi kesalahan: ${e.message}'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Terjadi kesalahan tidak terduga'};
-    }
-  }
-
   static Future<Map<String, dynamic>> login({
     required String login,
     required String password,
   }) async {
     try {
-      final response = await _dio.post('/login', data: {
-        'login': login,
+      print('🔐 Login attempt for user: $login');
+      
+      final response = await _dio.post('/auth/login', data: {
+        'username': login,
         'password': password,
       });
 
-      if (response.statusCode == 200) {
+      print('📥 Login response status: ${response.statusCode}');
+      print('📥 Login response data: ${response.data}');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
         final token = response.data['token'];
-        final user = UserModel.fromJson(response.data['user']);
+        final userData = response.data['user'];
+        
+        print('✅ Login successful for user: ${userData['nama']}');
+        print('👤 User role from API: ${userData['role']}');
+        
+        // Map API response to UserModel
+        // Map role from API: 'nahkoda' -> 'Nahkoda', 'abk' -> 'ABK', 'admin' -> 'Nahkoda' (fallback)
+        String mappedRole = 'Nahkoda';
+        if (userData['role'] != null) {
+          final apiRole = userData['role'].toString().toLowerCase();
+          if (apiRole == 'abk') {
+            mappedRole = 'ABK';
+          } else if (apiRole == 'nahkoda') {
+            mappedRole = 'Nahkoda';
+          }
+        }
+        
+        print('🔄 Mapped role: $mappedRole');
+        
+        final user = UserModel(
+          id: userData['id'] ?? 0,
+          name: userData['nama'] ?? '',
+          email: userData['email'] ?? '',
+          phone: userData['telepon'] ?? '',
+          role: mappedRole,
+          profilePicture: null,
+        );
         
         if (token != null) {
           await saveToken(token);
+          print('💾 Token saved successfully');
         }
         
         // Initialize document requirements for nahkoda after successful login
@@ -116,13 +108,22 @@ class AuthService {
           'message': response.data['message'] ?? 'Login berhasil',
         };
       } else {
+        print('❌ Login failed: ${response.data['message']}');
         return {
           'success': false,
           'message': response.data['message'] ?? 'Login gagal',
         };
       }
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout) {
+      print('⚠️ DioException: ${e.type}');
+      print('⚠️ Response: ${e.response?.data}');
+      
+      if (e.response?.statusCode == 401) {
+        return {
+          'success': false,
+          'message': e.response?.data['message'] ?? 'Username atau password salah',
+        };
+      } else if (e.type == DioExceptionType.connectionTimeout) {
         return {'success': false, 'message': 'Koneksi timeout'};
       } else if (e.type == DioExceptionType.connectionError) {
         return {'success': false, 'message': 'Tidak dapat terhubung ke server'};
@@ -130,6 +131,7 @@ class AuthService {
         return {'success': false, 'message': 'Login gagal'};
       }
     } catch (e) {
+      print('❌ Unexpected error: $e');
       return {'success': false, 'message': 'Terjadi kesalahan tidak terduga'};
     }
   }
