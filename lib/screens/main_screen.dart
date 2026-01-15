@@ -5,11 +5,13 @@ import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_tracking_button.dart';
 import 'package:e_logbook/screens/crew/widgets/crew_floating_menu.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
+import 'package:e_logbook/services/getAPi/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:lottie/lottie.dart';
 import 'dart:io';
 import 'dart:math' show sin;
 import 'home_screen.dart';
@@ -38,6 +40,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _getCurrentLocation();
+    AuthService.addAccountStatusInterceptor(context);
   }
   
   Future<void> _getCurrentLocation() async {
@@ -261,7 +264,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildTabletLayout(UserProvider userProvider, NavigationProvider navProvider, int selectedIndex, bool isABK) {
     return Scaffold(
-      backgroundColor: Colors.grey[300],
+      backgroundColor: Colors.grey[100],
       body: Stack(
         children: [
           Row(
@@ -345,7 +348,6 @@ class _MainScreenState extends State<MainScreen> {
                             _buildActionItem(Icons.storage, 'Data Raw', () {}),
                             _buildActionItem(Icons.check_circle, 'Daftar Hadir', () {}),
                           ] else ...[
-                            _buildActionItem(Icons.my_location, 'Mulai Trip', () {}),
                             _buildActionItem(Icons.assignment_ind, 'Kehadiran Crew', () {}),
                             _buildActionItem(Icons.analytics, 'Data Raw', () {}),
                             _buildActionItem(Icons.info_outline, 'Info Trip', () {}),
@@ -353,11 +355,11 @@ class _MainScreenState extends State<MainScreen> {
                           
                           _buildActionItem(Icons.emergency, 'Emergency', () {}, isEmergency: true),
                           
-                          const SizedBox(height: 60),
+                          const Spacer(),
                           
                           // Logout Button
                           Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            margin: const EdgeInsets.only(left: 20, right: 20, bottom: 16),
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
@@ -424,7 +426,7 @@ class _MainScreenState extends State<MainScreen> {
             bottom: 0,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.grey[100],
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(20),
                 ),
@@ -441,79 +443,23 @@ class _MainScreenState extends State<MainScreen> {
           if (isABK) Positioned(
             right: 30,
             bottom: 50,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.elasticOut,
-              builder: (context, scaleValue, child) {
-                return Transform.scale(
-                  scale: scaleValue,
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 1500),
-                    curve: Curves.easeInOut,
-                    builder: (context, pulseValue, child) {
-                      return AnimatedBuilder(
-                        animation: AlwaysStoppedAnimation(pulseValue),
-                        builder: (context, child) {
-                          final pulse = (pulseValue * 2 * 3.14159);
-                          final shadowOpacity = 0.3 + (0.3 * (1 + sin(pulse)) / 2);
-                          final shadowBlur = 12.0 + (8.0 * (1 + sin(pulse)) / 2);
-                          
-                          return Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF2563EB).withOpacity(shadowOpacity),
-                                  blurRadius: shadowBlur,
-                                  spreadRadius: 2,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              shape: const CircleBorder(),
-                              child: InkWell(
-                                onTap: () {
-                                  Navigator.pushNamed(context, '/create-catch');
-                                },
-                                customBorder: const CircleBorder(),
-                                splashColor: Colors.white.withOpacity(0.3),
-                                highlightColor: Colors.white.withOpacity(0.1),
-                                child: Ink(
-                                  width: 70,
-                                  height: 70,
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.add,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                    onEnd: () {
-                      // Restart animation
-                      if (mounted) {
-                        setState(() {});
-                      }
-                    },
-                  ),
+            child: _buildAnimatedFAB(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CreateCatchScreen()),
                 );
               },
+              icon: Icons.add,
+            ),
+          ),
+          // FAB untuk Nahkoda
+          if (!isABK) Positioned(
+            right: 30,
+            bottom: 50,
+            child: _buildAnimatedFAB(
+              onTap: () => _handleTripPreparation(context),
+              isLottie: true,
             ),
           ),
         ],
@@ -684,14 +630,14 @@ class _MainScreenState extends State<MainScreen> {
     final isSelected = selectedIndex == index;
     
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(11),
           onTap: () => navProvider.setIndex(index),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               gradient: isSelected
                   ? const LinearGradient(
@@ -729,7 +675,7 @@ class _MainScreenState extends State<MainScreen> {
   
   Widget _buildActionItem(IconData icon, String label, VoidCallback onTap, {bool isEmergency = false}) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -738,7 +684,7 @@ class _MainScreenState extends State<MainScreen> {
           highlightColor: isEmergency ? Colors.red.withOpacity(0.1) : const Color(0xFF1B4F9C).withOpacity(0.05),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(11),
             ),
@@ -764,5 +710,226 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildAnimatedFAB({
+    required VoidCallback onTap,
+    IconData? icon,
+    bool isLottie = false,
+  }) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.elasticOut,
+      builder: (context, scaleValue, child) {
+        return Transform.scale(
+          scale: scaleValue,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 1500),
+            curve: Curves.easeInOut,
+            builder: (context, pulseValue, child) {
+              return AnimatedBuilder(
+                animation: AlwaysStoppedAnimation(pulseValue),
+                builder: (context, child) {
+                  final pulse = (pulseValue * 2 * 3.14159);
+                  final shadowOpacity = 0.3 + (0.3 * (1 + sin(pulse)) / 2);
+                  final shadowBlur = 12.0 + (8.0 * (1 + sin(pulse)) / 2);
+                  
+                  return Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1565C0).withOpacity(shadowOpacity),
+                          blurRadius: shadowBlur,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        onTap: onTap,
+                        customBorder: const CircleBorder(),
+                        splashColor: Colors.white.withOpacity(0.3),
+                        highlightColor: Colors.white.withOpacity(0.1),
+                        child: isLottie ? _buildLottieFAB() : _buildIconFAB(icon!),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+            onEnd: () {
+              if (mounted) {
+                setState(() {});
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildIconFAB(IconData icon) {
+    return Ink(
+      width: 70,
+      height: 70,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon,
+        color: Colors.white,
+        size: 28,
+      ),
+    );
+  }
+
+  Widget _buildLottieFAB() {
+    final now = DateTime.now();
+    final isNight = now.hour >= 18 || now.hour < 6;
+    final lottieAsset = isNight 
+        ? 'assets/animations/tripmalam.json'
+        : 'assets/animations/tripsiang.json';
+
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFF1565C0), width: 4),
+      ),
+      child: ClipOval(
+        child: Lottie.asset(
+          lottieAsset,
+          fit: BoxFit.cover,
+          repeat: true,
+          animate: true,
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(
+              Icons.directions_boat,
+              color: Color(0xFF1565C0),
+              size: 40,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _getTripData() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return {
+      'vesselName': 'KM Bahari Jaya',
+      'vesselNumber': 'KP-12345-JKT',
+      'crewCount': 8,
+      'departureHarbor': 'Pelabuhan Muara Baru',
+      'estimatedDuration': 5,
+      'departureDate': DateTime.now().add(const Duration(days: 2)),
+      'estimatedReturnDate': DateTime.now().add(const Duration(days: 7)),
+      'fuelSupply': 500.0,
+      'iceSupply': 1000.0,
+      'status': 'scheduled',
+    };
+  }
+
+  void _showNoTripDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.schedule,
+                color: Colors.orange,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Belum Ada Penjadwalan Trip',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Admin belum mengirim informasi trip. Silakan hubungi admin untuk penjadwalan trip atau cek Info Trip untuk melihat jadwal terbaru.',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigate to trip info
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B4F9C),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Cek Info Trip'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleTripPreparation(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final tripData = await _getTripData();
+      Navigator.pop(context);
+      
+      if (tripData == null) {
+        _showNoTripDialog(context);
+      } else {
+        Navigator.pushNamed(
+          context,
+          '/pre-trip-form',
+          arguments: tripData,
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      _showNoTripDialog(context);
+    }
   }
 }

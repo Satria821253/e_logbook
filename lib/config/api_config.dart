@@ -1,6 +1,6 @@
 class ApiConfig {
   // API Key perusahaan dengan akses penuh
-  static const String geminiApiKey = 'AIzaSyCJ_wLcrTEKXRjVKBlBUUV41kQiifDq4YM';
+  static const String geminiApiKey = 'AIzaSyBQYwhQ5W5Pfomlhrscb7DRbQFoFyIpmXk';
 
   // BASE URL untuk Gemini API
   static const String geminiBaseUrl =

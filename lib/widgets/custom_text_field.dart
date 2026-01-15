@@ -1,7 +1,7 @@
-import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class CustomTextField extends StatelessWidget {
+class CustomTextField extends StatefulWidget {
   final TextEditingController controller;
   final String label;
   final IconData icon;
@@ -10,8 +10,11 @@ class CustomTextField extends StatelessWidget {
   final int maxLines;
   final bool required;
   final bool readOnly;
+  final bool obscureText;
   final Function(String)? onChanged;
   final Widget? suffixWidget;
+  final String? Function(String?)? validator;
+  final VoidCallback? onTap;
 
   const CustomTextField({
     super.key,
@@ -23,75 +26,213 @@ class CustomTextField extends StatelessWidget {
     this.maxLines = 1,
     this.required = true,
     this.readOnly = false,
+    this.obscureText = false,
     this.onChanged,
     this.suffixWidget,
+    this.validator,
+    this.onTap,
   });
 
   @override
+  State<CustomTextField> createState() => _CustomTextFieldState();
+}
+
+class _CustomTextFieldState extends State<CustomTextField> {
+  bool _isFocused = false;
+  bool _hasError = false;
+  String? _errorText;
+
+  @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      readOnly: readOnly,
-      onChanged: onChanged,
-      style: TextStyle(
-        fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 16),
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(
-          icon, 
-          color: const Color(0xFF1B4F9C), 
-          size: ResponsiveHelper.width(context, mobile: 18, tablet: 22),
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+    final hasValue = widget.controller.text.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label with icon
+        Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(isTablet ? 8.w : 6.w),
+              decoration: BoxDecoration(
+                color: _hasError
+                    ? Colors.red.withOpacity(0.1)
+                    : _isFocused
+                        ? const Color(0xFF1B4F9C).withOpacity(0.1)
+                        : Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(isTablet ? 8.r : 6.r),
+              ),
+              child: Icon(
+                widget.icon,
+                color: _hasError
+                    ? Colors.red
+                    : _isFocused
+                        ? const Color(0xFF1B4F9C)
+                        : Colors.grey.shade600,
+                size: isTablet ? 20.sp : 18.sp,
+              ),
+            ),
+            SizedBox(width: isTablet ? 12.w : 10.w),
+            Text(
+              widget.label,
+              style: TextStyle(
+                fontSize: isTablet ? 16.sp : 14.sp,
+                fontWeight: FontWeight.w600,
+                color: _hasError
+                    ? Colors.red
+                    : _isFocused
+                        ? const Color(0xFF1B4F9C)
+                        : Colors.black87,
+              ),
+            ),
+            if (widget.required) ...[
+              SizedBox(width: isTablet ? 6.w : 4.w),
+              Text(
+                '*',
+                style: TextStyle(
+                  fontSize: isTablet ? 16.sp : 14.sp,
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ],
         ),
-        suffixIcon: suffixWidget,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(
-            ResponsiveHelper.width(context, mobile: 12, tablet: 16),
-          ),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(
-            ResponsiveHelper.width(context, mobile: 12, tablet: 16),
-          ),
-          borderSide: BorderSide(color: Colors.grey[200]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(
-            ResponsiveHelper.width(context, mobile: 12, tablet: 16),
-          ),
-          borderSide: BorderSide(
-            color: const Color(0xFF1B4F9C), 
-            width: ResponsiveHelper.width(context, mobile: 2, tablet: 3),
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(
-            ResponsiveHelper.width(context, mobile: 12, tablet: 16),
-          ),
-          borderSide: BorderSide(
-            color: Colors.red, 
-            width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
-          ),
-        ),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
-          vertical: ResponsiveHelper.height(context, mobile: 12, tablet: 16),
-        ),
-      ),
-      validator: required
-          ? (value) {
-              if (value == null || value.isEmpty) {
-                return 'Field ini harus diisi';
+        
+        SizedBox(height: isTablet ? 12.h : 10.h),
+        
+        // Text Field
+        Focus(
+          onFocusChange: (hasFocus) {
+            setState(() {
+              _isFocused = hasFocus;
+            });
+          },
+          child: TextFormField(
+            controller: widget.controller,
+            keyboardType: widget.keyboardType,
+            maxLines: widget.maxLines,
+            readOnly: widget.readOnly,
+            obscureText: widget.obscureText,
+            onChanged: (value) {
+              if (_hasError && value.isNotEmpty) {
+                setState(() {
+                  _hasError = false;
+                  _errorText = null;
+                });
               }
-              return null;
-            }
-          : null,
+              widget.onChanged?.call(value);
+            },
+            onTap: widget.onTap,
+            style: TextStyle(
+              fontSize: isTablet ? 16.sp : 14.sp,
+              color: Colors.black87,
+              fontWeight: hasValue ? FontWeight.w500 : FontWeight.normal,
+            ),
+            decoration: InputDecoration(
+              hintText: widget.hint,
+              hintStyle: TextStyle(
+                fontSize: isTablet ? 16.sp : 14.sp,
+                color: Colors.grey.shade600,
+              ),
+              suffixIcon: widget.suffixWidget,
+              filled: true,
+              fillColor: _hasError
+                  ? Colors.red.withOpacity(0.05)
+                  : _isFocused
+                      ? const Color(0xFF1B4F9C).withOpacity(0.05)
+                      : Colors.grey.shade50,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderSide: BorderSide(
+                  color: _hasError
+                      ? Colors.red.withOpacity(0.3)
+                      : hasValue
+                          ? const Color(0xFF1B4F9C).withOpacity(0.3)
+                          : Colors.grey.shade300,
+                  width: hasValue ? 1.5 : 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderSide: BorderSide(
+                  color: _hasError ? Colors.red : const Color(0xFF1B4F9C),
+                  width: 2,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderSide: const BorderSide(
+                  color: Colors.red,
+                  width: 2,
+                ),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderSide: const BorderSide(
+                  color: Colors.red,
+                  width: 2,
+                ),
+              ),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 16.w : 14.w,
+                vertical: isTablet ? 16.h : 14.h,
+              ),
+              errorStyle: const TextStyle(height: 0),
+            ),
+            validator: (value) {
+              String? error;
+              if (widget.validator != null) {
+                error = widget.validator!(value);
+              } else if (widget.required && (value == null || value.isEmpty)) {
+                error = '${widget.label} harus diisi';
+              }
+              
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  setState(() {
+                    _hasError = error != null;
+                    _errorText = error;
+                  });
+                }
+              });
+              
+              return error;
+            },
+          ),
+        ),
+        
+        // Error message
+        if (_hasError && _errorText != null) ...[
+          SizedBox(height: isTablet ? 8.h : 6.h),
+          Row(
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: Colors.red,
+                size: isTablet ? 16.sp : 14.sp,
+              ),
+              SizedBox(width: isTablet ? 8.w : 6.w),
+              Expanded(
+                child: Text(
+                  _errorText!,
+                  style: TextStyle(
+                    fontSize: isTablet ? 14.sp : 12.sp,
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

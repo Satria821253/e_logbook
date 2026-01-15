@@ -1,19 +1,21 @@
-import 'dart:io';
 import 'package:e_logbook/screens/Login/welcome_screen.dart';
+import 'package:e_logbook/screens/page/edit_profile_screen.dart';
+import 'package:e_logbook/screens/settings/settings_screen.dart';
 import 'package:e_logbook/screens/help_screen.dart';
-import 'package:image_picker/image_picker.dart';
 
 import 'package:e_logbook/screens/nahkoda/screens/crew_attendance_screen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
 import 'package:e_logbook/services/getAPi/auth_service.dart';
+import 'package:e_logbook/services/getAPi/profile_service.dart';
+import 'package:e_logbook/services/getAPi/vessel_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
 
 class ProfileScreen extends StatefulWidget {
@@ -24,224 +26,87 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _currentAddress = "Mengambil lokasi...";
-  bool _isLoadingLocation = true;
+  String? _vesselName;
+  String? _vesselNumber;
+  bool _isLoadingVessel = false;
 
   @override
   void initState() {
     super.initState();
-    _getLocation();
+    _loadProfile();
+    _loadVesselInfo();
   }
 
-  void safeSetState(VoidCallback fn) {
-    if (!mounted) return;
-    setState(fn);
-  }
-
-  Future<void> _getLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    // Cek apakah GPS hidup
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      safeSetState(() {
-        _currentAddress = "GPS mati";
-        _isLoadingLocation = false;
-      });
-      return;
-    }
-
-    // Cek permission
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        safeSetState(() {
-          _currentAddress = "Izin lokasi ditolak";
-          _isLoadingLocation = false;
-        });
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      safeSetState(() {
-        _currentAddress = "Izin lokasi permanen ditolak";
-        _isLoadingLocation = false;
-      });
-      return;
-    }
-
-    // Ambil posisi GPS
-    final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-
-    // Konversi ke alamat manusia
-    List<Placemark> placemarks = await placemarkFromCoordinates(
-      position.latitude,
-      position.longitude,
-    );
-
-    Placemark place = placemarks.first;
-
-    safeSetState(() {
-      _currentAddress =
-          "${place.subLocality}, ${place.locality}, ${place.administrativeArea}";
-      _isLoadingLocation = false;
-    });
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _loadProfile() async {
     try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: source,
-        imageQuality: 80,
-      );
-
-      if (image != null) {
-        if (!mounted) return;
-
-        // Update provider with new image path
-        await Provider.of<UserProvider>(
-          context,
-          listen: false,
-        ).updateProfilePicture(image.path);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Foto profil berhasil diperbarui'),
-            backgroundColor: Colors.green,
-          ),
-        );
+      final result = await ProfileService.getProfile();
+      if (result['success'] == true && result['user'] != null) {
+        if (mounted) {
+          Provider.of<UserProvider>(context, listen: false).setUser(result['user']);
+        }
       }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal mengambil gambar: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Clear corrupted cache if error occurs
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('user_data');
+      await prefs.remove('user_profile');
+      
+      // Try to reload profile again
+      try {
+        final result = await ProfileService.getProfile();
+        if (result['success'] == true && result['user'] != null && mounted) {
+          Provider.of<UserProvider>(context, listen: false).setUser(result['user']);
+        }
+      } catch (e) {
+        // Silent fail
+      }
     }
   }
 
-  void _showImageSourcePicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Ubah Foto Profil',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                _buildOptionTile(
-                  icon: Icons.camera_alt,
-                  title: 'Ambil Foto',
-                  subtitle: 'Gunakan kamera untuk mengambil foto',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickImage(ImageSource.camera);
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildOptionTile(
-                  icon: Icons.photo_library,
-                  title: 'Pilih dari Galeri',
-                  subtitle: 'Pilih gambar dari galeri',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickImage(ImageSource.gallery);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildOptionTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B4F9C).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Icon(icon, color: const Color(0xFF1B4F9C), size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-          ],
-        ),
-      ),
-    );
+  Future<void> _loadVesselInfo() async {
+    print('🚢 Starting to load vessel info...');
+    setState(() => _isLoadingVessel = true);
+    try {
+      final vesselData = await VesselService().getVesselData();
+      print('🚢 Vessel data received: $vesselData');
+      
+      if (mounted && vesselData['kapal'] != null) {
+        final kapalInfo = vesselData['kapal'];
+        print('🚢 Kapal info: $kapalInfo');
+        print('🚢 Nama kapal: ${kapalInfo['namaKapal']}');
+        print('🚢 Nomor registrasi: ${kapalInfo['nomorRegistrasi']}');
+        
+        setState(() {
+          _vesselName = kapalInfo['namaKapal'];
+          _vesselNumber = kapalInfo['nomorRegistrasi'];
+        });
+        
+        print('🚢 State updated - Name: $_vesselName, Number: $_vesselNumber');
+      } else {
+        print('🚢 No kapal data in response');
+      }
+    } catch (e) {
+      print('❌ Error loading vessel info: $e');
+      // If error contains "Tidak ada kapal", it means user has no vessel assigned
+      if (e.toString().contains('Tidak ada kapal')) {
+        print('ℹ️ User has no vessel assigned');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingVessel = false);
+        print('🚢 Loading finished');
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = ResponsiveHelper.isTablet(context);
+
+    if (isTablet) {
+      return _buildTabletLayout();
+    }
+
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -260,7 +125,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'Profil Saya',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        centerTitle: true, // ← ini akan bekerja dengan benar
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
 
       body: SingleChildScrollView(
@@ -268,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildProfileHeader(),
             SizedBox(
-              height: ResponsiveHelper.width(
+              height: ResponsiveHelper.height(
                 context,
                 mobile: 20,
                 tablet: 28,
@@ -289,19 +167,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildTabletLayout() {
+    return SingleChildScrollView(
+      child: Container(
+        color: Colors.grey[100],
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildProfileHeader(),
+                  const SizedBox(height: 28),
+                  _buildStatsCard(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            _buildMenuSection(),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfileHeader() {
+    final isTablet = ResponsiveHelper.isTablet(context);
+    
     return Container(
       width: double.infinity,
       padding: ResponsiveHelper.padding(
         context,
         mobile: 24,
-        tablet: 32,
+        tablet: 0,
       ),
-      color: Colors.transparent,
+      color: isTablet ? Colors.transparent : Colors.transparent,
       child: Column(
         children: [
           GestureDetector(
-            onTap: _showImageSourcePicker,
+            onTap: () {},
             child: Stack(
               children: [
                 Container(
@@ -314,11 +230,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.black87, width: 2.w),
+                    border: Border.all(
+                      color: Colors.black87,
+                      width: ResponsiveHelper.width(context, mobile: 2, tablet: 3),
+                    ),
                   ),
                   child: Consumer<UserProvider>(
                     builder: (context, userProvider, child) {
                       final user = userProvider.user;
+                      final photoUrl = user?.profilePicture;
+                      final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+                      
                       return CircleAvatar(
                         radius: ResponsiveHelper.width(
                           context,
@@ -326,10 +248,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           tablet: 60,
                         ),
                         backgroundColor: Colors.white,
-                        backgroundImage: user?.profilePicture != null
-                            ? FileImage(File(user!.profilePicture!))
+                        backgroundImage: hasPhoto
+                            ? (photoUrl.startsWith('file://')
+                                ? FileImage(File(photoUrl.replaceFirst('file://', '')))
+                                : NetworkImage(photoUrl)) as ImageProvider
                             : null,
-                        child: user?.profilePicture == null
+                        child: !hasPhoto
                             ? Icon(
                                 Icons.person_rounded,
                                 size: ResponsiveHelper.width(
@@ -342,22 +266,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             : null,
                       );
                     },
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1B4F9C),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 20,
-                    ),
                   ),
                 ),
               ],
@@ -373,110 +281,102 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Consumer<UserProvider>(
             builder: (context, userProvider, child) {
               final user = userProvider.user;
-              return Text(
-                user?.name ?? 'Budi Santoso',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: ResponsiveHelper.font(
-                    context,
-                    mobile: 24,
-                    tablet: 28,
-                  ),
-                  fontWeight: FontWeight.bold,
-                ),
-              );
-            },
-          ),
-          SizedBox(
-            height: ResponsiveHelper.height(
-              context,
-              mobile: 4,
-              tablet: 6,
-            ),
-          ),
-          Consumer<UserProvider>(
-            builder: (context, userProvider, child) {
-              final user = userProvider.user;
-              return Text(
-                user?.role ?? 'Nelayan Profesional',
-                style: TextStyle(
-                  color: Colors.black54,
-                  fontSize: ResponsiveHelper.font(
-                    context,
-                    mobile: 14,
-                    tablet: 16,
-                  ),
-                ),
-              );
-            },
-          ),
-          SizedBox(
-            height: ResponsiveHelper.height(
-              context,
-              mobile: 8,
-              tablet: 12,
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: ResponsiveHelper.width(
-                context,
-                mobile: 12,
-                tablet: 16,
-              ),
-              vertical: ResponsiveHelper.height(
-                context,
-                mobile: 6,
-                tablet: 8,
-              ),
-            ),
-            decoration: BoxDecoration(
-              color: Colors.black12,
-              borderRadius: BorderRadius.circular(
-                ResponsiveHelper.width(
-                  context,
-                  mobile: 20,
-                  tablet: 24,
-                ),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.location_on_rounded,
-                  color: Colors.black87,
-                  size: ResponsiveHelper.width(
-                    context,
-                    mobile: 16,
-                    tablet: 18,
-                  ),
-                ),
-                SizedBox(
-                  width: ResponsiveHelper.width(
-                    context,
-                    mobile: 4,
-                    tablet: 6,
-                  ),
-                ),
-                Flexible(
-                  child: Text(
-                    _isLoadingLocation
-                        ? "Mengambil lokasi..."
-                        : _currentAddress,
+              return Column(
+                children: [
+                  Text(
+                    user?.name ?? 'Budi Santoso',
                     style: TextStyle(
-                      color: Colors.black87,
+                      color: Colors.black,
                       fontSize: ResponsiveHelper.font(
                         context,
-                        mobile: 12,
-                        tablet: 14,
+                        mobile: 24,
+                        tablet: 28,
+                      ),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
+                      ).then((_) => _loadProfile());
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
+                        vertical: ResponsiveHelper.height(context, mobile: 6, tablet: 8),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(
+                          ResponsiveHelper.width(context, mobile: 16, tablet: 20),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.edit,
+                            size: ResponsiveHelper.width(context, mobile: 14, tablet: 16),
+                            color: Colors.black,
+                          ),
+                          SizedBox(width: ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
+                          Text(
+                            'Edit Profil',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 15),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
+                  SizedBox(
+                    height: ResponsiveHelper.height(
+                      context,
+                      mobile: 4,
+                      tablet: 6,
+                    ),
+                  ),
+                  Text(
+                    '@${user?.username ?? 'username'}',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: ResponsiveHelper.font(
+                        context,
+                        mobile: 14,
+                        tablet: 16,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: ResponsiveHelper.height(
+                      context,
+                      mobile: 4,
+                      tablet: 6,
+                    ),
+                  ),
+                  Text(
+                    user?.role ?? 'Nahkoda',
+                    style: TextStyle(
+                      color: const Color(0xFF1B4F9C),
+                      fontSize: ResponsiveHelper.font(
+                        context,
+                        mobile: 14,
+                        tablet: 16,
+                      ),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -484,12 +384,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatsCard() {
+    final isTablet = ResponsiveHelper.isTablet(context);
+    
     return Padding(
-      padding: ResponsiveHelper.paddingHorizontal(
-        context,
-        mobile: 16,
-        tablet: 32,
-      ),
+      padding: isTablet 
+          ? EdgeInsets.zero
+          : ResponsiveHelper.paddingHorizontal(
+              context,
+              mobile: 16,
+              tablet: 32,
+            ),
       child: Container(
         padding: ResponsiveHelper.padding(
           context,
@@ -497,11 +401,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           tablet: 28,
         ),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isTablet ? Colors.grey[50] : Colors.white,
           borderRadius: BorderRadius.circular(
             ResponsiveHelper.width(context, mobile: 16, tablet: 20),
           ),
-          boxShadow: [
+          boxShadow: isTablet ? [] : [
             BoxShadow(
               color: Colors.grey.withOpacity(0.1),
               blurRadius: ResponsiveHelper.width(
@@ -525,7 +429,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildStatItem('Total Trip', '145', Icons.directions_boat_rounded),
             Container(
-              width: 1.w,
+              width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
               height: ResponsiveHelper.height(
                 context,
                 mobile: 50,
@@ -535,7 +439,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             _buildStatItem('Total Tangkapan', '1.2 Ton', Icons.scale_rounded),
             Container(
-              width: 1.w,
+              width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
               height: ResponsiveHelper.height(
                 context,
                 mobile: 50,
@@ -549,6 +453,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
 
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
@@ -605,6 +510,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMenuSection() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -612,47 +520,148 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           const Text(
             'Menu',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
-          Consumer<UserProvider>(
-            builder: (context, userProvider, child) {
-              final user = userProvider.user;
-              if (user?.isNahkoda == true) {
-                return Column(
-                  children: [
-                    _buildMenuItem(
-                      icon: Icons.directions_boat_rounded,
-                      title: 'Informasi Kapal',
-                      subtitle: 'Kelola persediaan dan sertifikat',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => VesselInfoScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.people_outline_rounded,
-                      title: 'Kehadiran Crew',
-                      subtitle: 'Lihat kehadiran crew kapal',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CrewAttendanceScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+          isTablet ? _buildTabletMenuGrid() : _buildMobileMenuList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileMenuList() {
+    return Column(
+      children: [
+        Consumer<UserProvider>(
+          builder: (context, userProvider, child) {
+            final user = userProvider.user;
+            if (user?.isNahkoda == true) {
+              return Column(
+                children: [
+                  _buildMenuItem(
+                    icon: Icons.directions_boat_rounded,
+                    title: 'Informasi Kapal',
+                    subtitle: 'Kelola persediaan dan sertifikat',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VesselInfoScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Icons.people_outline_rounded,
+                    title: 'Kehadiran Crew',
+                    subtitle: 'Lihat kehadiran crew kapal',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CrewAttendanceScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.assessment_outlined,
+          title: 'Laporan',
+          subtitle: 'Lihat laporan statistik lengkap',
+          onTap: () {
+            Provider.of<NavigationProvider>(
+              context,
+              listen: false,
+            ).setIndex(1);
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.help_outline_rounded,
+          title: 'Bantuan',
+          subtitle: 'Pusat bantuan dan FAQ',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HelpScreen()),
+            );
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.info_outline_rounded,
+          title: 'Tentang Aplikasi',
+          subtitle: 'Versi 1.0',
+          onTap: () {},
+        ),
+        const SizedBox(height: 12),
+        _buildMenuItem(
+          icon: Icons.logout_rounded,
+          title: 'Keluar',
+          subtitle: 'Keluar dari aplikasi',
+          isLogout: true,
+          onTap: () => _handleLogout(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabletMenuGrid() {
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final user = userProvider.user;
+        final menuItems = <Widget>[];
+
+        if (user?.isNahkoda == true) {
+          menuItems.addAll([
+            _buildMenuItem(
+              icon: Icons.directions_boat_rounded,
+              title: 'Informasi Kapal',
+              subtitle: 'Kelola persediaan dan sertifikat',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VesselInfoScreen(),
+                  ),
                 );
-              } else if (user?.isABK == true) {
-                return SizedBox.shrink(); // Hapus menu untuk ABK
-              }
-              return SizedBox.shrink();
+              },
+            ),
+            _buildMenuItem(
+              icon: Icons.people_outline_rounded,
+              title: 'Kehadiran Crew',
+              subtitle: 'Lihat kehadiran crew kapal',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CrewAttendanceScreen(),
+                  ),
+                );
+              },
+            ),
+          ]);
+        }
+
+        menuItems.addAll([
+          _buildMenuItem(
+            icon: Icons.settings,
+            title: 'Pengaturan',
+            subtitle: 'Kelola pengaturan aplikasi',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
             },
           ),
           _buildMenuItem(
@@ -683,52 +692,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: 'Versi 1.0',
             onTap: () {},
           ),
-          const SizedBox(height: 12),
           _buildMenuItem(
             icon: Icons.logout_rounded,
             title: 'Keluar',
             subtitle: 'Keluar dari aplikasi',
             isLogout: true,
-            onTap: () async {
-              // Show confirmation dialog
-              final shouldLogout = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Konfirmasi Logout'),
-                  content: const Text('Apakah Anda yakin ingin keluar?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Batal'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Keluar'),
-                    ),
-                  ],
-                ),
-              );
+            onTap: () => _handleLogout(),
+          ),
+        ]);
 
-              if (shouldLogout == true) {
-                // Remove token
-                await AuthService.logout();
+        final isLandscape = ResponsiveHelper.isLandscape(context);
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: isLandscape ? 4.5 : 3.5,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: menuItems.length,
+          itemBuilder: (context, i) => menuItems[i],
+        );
+      },
+    );
+  }
 
-                // Navigate to welcome screen and clear all previous routes
-                if (mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const WelcomeScreen(),
-                    ),
-                    (route) => false,
-                  );
-                }
-              }
-            },
+  Future<void> _handleLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Keluar'),
           ),
         ],
       ),
     );
+
+    if (shouldLogout == true) {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const WelcomeScreen(),
+          ),
+          (route) => false,
+        );
+      }
+    }
   }
 
   Widget _buildMenuItem({

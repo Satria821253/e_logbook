@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'package:e_logbook/screens/main_screen.dart';
+import 'package:e_logbook/screens/document_completion_screen.dart';
 import 'package:e_logbook/widgets/button_radio.dart';
-import 'package:e_logbook/services/api_service.dart';
+import 'package:e_logbook/widgets/account_inactive_dialog.dart';
+import 'package:e_logbook/services/getAPi/auth_service.dart';
+import 'package:e_logbook/services/local_storage/user_activity_service.dart';
 import 'package:e_logbook/models/user_model.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:flutter/material.dart';
@@ -528,33 +531,39 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     
     try {
-      final result = await ApiService.login(
+      final result = await AuthService.login(
         login: _emailPhoneController.text,
         password: _passwordController.text,
       );
       
-      if (result['token'] != null) {
-        if (result['user'] != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('user_data', jsonEncode(result['user']));
-          
-          final userData = result['user'] as Map<String, dynamic>;
-          final userModel = UserModel(
-            id: userData['id'],
-            name: userData['name'],
-            email: userData['email'],
-            phone: userData['phone'],
-            role: userData['role'],
-            token: result['token'],
-          );
-          
-          if (mounted) {
-            final userProvider = Provider.of<UserProvider>(context, listen: false);
-            await userProvider.setUser(userModel);
-          }
-        }
+      if (result['success'] == true && result['user'] != null) {
+        final user = result['user'] as UserModel;
+        
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_data', jsonEncode({
+          'id': user.id,
+          'name': user.name,
+          'email': user.email,
+          'phone': user.phone,
+          'role': user.role,
+        }));
+        
+        // Save login activity
+        await UserActivityService.saveLastLogin(user.email);
+        await UserActivityService.saveActivity(
+          userId: user.email,
+          activityType: 'login',
+          description: 'User berhasil login',
+          data: {
+            'role': user.role,
+            'name': user.name,
+          },
+        );
         
         if (mounted) {
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+          await userProvider.setUser(user);
+          
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const MainScreen()),
@@ -562,12 +571,20 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? result['error'] ?? 'Login gagal'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          if (result['isAccountInactive'] == true) {
+            AccountInactiveDialog.show(
+              context,
+              result['message'] ?? 'Akun tidak aktif',
+              isFromLogin: true,
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? 'Login gagal'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       }
     } catch (e) {

@@ -13,42 +13,103 @@ class DocumentCompletionScreen extends StatefulWidget {
 
 class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
   final Set<int> _uploadingDocuments = {};
-  
-  final List<Map<String, dynamic>> _documents = [
-    {'name': 'Surat Izin Berlayar (SIB)', 'isUploaded': false, 'filePath': null},
-    {'name': 'Sertifikat Keselamatan Kapal', 'isUploaded': false, 'filePath': null},
-    {'name': 'Dokumen Crew List', 'isUploaded': false, 'filePath': null},
-    {'name': 'Manifest Muatan', 'isUploaded': false, 'filePath': null},
-    {'name': 'Surat Keterangan Kesehatan ABK', 'isUploaded': false, 'filePath': null},
-    {'name': 'Dokumen Asuransi Kapal', 'isUploaded': false, 'filePath': null},
-    {'name': 'Sertifikat Radio', 'isUploaded': false, 'filePath': null},
-    {'name': 'Log Book Mesin', 'isUploaded': false, 'filePath': null},
-  ];
+  List<Map<String, dynamic>> _documents = [];
 
   @override
   void initState() {
     super.initState();
-    _loadSavedDocuments();
+    _initializeDocuments();
+  }
+  
+  void _initializeDocuments() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      
+      String userRole = 'ABK';
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        userRole = userData['role']?.toString() ?? 'ABK';
+      }
+      
+      if (mounted) {
+        setState(() {
+          _documents = _getDocumentsByRole(userRole);
+        });
+      }
+      
+      _loadSavedDocuments();
+    } catch (e) {
+      print('Error initializing documents: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat dokumen: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  List<Map<String, dynamic>> _getDocumentsByRole(String role) {
+    // Hanya dokumen pribadi (dokumen kapal akan di screen terpisah)
+    return [
+      {'name': 'KTP', 'serverName': 'KTP', 'hasFile': false, 'filePath': null, 'nomorDokumen': null, 'tanggalBerlaku': null, 'keterangan': null, 'requireNumber': false, 'requireDate': false},
+      {'name': 'Buku Pelaut', 'serverName': 'Buku Pelaut', 'hasFile': false, 'filePath': null, 'nomorDokumen': null, 'tanggalBerlaku': null, 'keterangan': null, 'requireNumber': true, 'requireDate': true},
+      {'name': 'BST', 'serverName': 'BST', 'hasFile': false, 'filePath': null, 'nomorDokumen': null, 'tanggalBerlaku': null, 'keterangan': null, 'requireNumber': true, 'requireDate': true},
+      {'name': 'Surat Keterangan Sehat', 'serverName': 'Surat Keterangan Sehat', 'hasFile': false, 'filePath': null, 'nomorDokumen': null, 'tanggalBerlaku': null, 'keterangan': null, 'requireNumber': true, 'requireDate': true},
+      {'name': 'SKCK', 'serverName': 'SKCK', 'hasFile': false, 'filePath': null, 'nomorDokumen': null, 'tanggalBerlaku': null, 'keterangan': null, 'requireNumber': true, 'requireDate': true},
+      {'name': 'Pas Foto', 'serverName': 'Pas Foto', 'hasFile': false, 'filePath': null, 'nomorDokumen': null, 'tanggalBerlaku': null, 'keterangan': null, 'requireNumber': true, 'requireDate': true},
+    ];
   }
   
   void _loadSavedDocuments() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedDocuments = prefs.getStringList('documents') ?? [];
-    
-    if (savedDocuments.isNotEmpty) {
-      setState(() {
-        for (int i = 0; i < savedDocuments.length && i < _documents.length; i++) {
-          final docData = json.decode(savedDocuments[i]);
-          _documents[i] = docData;
-        }
-      });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Get current user info for user-specific storage
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+      
+      final userData = json.decode(userDataString);
+      final userId = userData['id']?.toString() ?? 'unknown';
+      final userRole = userData['role']?.toString() ?? 'unknown';
+      
+      final documentsKey = 'documents_${userId}_$userRole';
+      final savedDocuments = prefs.getStringList(documentsKey) ?? [];
+      
+      if (savedDocuments.isNotEmpty && mounted) {
+        setState(() {
+          for (int i = 0; i < savedDocuments.length && i < _documents.length; i++) {
+            final docData = json.decode(savedDocuments[i]);
+            _documents[i] = docData;
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading saved documents: $e');
     }
   }
   
   void _saveDocuments() async {
-    final prefs = await SharedPreferences.getInstance();
-    final documentsJson = _documents.map((doc) => json.encode(doc)).toList();
-    await prefs.setStringList('documents', documentsJson);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Get current user info for user-specific storage
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return;
+      
+      final userData = json.decode(userDataString);
+      final userId = userData['id']?.toString() ?? 'unknown';
+      final userRole = userData['role']?.toString() ?? 'unknown';
+      
+      final documentsKey = 'documents_${userId}_$userRole';
+      final documentsJson = _documents.map((doc) => json.encode(doc)).toList();
+      await prefs.setStringList(documentsKey, documentsJson);
+    } catch (e) {
+      print('Error saving documents: $e');
+    }
   }
 
   @override
@@ -56,8 +117,8 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
     final size = MediaQuery.of(context).size;
     final isTablet = size.shortestSide >= 600;
     
-    final uploadedCount = _documents.where((doc) => doc['isUploaded']).length;
-    final completionPercentage = uploadedCount / _documents.length;
+    final uploadedCount = _documents.where((doc) => doc['hasFile'] == true).length;
+    final completionPercentage = _documents.isEmpty ? 0.0 : uploadedCount / _documents.length;
 
     return Scaffold(
       body: Container(
@@ -91,7 +152,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        'Kelengkapan Dokumen',
+                        'Dokumen Pribadi',
                         style: TextStyle(
                           fontSize: isTablet ? 24 : 20,
                           fontWeight: FontWeight.bold,
@@ -278,7 +339,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                         itemCount: _documents.length,
                         itemBuilder: (context, index) {
                           final document = _documents[index];
-                          final isUploaded = document['isUploaded'];
+                          final hasFile = document['hasFile'] == true;
 
                           return Container(
                             margin: EdgeInsets.only(bottom: isTablet ? 20 : 16),
@@ -286,8 +347,8 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                               border: Border.all(
-                                color: isUploaded ? Colors.green : Colors.grey.shade300,
-                                width: isUploaded ? 2 : 1,
+                                color: hasFile ? Colors.blue.shade300 : Colors.grey.shade300,
+                                width: 1,
                               ),
                               boxShadow: [
                                 BoxShadow(
@@ -306,14 +367,14 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                                     width: isTablet ? 56 : 48,
                                     height: isTablet ? 56 : 48,
                                     decoration: BoxDecoration(
-                                      color: isUploaded
-                                          ? Colors.green.withOpacity(0.1)
+                                      color: hasFile
+                                          ? Colors.blue.withOpacity(0.1)
                                           : Colors.grey.shade100,
                                       borderRadius: BorderRadius.circular(isTablet ? 28 : 24),
                                     ),
                                     child: Icon(
-                                      isUploaded ? Icons.check_circle : Icons.description,
-                                      color: isUploaded ? Colors.green : Colors.grey[600],
+                                      hasFile ? Icons.insert_drive_file : Icons.description,
+                                      color: hasFile ? Colors.blue : Colors.grey[600],
                                       size: isTablet ? 28 : 24,
                                     ),
                                   ),
@@ -331,47 +392,19 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                                             color: Colors.black87,
                                           ),
                                         ),
-                                        if (isUploaded && document['filePath'] != null) ...[
-                                          SizedBox(height: isTablet ? 10 : 8),
-                                          GestureDetector(
-                                            onTap: () => _viewDocument(document['filePath']),
-                                            child: Container(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: isTablet ? 10 : 8,
-                                                vertical: isTablet ? 6 : 4,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
-                                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    _getFileIcon(document['filePath']),
-                                                    size: isTablet ? 16 : 14,
-                                                    color: Colors.blue,
-                                                  ),
-                                                  SizedBox(width: isTablet ? 6 : 4),
-                                                  Flexible(
-                                                    child: Text(
-                                                      _truncateFileName(
-                                                        document['filePath'].split('/').last,
-                                                        isTablet ? 25 : 15,
-                                                      ),
-                                                      style: TextStyle(
-                                                        fontSize: isTablet ? 14 : 12,
-                                                        color: Colors.blue,
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                        if (hasFile && document['filePath'] != null) ...[
+                                          SizedBox(height: isTablet ? 6 : 4),
+                                          Text(
+                                            _truncateFileName(
+                                              document['filePath'].split('/').last,
+                                              isTablet ? 30 : 20,
                                             ),
+                                            style: TextStyle(
+                                              fontSize: isTablet ? 13 : 11,
+                                              color: Colors.grey[600],
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ],
                                       ],
@@ -380,11 +413,9 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                                   SizedBox(width: isTablet ? 12 : 8),
                                   // Upload/Replace Button
                                   ElevatedButton(
-                                    onPressed: _uploadingDocuments.contains(index)
-                                        ? null
-                                        : () => _uploadDocument(index),
+                                    onPressed: () => _uploadDocument(index),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: isUploaded ? Colors.orange : const Color(0xFF2563EB),
+                                      backgroundColor: hasFile ? Colors.orange : const Color(0xFF2563EB),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                                       ),
@@ -393,23 +424,14 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
                                         vertical: isTablet ? 12 : 8,
                                       ),
                                     ),
-                                    child: _uploadingDocuments.contains(index)
-                                        ? SizedBox(
-                                            width: isTablet ? 18 : 16,
-                                            height: isTablet ? 18 : 16,
-                                            child: const CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : Text(
-                                            isUploaded ? 'Ganti' : 'Upload',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: isTablet ? 16 : 14,
-                                            ),
-                                          ),
+                                    child: Text(
+                                      hasFile ? 'Ganti' : 'Pilih',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: isTablet ? 16 : 14,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -494,6 +516,7 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
   Widget _buildUploadOptions(int index) {
     final size = MediaQuery.of(context).size;
     final isTablet = size.shortestSide >= 600;
+    final isKTP = _documents[index]['name'] == 'KTP';
     
     return Container(
       padding: EdgeInsets.all(isTablet ? 28 : 20),
@@ -510,12 +533,23 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
           ),
           SizedBox(height: isTablet ? 24 : 20),
           Text(
-            'Pilih Sumber File',
+            isKTP ? 'Pilih Foto KTP' : 'Pilih Sumber File',
             style: TextStyle(
               fontSize: isTablet ? 20 : 18,
               fontWeight: FontWeight.bold,
             ),
           ),
+          if (isKTP) ...[
+            SizedBox(height: isTablet ? 12 : 8),
+            Text(
+              'KTP hanya dapat diupload dalam bentuk foto/gambar',
+              style: TextStyle(
+                fontSize: isTablet ? 14 : 12,
+                color: Colors.orange,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
           SizedBox(height: isTablet ? 24 : 20),
           
           _buildOptionTile(
@@ -536,15 +570,17 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
             isTablet: isTablet,
           ),
           
-          SizedBox(height: isTablet ? 16 : 12),
-          
-          _buildOptionTile(
-            icon: Icons.folder,
-            title: 'File Dokumen',
-            subtitle: 'Pilih PDF, Word, atau file lainnya',
-            onTap: () => _pickFile(index),
-            isTablet: isTablet,
-          ),
+          if (!isKTP) ...[
+            SizedBox(height: isTablet ? 16 : 12),
+            
+            _buildOptionTile(
+              icon: Icons.folder,
+              title: 'File Dokumen',
+              subtitle: 'Pilih PDF atau gambar (JPG, PNG)',
+              onTap: () => _pickFile(index),
+              isTablet: isTablet,
+            ),
+          ],
         ],
       ),
     );
@@ -655,32 +691,103 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
     Navigator.pop(context);
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
         allowMultiple: false,
       );
       if (result?.files.single.path != null) {
-        _handleFileSelected(index, result!.files.single.path!);
+        final filePath = result!.files.single.path!;
+        final extension = filePath.split('.').last.toLowerCase();
+        
+        // Validasi ekstensi file
+        if (!['pdf', 'jpg', 'jpeg', 'png'].contains(extension)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('File tidak didukung! Hanya JPG, PNG, dan PDF yang diperbolehkan'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          return;
+        }
+        
+        _handleFileSelected(index, filePath);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error memilih file: $e')),
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Error memilih file: $e'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
-  void _handleFileSelected(int index, String filePath) {
-    setState(() {
-      _uploadingDocuments.add(index);
-    });
+  void _handleFileSelected(int index, String filePath) async {
+    // Validasi ekstensi file
+    final extension = filePath.split('.').last.toLowerCase();
+    if (!['pdf', 'jpg', 'jpeg', 'png'].contains(extension)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('File tidak didukung! Hanya JPG, PNG, dan PDF yang diperbolehkan'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    
+    // Show dialog to input document details
+    final details = await _showDocumentDetailsDialog(index);
+    
+    if (details == null) {
+      return;
+    }
 
-    Future.delayed(const Duration(seconds: 2), () {
+    // Simpan data lokal saja, belum upload ke API
+    if (mounted) {
       setState(() {
-        _documents[index]['isUploaded'] = true;
+        _documents[index]['hasFile'] = true;
         _documents[index]['filePath'] = filePath;
-        _uploadingDocuments.remove(index);
+        _documents[index]['nomorDokumen'] = details['nomorDokumen'];
+        _documents[index]['tanggalBerlaku'] = details['tanggalBerlaku'];
+        _documents[index]['keterangan'] = details['keterangan'];
       });
-      _saveDocuments();
-    });
+    }
+    _saveDocuments();
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Dokumen berhasil disimpan'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
   }
 
   String _truncateFileName(String fileName, int maxLength) {
@@ -725,21 +832,440 @@ class _DocumentCompletionScreenState extends State<DocumentCompletionScreen> {
     }
   }
 
-  void _submitDocuments() {
-    final uploadedCount = _documents.where((doc) => doc['isUploaded']).length;
+  void _submitDocuments() async {
+    final filledCount = _documents.where((doc) => doc['hasFile'] == true).length;
     
-    if (uploadedCount == _documents.length) {
-      Navigator.pushNamed(context, '/vessel-info', arguments: {
-        'source': 'document-completion',
-        'documents': _documents,
-      });
-    } else {
+    if (filledCount < _documents.length) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Silakan lengkapi semua dokumen terlebih dahulu'),
+          content: Text('Silakan lengkapi semua dokumen pribadi terlebih dahulu'),
           backgroundColor: Colors.orange,
         ),
       );
+      return;
     }
+
+    // Simpan status dokumen pribadi selesai
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('personal_documents_completed', true);
+    
+    // Navigasi ke halaman informasi kapal dengan data dokumen
+    if (mounted) {
+      Navigator.pushNamed(
+        context,
+        '/vessel-info',
+        arguments: {
+          'source': 'document-completion',
+          'documents': _documents,
+        },
+      );
+    }
+  }
+
+  Future<Map<String, String>?> _showDocumentDetailsDialog(int index) async {
+    final nomorController = TextEditingController();
+    final keteranganController = TextEditingController();
+    DateTime? selectedDate;
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+
+    return showDialog<Map<String, String>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+        ),
+        child: Container(
+          width: isTablet ? 500 : double.infinity,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(isTablet ? 24 : 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(isTablet ? 20 : 16),
+                    topRight: Radius.circular(isTablet ? 20 : 16),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(isTablet ? 12 : 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                      ),
+                      child: Icon(
+                        Icons.description,
+                        color: Colors.white,
+                        size: isTablet ? 28 : 24,
+                      ),
+                    ),
+                    SizedBox(width: isTablet ? 16 : 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Detail Dokumen',
+                            style: TextStyle(
+                              fontSize: isTablet ? 20 : 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: isTablet ? 6 : 4),
+                          Text(
+                            _documents[index]['name'],
+                            style: TextStyle(
+                              fontSize: isTablet ? 16 : 14,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Content
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(isTablet ? 24 : 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Nomor Dokumen Field
+                      _buildFormField(
+                        label: 'Nomor Dokumen',
+                        icon: Icons.numbers,
+                        isRequired: true,
+                        isTablet: isTablet,
+                        child: TextFormField(
+                          controller: nomorController,
+                          maxLength: 50,
+                          decoration: InputDecoration(
+                            hintText: 'Masukkan nomor dokumen (3-50 karakter)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                              borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: isTablet ? 16 : 14,
+                              vertical: isTablet ? 16 : 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(height: isTablet ? 24 : 20),
+                      
+                      // Tanggal Berlaku Field
+                      _buildFormField(
+                        label: 'Tanggal Berlaku',
+                        icon: Icons.calendar_today,
+                        isRequired: true,
+                        isTablet: isTablet,
+                        child: StatefulBuilder(
+                          builder: (context, setState) => InkWell(
+                            onTap: () async {
+                              final date = await _showCustomDatePicker(context);
+                              if (date != null) {
+                                setState(() => selectedDate = date);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isTablet ? 16 : 14,
+                                vertical: isTablet ? 16 : 14,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                                color: Colors.grey.shade50,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      selectedDate != null
+                                          ? _formatDate(selectedDate!)
+                                          : 'Pilih tanggal berlaku dokumen',
+                                      style: TextStyle(
+                                        fontSize: isTablet ? 16 : 14,
+                                        color: selectedDate != null
+                                            ? Colors.black87
+                                            : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.calendar_today,
+                                    color: const Color(0xFF1B4F9C),
+                                    size: isTablet ? 22 : 20,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(height: isTablet ? 24 : 20),
+                      
+                      // Keterangan Field
+                      _buildFormField(
+                        label: 'Keterangan',
+                        icon: Icons.note_alt,
+                        isRequired: false,
+                        isTablet: isTablet,
+                        child: TextFormField(
+                          controller: keteranganController,
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            hintText: 'Tambahkan keterangan (opsional)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                              borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: isTablet ? 16 : 14,
+                              vertical: isTablet ? 16 : 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Actions
+              Container(
+                padding: EdgeInsets.all(isTablet ? 24 : 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(isTablet ? 20 : 16),
+                    bottomRight: Radius.circular(isTablet ? 20 : 16),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 16 : 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                          ),
+                          side: const BorderSide(color: Colors.grey),
+                        ),
+                        child: Text(
+                          'Batal',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: isTablet ? 16 : 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (nomorController.text.isEmpty || nomorController.text.length < 3 || selectedDate == null) {
+                            String errorMessage = '';
+                            if (nomorController.text.isEmpty) {
+                              errorMessage = 'Nomor dokumen wajib diisi';
+                            } else if (nomorController.text.length < 3) {
+                              errorMessage = 'Nomor dokumen minimal 3 karakter';
+                            } else if (selectedDate == null) {
+                              errorMessage = 'Tanggal berlaku wajib dipilih';
+                            }
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(Icons.warning, color: Colors.white),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(errorMessage),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Colors.orange,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          Navigator.pop(context, {
+                            'nomorDokumen': nomorController.text,
+                            'tanggalBerlaku': '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}',
+                            'keterangan': keteranganController.text,
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B4F9C),
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 16 : 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.save,
+                              color: Colors.white,
+                              size: isTablet ? 20 : 18,
+                            ),
+                            SizedBox(width: isTablet ? 8 : 6),
+                            Text(
+                              'Simpan',
+                              style: TextStyle(
+                                fontSize: isTablet ? 16 : 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormField({
+    required String label,
+    required IconData icon,
+    required bool isRequired,
+    required bool isTablet,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(isTablet ? 8 : 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B4F9C).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
+              ),
+              child: Icon(
+                icon,
+                color: const Color(0xFF1B4F9C),
+                size: isTablet ? 20 : 18,
+              ),
+            ),
+            SizedBox(width: isTablet ? 12 : 10),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: isTablet ? 16 : 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            if (isRequired) ...[
+              SizedBox(width: isTablet ? 6 : 4),
+              Text(
+                '*',
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ],
+        ),
+        SizedBox(height: isTablet ? 12 : 10),
+        child,
+      ],
+    );
+  }
+
+  Future<DateTime?> _showCustomDatePicker(BuildContext context) async {
+    return showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 30)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2050, 12, 31),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1B4F9C),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }

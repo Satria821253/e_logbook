@@ -29,8 +29,10 @@ class UserProvider extends ChangeNotifier {
       _user = UserModel(
         id: _user!.id,
         name: _user!.name,
+        username: _user!.username,
         email: _user!.email,
         phone: _user!.phone,
+        address: _user!.address,
         token: _user!.token,
         role: _user!.role,
         vesselName: vesselName,
@@ -49,8 +51,10 @@ class UserProvider extends ChangeNotifier {
       _user = UserModel(
         id: _user!.id,
         name: _user!.name,
+        username: _user!.username,
         email: _user!.email,
         phone: _user!.phone,
+        address: _user!.address,
         token: _user!.token,
         role: role,
         vesselName: _user!.vesselName,
@@ -69,8 +73,10 @@ class UserProvider extends ChangeNotifier {
       _user = UserModel(
         id: _user!.id,
         name: _user!.name,
+        username: _user!.username,
         email: _user!.email,
         phone: _user!.phone,
+        address: _user!.address,
         token: _user!.token,
         role: _user!.role,
         vesselName: _user!.vesselName,
@@ -83,6 +89,11 @@ class UserProvider extends ChangeNotifier {
       await UserService.saveUser(_user!);
       notifyListeners();
     }
+  }
+
+  // Force refresh profile picture to clear cache
+  void refreshProfilePicture() {
+    notifyListeners();
   }
 
   Future<void> clearUser() async {

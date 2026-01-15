@@ -50,6 +50,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   final _harborController = TextEditingController();
   final _estimatedLengthController = TextEditingController();
   final _estimatedHeightController = TextEditingController();
+  final _unitWeightController = TextEditingController();
 
   // State variables
   final List<XFile> _catchImages = [];
@@ -107,6 +108,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     _harborController.dispose();
     _estimatedLengthController.dispose();
     _estimatedHeightController.dispose();
+    _unitWeightController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -391,37 +393,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   }
 
   // ==================== TRIP CALCULATIONS ====================
-  void _calculateTripDuration() {
-    final departure = DateTime(
-      _departureDate.year,
-      _departureDate.month,
-      _departureDate.day,
-      _departureTime.hour,
-      _departureTime.minute,
-    );
-
-    final arrival = DateTime(
-      _arrivalDate.year,
-      _arrivalDate.month,
-      _arrivalDate.day,
-      _arrivalTime.hour,
-      _arrivalTime.minute,
-    );
-
-    final duration = arrival.difference(departure);
-
-    // Validation removed as per request
-    // if (duration.isNegative) {
-    //   _showSnackBar('⚠️ Waktu kedatangan harus setelah keberangkatan!');
-    //   return;
-    // }
-
-    setState(() {
-      _calculatedHours = duration.inHours;
-      _calculatedMinutes = duration.inMinutes.remainder(60);
-    });
-  }
-
   void _calculateTax() {
     final weight = double.tryParse(_weightController.text) ?? 0;
     final tax = weight * 1000; // Contoh: Rp 1000 per kg
@@ -478,6 +449,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       _fishNameController.text = _detectionResult!.fishName;
       _selectedFishType = _detectionResult!.fishType;
       _selectedCondition = _detectionResult!.condition;
+      _unitWeightController.text = _detectionResult!.unitWeight.toStringAsFixed(2);
       _weightController.text = _detectionResult!.estimatedWeight.toString();
       _quantityController.text = _detectionResult!.estimatedQuantity.toString();
       _estimatedLengthController.text = _detectionResult!.estimatedLength
@@ -1479,26 +1451,56 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
         Row(
           children: [
             Expanded(
-              child: CustomTextField(
-                controller: TextEditingController(
-                  text: _detectionResult?.unitWeight.toStringAsFixed(2) ?? '',
-                ),
-                label: 'Berat Per Ikan (kg)',
-                icon: Icons.scale_rounded,
-                hint: '0.0',
-                keyboardType: TextInputType.number,
+              child: TextFormField(
+                controller: _unitWeightController,
                 readOnly: true,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Berat Per Ikan (kg)',
+                  hintText: '0.0',
+                  prefixIcon: Icon(Icons.scale_rounded, color: Color(0xFF1B4F9C)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
               ),
             ),
-            SizedBox(width: sp(12)),
+            SizedBox(width: sp(8)),
             Expanded(
-              child: CustomTextField(
+              child: TextFormField(
                 controller: _weightController,
-                label: 'Berat Total (kg)',
-                icon: Icons.scale_rounded,
-                hint: '0.0',
                 keyboardType: TextInputType.number,
                 onChanged: (_) => _calculateTax(),
+                decoration: InputDecoration(
+                  labelText: 'Berat Total (kg)',
+                  hintText: '0.0',
+                  prefixIcon: Icon(Icons.scale_rounded, color: Color(0xFF1B4F9C)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
               ),
             ),
           ],
@@ -1507,35 +1509,83 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
         Row(
           children: [
             Expanded(
-              child: CustomTextField(
+              child: TextFormField(
                 controller: _estimatedHeightController,
-                label: 'Tinggi Estimasi (cm)',
-                icon: Icons.height,
-                hint: '0.0',
-                keyboardType: TextInputType.number,
                 readOnly: true,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Tinggi Estimasi (cm)',
+                  hintText: '0.0',
+                  prefixIcon: Icon(Icons.height, color: Color(0xFF1B4F9C)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
               ),
             ),
-            SizedBox(width: sp(12)),
+            SizedBox(width: sp(8)),
             Expanded(
-              child: CustomTextField(
+              child: TextFormField(
                 controller: _estimatedLengthController,
-                label: 'Panjang Estimasi (cm)',
-                icon: Icons.straighten,
-                hint: '0.0',
-                keyboardType: TextInputType.number,
                 readOnly: true,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Panjang Estimasi (cm)',
+                  hintText: '0.0',
+                  prefixIcon: Icon(Icons.straighten, color: Color(0xFF1B4F9C)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(sp(12)),
+                    borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
               ),
             ),
           ],
         ),
         SizedBox(height: sp(16)),
-        CustomTextField(
+        TextFormField(
           controller: _quantityController,
-          label: 'Jumlah Ikan ',
-          icon: Icons.format_list_numbered,
-          hint: '0',
           keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Jumlah Ikan',
+            hintText: '0',
+            prefixIcon: Icon(Icons.format_list_numbered, color: Color(0xFF1B4F9C)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(sp(12)),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(sp(12)),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(sp(12)),
+              borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+          ),
         ),
       ],
     );

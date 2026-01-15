@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_logbook/screens/Login/welcome_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
+import 'package:e_logbook/screens/document_completion_screen.dart';
 import 'package:e_logbook/services/getAPi/auth_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/models/user_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

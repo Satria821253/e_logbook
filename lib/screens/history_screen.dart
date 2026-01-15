@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:e_logbook/provider/catch_provider.dart';
 import 'package:e_logbook/screens/crew/screens/catch_detail_screen.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -11,10 +12,16 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = ResponsiveHelper.isTablet(context);
+    
     // --- RESPONSIVE SCALE (SAMA seperti halaman lain) ---
     final width = MediaQuery.of(context).size.width;
     double fs(double size) => size * (width / 390); // font scale
     double sp(double value) => value * (width / 390); // spacing/padding scale
+
+    if (isTablet) {
+      return _buildTabletLayout(fs, sp);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -57,6 +64,124 @@ class HistoryScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Widget _buildTabletLayout(double Function(double) fs, double Function(double) sp) {
+    return Consumer<CatchProvider>(
+      builder: (context, catchProvider, child) {
+        return SingleChildScrollView(
+          child: Container(
+            color: Colors.grey[100],
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              children: [
+                // Summary Card wrapped in white container
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: _buildSummaryCard(catchProvider, fs, sp),
+                ),
+                const SizedBox(height: 28),
+
+                if (catchProvider.catches.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: _buildEmptyState(fs, sp),
+                  )
+                else
+                  ..._buildGroupedCatchesTablet(catchProvider.catches, fs, sp),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildGroupedCatchesTablet(
+    List<CatchModel> catches,
+    double Function(double) fs,
+    double Function(double) sp,
+  ) {
+    final grouped = <String, List<CatchModel>>{};
+
+    for (var c in catches) {
+      final dateKey = DateFormat('yyyy-MM-dd').format(c.departureDate);
+      grouped.putIfAbsent(dateKey, () => []).add(c);
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final widgets = <Widget>[];
+
+    grouped.forEach((dateKey, list) {
+      final date = DateTime.parse(dateKey);
+
+      String label;
+      if (_isSameDay(date, today)) {
+        label = "Hari Ini - ${DateFormat('dd MMM yyyy').format(date)}";
+      } else if (_isSameDay(date, yesterday)) {
+        label = "Kemarin - ${DateFormat('dd MMM yyyy').format(date)}";
+      } else {
+        label = DateFormat('dd MMM yyyy').format(date);
+      }
+
+      // Wrap each date section in white container
+      widgets.add(
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDateSection(label, fs, sp),
+              const SizedBox(height: 16),
+              ...list.map((c) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _historyItem(c, fs, sp),
+              )),
+            ],
+          ),
+        ),
+      );
+
+      widgets.add(const SizedBox(height: 20));
+    });
+
+    return widgets;
   }
 
   // ----------------------------------------------------------------
@@ -150,66 +275,72 @@ class HistoryScreen extends StatelessWidget {
     double Function(double) fs,
     double Function(double) sp,
   ) {
-    return Container(
-      padding: EdgeInsets.all(sp(20)),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-        ),
-        borderRadius: BorderRadius.circular(sp(16)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1B4F9C).withOpacity(0.3),
-            blurRadius: sp(15),
-            offset: Offset(0, sp(5)),
-          )
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            'Total Bulan Ini',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: fs(14),
+    return Builder(
+      builder: (context) {
+        final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+        
+        return Container(
+          padding: isTablet ? const EdgeInsets.all(24) : EdgeInsets.all(sp(20)),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
             ),
+            borderRadius: BorderRadius.circular(isTablet ? 16 : sp(16)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1B4F9C).withOpacity(0.3),
+                blurRadius: isTablet ? 12 : sp(15),
+                offset: Offset(0, isTablet ? 4 : sp(5)),
+              )
+            ],
           ),
-          SizedBox(height: sp(8)),
-          Text(
-            'Rp ${_formatMoney(provider.totalRevenueThisMonth)}',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: fs(32),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: sp(20)),
-
-          // row items
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          child: Column(
             children: [
-              _summaryItem(
-                'Total Tangkapan',
-                '${provider.totalWeightThisMonth.toStringAsFixed(1)} kg',
-                fs,
-                sp,
+              Text(
+                'Total Bulan Ini',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: isTablet ? 16 : fs(14),
+                ),
               ),
-              Container(
-                width: sp(1),
-                height: sp(35),
-                color: Colors.white30,
+              SizedBox(height: isTablet ? 12 : sp(8)),
+              Text(
+                'Rp ${_formatMoney(provider.totalRevenueThisMonth)}',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isTablet ? 36 : fs(32),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              _summaryItem(
-                'Total Trip',
-                '${provider.totalTripsThisMonth} Trip',
-                fs,
-                sp,
+              SizedBox(height: isTablet ? 24 : sp(20)),
+
+              // row items
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _summaryItem(
+                    'Total Tangkapan',
+                    '${provider.totalWeightThisMonth.toStringAsFixed(1)} kg',
+                    fs,
+                    sp,
+                  ),
+                  Container(
+                    width: isTablet ? 2 : sp(1),
+                    height: isTablet ? 40 : sp(35),
+                    color: Colors.white30,
+                  ),
+                  _summaryItem(
+                    'Total Trip',
+                    '${provider.totalTripsThisMonth} Trip',
+                    fs,
+                    sp,
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -219,25 +350,31 @@ class HistoryScreen extends StatelessWidget {
     double Function(double) fs,
     double Function(double) sp,
   ) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: fs(20),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: sp(4)),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: fs(12),
-          ),
-        ),
-      ],
+    return Builder(
+      builder: (context) {
+        final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+        
+        return Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isTablet ? 24 : fs(20),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: isTablet ? 6 : sp(4)),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: isTablet ? 14 : fs(12),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

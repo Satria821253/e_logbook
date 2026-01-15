@@ -19,8 +19,6 @@ class CustomSliverAppBar extends StatefulWidget {
 
 class _CustomSliverAppBarState extends State<CustomSliverAppBar>
     with TickerProviderStateMixin {
-  String _userName = "Nelayan IPB";
-  bool _isLoading = false;
   String _currentAddress = "Mendeteksi lokasi...";
   Position? _currentPosition;
 
@@ -652,12 +650,22 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isTablet = size.shortestSide >= 600;
+    final orientation = MediaQuery.of(context).orientation;
+    final isLandscape = orientation == Orientation.landscape;
     
-    // Fixed constants for responsive layout
-    final double expandedHeight = isTablet ? 250.0 : 230.0;
+    // Responsive constants based on orientation and screen size
+    final double screenWidth = size.width;
+    final double expandedHeight = isLandscape ? 120.0 : (screenWidth < 360 ? 210.0 : 230.0);
     const double toolbarHeight = 0.0;
-    final double horizontalPadding = isTablet ? 32.0 : 20.0;
+    final double horizontalPadding = screenWidth < 360 ? 16.0 : 20.0;
+    final double topPadding = isLandscape ? 10.0 : (screenWidth < 360 ? 30.0 : 35.0);
+    final double avatarRadius = screenWidth < 360 ? 24.0 : 28.0;
+    final double titleFontSize = screenWidth < 360 ? 20.0 : 22.0;
+    final double userNameFontSize = screenWidth < 360 ? 16.0 : 18.0;
+    final double searchBarHeight = screenWidth < 360 ? 36.0 : 38.0;
+    final double weatherButtonSize = screenWidth < 360 ? 50.0 : 56.0;
+    final double bottomPreferredSize = isLandscape ? 56.0 : (screenWidth < 360 ? 68.0 : 74.0);
+    final double bottomPadding = isLandscape ? 8.0 : (screenWidth < 360 ? 14.0 : 18.0);
 
     return SliverAppBar(
       pinned: true,
@@ -665,6 +673,7 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
       toolbarHeight: toolbarHeight,
       backgroundColor: Colors.transparent,
       elevation: 0,
+      forceElevated: false,
       flexibleSpace: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -673,13 +682,13 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
             end: Alignment.bottomRight,
           ),
         ),
-        child: FlexibleSpaceBar(
+          child: FlexibleSpaceBar(
           titlePadding: EdgeInsets.zero,
           expandedTitleScale: 1.0,
           background: Padding(
             padding: EdgeInsets.fromLTRB(
               horizontalPadding,
-              isTablet ? 50.0 : 25.0, // Top Safe Area + Spacing
+              topPadding,
               horizontalPadding,
               0,
             ),
@@ -690,10 +699,10 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       "E-Logbook",
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: titleFontSize,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -749,13 +758,18 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                       child: Consumer<UserProvider>(
                         builder: (context, userProvider, child) {
                           final user = userProvider.user;
+                          final photoUrl = user?.profilePicture;
+                          final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+                          
                           return CircleAvatar(
-                            radius: 28,
+                            radius: avatarRadius,
                             backgroundColor: Colors.white,
-                            backgroundImage: user?.profilePicture != null
-                                ? FileImage(File(user!.profilePicture!))
+                            backgroundImage: hasPhoto
+                                ? (photoUrl!.startsWith('file://')
+                                    ? FileImage(File(photoUrl.replaceFirst('file://', '')))
+                                    : NetworkImage('$photoUrl?t=${DateTime.now().millisecondsSinceEpoch}')) as ImageProvider
                                 : null,
-                            child: user?.profilePicture == null
+                            child: !hasPhoto
                                 ? const Icon(
                                     Icons.person,
                                     size: 32,
@@ -778,20 +792,19 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                           ),
                         ),
                         const SizedBox(height: 4),
-                        _isLoading
-                            ? const SizedBox(
-                                width: 100,
-                                height: 20,
-                                child: LinearProgressIndicator(),
-                              )
-                            : Text(
-                                _userName,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
+                        Consumer<UserProvider>(
+                          builder: (context, userProvider, child) {
+                            final user = userProvider.user;
+                            return Text(
+                              user?.name ?? 'Nelayan IPB',
+                              style: TextStyle(
+                                fontSize: userNameFontSize,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
+                            );
+                          },
+                        ),
                         const SizedBox(height: 2),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -871,99 +884,66 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
         ),
       ),
       bottom: PreferredSize(
-        preferredSize: Size.fromHeight(isTablet ? 70.0 : 60.0),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, isTablet ? 20 : 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: isTablet ? 48 : 44,
-                  constraints: BoxConstraints(
-                    maxWidth: size.width - horizontalPadding * 2 - (isTablet ? 66 : 58),
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+        preferredSize: Size.fromHeight(bottomPreferredSize),
+        child: Transform.translate(
+          offset: const Offset(0, 10), // Geser ke bawah 10px agar content bisa overlap
+          child: Container(
+            padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, bottomPadding),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: searchBarHeight,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: TextField(
+                      textAlignVertical: TextAlignVertical.center,
+                      decoration: InputDecoration(
+                        hintText: "Cari tangkapan...",
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14,
+                        ),
+                        prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 9),
                       ),
-                    ],
-                  ),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: "Cari tangkapan...",
-                      hintStyle: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                      ),
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              // Weather Button
-              InkWell(
-                onTap: _showWeatherDialog,
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  width: isTablet ? 48 : 44,
-                  height: isTablet ? 48 : 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                const SizedBox(width: 8),
+                // Weather Button
+                SizedBox(
+                  width: weatherButtonSize,
+                  height: weatherButtonSize,
+                  child: InkWell(
+                    onTap: _showWeatherDialog,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                    child: Container(
+                      clipBehavior: Clip.hardEdge,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    ],
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      _isLoadingWeather
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                      child: _isLoadingWeather
+                          ? const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
                             )
-                          : Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Lottie.asset(
-                                _getWeatherAnimation(),
-                                fit: BoxFit.contain,
-                              ),
+                          : Lottie.asset(
+                              _getWeatherAnimation(),
+                              fit: BoxFit.contain,
                             ),
-                      if (_lastWeatherUpdate != null)
-                        Positioned(
-                          right: 8,
-                          top: 8,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -1,18 +1,13 @@
 import 'package:e_logbook/widgets/catch_corousel.dart';
 import 'package:e_logbook/widgets/custom_silver_appbar.dart';
 import 'package:e_logbook/screens/document_completion_screen.dart';
-import 'package:e_logbook/services/admin_notification_service.dart';
-import 'package:e_logbook/services/data_clear_service.dart';
-import 'package:e_logbook/models/document_requirement_model.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../provider/catch_provider.dart';
-import '../provider/user_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,136 +17,37 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<DocumentRequirementModel> _documentRequirements = [];
-  bool _isLoadingDocuments = true;
+  bool _showDocumentAlert = false;
+  bool _showPendingBanner = false;
 
   @override
   void initState() {
     super.initState();
-    _loadDocumentRequirements();
+    _checkDocumentCompletion();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Refresh when returning to this screen
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadDocumentRequirements();
-    });
-  }
-
-  Future<void> _loadDocumentRequirements() async {
-    // Check if full process is completed
-    bool isFullyCompleted = await _checkFullCompletion();
-
-    if (isFullyCompleted) {
-      // Hide document alert if fully completed
+  Future<void> _checkDocumentCompletion() async {
+    final prefs = await SharedPreferences.getInstance();
+    final documentsCompleted = prefs.getBool('documents_completed') ?? false;
+    final documentsPending = prefs.getBool('documents_pending') ?? false;
+    
+    if (mounted) {
       setState(() {
-        _documentRequirements = [];
-        _isLoadingDocuments = false;
+        _showDocumentAlert = !documentsCompleted && !documentsPending;
+        _showPendingBanner = documentsPending;
       });
-      return;
     }
-
-    final user = Provider.of<UserProvider>(context, listen: false).user;
-    if (user != null) {
-      final requirements =
-          await AdminNotificationService.getDocumentRequirementsForUser(
-            user.email,
-          );
-      if (mounted) {
-        // Calculate real completion percentage
-        final completion = await _calculateCompletionPercentage();
-
-        // Only show popup if completion is less than 100%
-        if (completion < 1.0) {
-          final updatedRequirements = requirements.map((req) {
-            return DocumentRequirementModel(
-              id: req.id,
-              userId: req.userId,
-              userRole: req.userRole,
-              title: req.title,
-              description: req.description,
-              requiredDocuments: req.requiredDocuments,
-              createdAt: req.createdAt,
-              isUrgent: req.isUrgent,
-              isCompleted: false, // Always false since completion < 1.0
-              dueDate: req.dueDate,
-            );
-          }).toList();
-
-          setState(() {
-            _documentRequirements = updatedRequirements;
-            _isLoadingDocuments = false;
-          });
-        } else {
-          // Completion is 100%, hide popup
-          setState(() {
-            _documentRequirements = [];
-            _isLoadingDocuments = false;
-          });
-        }
-      }
-    }
-  }
-
-  Future<bool> _checkFullCompletion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isCompleted = prefs.getBool('full_process_completed') ?? false;
-    print('DEBUG: _checkFullCompletion = $isCompleted');
-    return isCompleted;
-  }
-
-  Future<double> _calculateCompletionPercentage() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    int completedFields = 0;
-    int totalFields = 5; // Documents (3 minimum) + Fuel + Ice + Certificates
-
-    // Check documents (count minimum 3 required documents)
-    final documentsJson = prefs.getStringList('documents') ?? [];
-    final documents = documentsJson.map((doc) => json.decode(doc)).toList();
-    final uploadedDocs = documents
-        .where((doc) => doc['isUploaded'] == true)
-        .length;
-
-    // Only count up to 3 documents maximum for completion
-    if (uploadedDocs >= 3) {
-      completedFields += 3; // Max 3 documents
-    } else {
-      completedFields += uploadedDocs; // Less than 3
-    }
-
-    // Check fuel
-    final fuel = prefs.getString('vessel_fuel') ?? '';
-    if (fuel.isNotEmpty) completedFields++;
-
-    // Check ice
-    final ice = prefs.getString('vessel_ice') ?? '';
-    if (ice.isNotEmpty) completedFields++;
-
-    // Check certificates
-    final certificates = prefs.getStringList('vessel_certificates') ?? [];
-    if (certificates.isNotEmpty) completedFields++;
-
-    final completion = (completedFields / totalFields).clamp(0.0, 1.0);
-    print('DEBUG: Completion = $completion ($completedFields/$totalFields)');
-    print(
-      'DEBUG: Documents = $uploadedDocs, Fuel = ${fuel.isNotEmpty}, Ice = ${ice.isNotEmpty}, Certificates = ${certificates.length}',
-    );
-
-    return completion;
   }
 
   @override
   Widget build(BuildContext context) {
     final isTablet = ResponsiveHelper.isTablet(context);
-    
+
     if (isTablet) {
       // Tablet layout dengan SingleChildScrollView
       return SingleChildScrollView(
         child: Container(
-          color: const Color.fromARGB(255, 158, 157, 157),
+          color: Colors.grey[100],
           child: Padding(
             padding: const EdgeInsets.all(32),
             child: _buildTabletLayout(),
@@ -159,23 +55,29 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
-    
-    // Mobile layout dengan SliverAppBar
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        CustomSliverAppBar(),
-        // Content
-        SliverToBoxAdapter(
-          child: Container(
-            color: Colors.grey[50],
-            child: Padding(
-              padding: ResponsiveHelper.padding(
-                context,
-                mobile: 20,
-                tablet: 32,
-              ),
-              child: Column(
+
+    // Mobile layout dengan CustomScrollView
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          CustomSliverAppBar(),
+          SliverToBoxAdapter(
+            child: Transform.translate(
+              offset: const Offset(0, -10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                padding: ResponsiveHelper.padding(
+                  context,
+                  mobile: 20,
+                  tablet: 32,
+                ),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Carousel
@@ -188,41 +90,72 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // Document Requirements Alert
-                  if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
-                    _buildDocumentAlert(),
-
-                  SizedBox(
-                    height: ResponsiveHelper.height(
-                      context,
-                      mobile: 24,
-                      tablet: 32,
-                    ),
-                  ),
-
-                  // Statistics Title
-                  Text(
-                    'Statistik Hari Ini',
-                    style: TextStyle(
-                      fontSize: ResponsiveHelper.font(
+                  // Document Alert
+                  if (_showDocumentAlert) _buildDocumentAlert(),
+                  if (_showDocumentAlert)
+                    SizedBox(
+                      height: ResponsiveHelper.height(
                         context,
-                        mobile: 20,
-                        tablet: 24,
+                        mobile: 16,
+                        tablet: 20,
                       ),
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
                     ),
-                  ),
-                  SizedBox(
-                    height: ResponsiveHelper.height(
-                      context,
-                      mobile: 16,
-                      tablet: 20,
+                  
+                  // Pending Banner
+                  if (_showPendingBanner) _buildPendingBanner(),
+                  if (_showPendingBanner)
+                    SizedBox(
+                      height: ResponsiveHelper.height(
+                        context,
+                        mobile: 16,
+                        tablet: 20,
+                      ),
                     ),
-                  ),
 
-                  // Statistics Cards
-                  _buildStatisticsCards(),
+                  // Statistics Container
+                  Container(
+                    padding: ResponsiveHelper.padding(
+                      context,
+                      mobile: 20,
+                      tablet: 24,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Statistik Hari Ini',
+                          style: TextStyle(
+                            fontSize: ResponsiveHelper.font(
+                              context,
+                              mobile: 20,
+                              tablet: 24,
+                            ),
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                        SizedBox(
+                          height: ResponsiveHelper.height(
+                            context,
+                            mobile: 16,
+                            tablet: 20,
+                          ),
+                        ),
+                        _buildStatisticsCards(),
+                      ],
+                    ),
+                  ),
 
                   SizedBox(
                     height: ResponsiveHelper.height(
@@ -243,8 +176,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // Recent Catches
-                  _buildRecentCatches(),
+                  // Recent Catches Container
+                  Container(
+                    padding: ResponsiveHelper.padding(
+                      context,
+                      mobile: 20,
+                      tablet: 24,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: _buildRecentCatches(),
+                  ),
 
                   SizedBox(
                     height: ResponsiveHelper.height(
@@ -253,16 +204,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       tablet: 28,
                     ),
                   ),
-
-                  // Dummy Data Setup Button (for testing)
-                  _buildDummyDataButton(),
                 ],
               ),
             ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
+      
   }
 
   Widget _buildStatisticsCards() {
@@ -295,11 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             SizedBox(
-              width:ResponsiveHelper.width(
-                context,
-                mobile: 12,
-                tablet: 16,
-              ),
+              width: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
             ),
             Expanded(
               child: _buildModernStatCard(
@@ -313,11 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         SizedBox(
-          height: ResponsiveHelper.height(
-            context,
-            mobile: 12,
-            tablet: 16,
-          ),
+          height: ResponsiveHelper.height(context, mobile: 12, tablet: 16),
         ),
         Row(
           children: [
@@ -331,18 +273,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             SizedBox(
-              width: ResponsiveHelper.width(
-                context,
-                mobile: 12,
-                tablet: 16,
-              ),
+              width: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
             ),
             Expanded(
               child: _buildModernStatCard(
                 lottieAsset: 'assets/animations/chart.json',
                 label: 'Rata-rata',
                 value: averageWeight.toStringAsFixed(1),
-                subtitle: 'kg/ikan', 
+                subtitle: 'kg/ikan',
                 gradientColors: [Color(0xFF9B59B6), Color(0xFF8E44AD)],
               ),
             ),
@@ -360,11 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required List<Color> gradientColors,
   }) {
     return Container(
-      padding: ResponsiveHelper.padding(
-        context,
-        mobile: 12,
-        tablet: 20,
-      ),
+      padding: ResponsiveHelper.padding(context, mobile: 12, tablet: 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: gradientColors,
@@ -377,11 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
         boxShadow: [
           BoxShadow(
             color: gradientColors[0].withOpacity(0.3),
-            blurRadius: ResponsiveHelper.width(
-              context,
-              mobile: 12,
-              tablet: 16,
-            ),
+            blurRadius: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
             offset: Offset(
               0,
               ResponsiveHelper.height(context, mobile: 6, tablet: 8),
@@ -394,34 +324,18 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Lottie Animation
           Container(
-            width: ResponsiveHelper.width(
-              context,
-              mobile: 40,
-              tablet: 60,
-            ),
-            height: ResponsiveHelper.height(
-              context,
-              mobile: 40,
-              tablet: 60,
-            ),
+            width: ResponsiveHelper.width(context, mobile: 40, tablet: 60),
+            height: ResponsiveHelper.height(context, mobile: 40, tablet: 60),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(
-                ResponsiveHelper.width(
-                  context,
-                  mobile: 12,
-                  tablet: 15,
-                ),
+                ResponsiveHelper.width(context, mobile: 12, tablet: 15),
               ),
             ),
             child: Center(
               child: Lottie.asset(
                 lottieAsset,
-                width: ResponsiveHelper.width(
-                  context,
-                  mobile: 40,
-                  tablet: 60,
-                ),
+                width: ResponsiveHelper.width(context, mobile: 40, tablet: 60),
                 height: ResponsiveHelper.height(
                   context,
                   mobile: 40,
@@ -443,30 +357,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           SizedBox(
-            height: ResponsiveHelper.height(
-              context,
-              mobile: 8,
-              tablet: 16,
-            ),
+            height: ResponsiveHelper.height(context, mobile: 8, tablet: 16),
           ),
           Text(
             label,
             style: TextStyle(
-              fontSize: ResponsiveHelper.font(
-                context,
-                mobile: 12,
-                tablet: 14,
-              ),
+              fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
               color: Colors.white.withOpacity(0.9),
               fontWeight: FontWeight.w500,
             ),
           ),
           SizedBox(
-            height: ResponsiveHelper.height(
-              context,
-              mobile: 4,
-              tablet: 6,
-            ),
+            height: ResponsiveHelper.height(context, mobile: 4, tablet: 6),
           ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -487,11 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               SizedBox(
-                width: ResponsiveHelper.width(
-                  context,
-                  mobile: 4,
-                  tablet: 6,
-                ),
+                width: ResponsiveHelper.width(context, mobile: 4, tablet: 6),
               ),
               Padding(
                 padding: EdgeInsets.only(
@@ -515,9 +413,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-        ],
-      ),
-    );
+        ]
+        ),
+      );
   }
 
   Widget _buildWeeklyActivity() {
@@ -848,27 +746,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDocumentAlert() {
-    final urgentRequirements = _documentRequirements
-        .where((req) => req.isUrgent)
-        .toList();
-    final hasUrgent = urgentRequirements.isNotEmpty;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: hasUrgent
-              ? [Colors.red.shade400, Colors.red.shade600]
-              : [const Color(0xFF1B4F9C), const Color(0xFF2563EB)],
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF6B6B), Color(0xFFEE5A6F)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: (hasUrgent ? Colors.red : const Color(0xFF1B4F9C))
-                .withOpacity(0.3),
+            color: Colors.red.withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -886,35 +776,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Icon(
-                  hasUrgent ? Icons.warning : Icons.description,
+                child: const Icon(
+                  Icons.warning,
                   color: Colors.white,
                   size: 20,
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      hasUrgent
-                          ? 'Dokumen Wajib Belum Lengkap!'
-                          : 'Kelengkapan Dokumen',
-                      style: const TextStyle(
+                      'Dokumen Pribadi Belum Lengkap!',
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
-                      hasUrgent
-                          ? 'Lengkapi dokumen sebelum memulai trip'
-                          : 'Ada dokumen yang perlu dilengkapi',
+                      'Lengkapi dokumen pribadi Anda',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -923,69 +809,31 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          // Progress for first requirement
-          if (_documentRequirements.isNotEmpty) ...[
-            FutureBuilder<double>(
-              future: _calculateCompletionPercentage(),
-              builder: (context, snapshot) {
-                final completion = snapshot.data ?? 0.0;
-                return Row(
-                  children: [
-                    Expanded(
-                      child: LinearProgressIndicator(
-                        value: completion,
-                        backgroundColor: Colors.white.withOpacity(0.3),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.white,
-                        ),
-                        minHeight: 6,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '${(completion * 100).toInt()}%',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-          // Action Button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                if (_documentRequirements.isNotEmpty) {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DocumentCompletionScreen(),
-                    ),
-                  );
-                  if (result == true) {
-                    _loadDocumentRequirements();
-                  }
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DocumentCompletionScreen(),
+                  ),
+                );
+                if (result == true || mounted) {
+                  _checkDocumentCompletion();
                 }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: hasUrgent
-                    ? Colors.red
-                    : const Color(0xFF1B4F9C),
+                foregroundColor: Colors.red,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: Text(
-                hasUrgent ? 'Lengkapi Sekarang' : 'Lihat Dokumen',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              child: const Text(
+                'Lengkapi Sekarang',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -993,120 +841,121 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  Widget _buildDummyDataButton() {
+  
+  Widget _buildPendingBanner() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFA726), Color(0xFFFB8C00)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Testing Mode',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.pending,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dokumen Sedang Diverifikasi',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Menunggu persetujuan admin',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final user = Provider.of<UserProvider>(
-                      context,
-                      listen: false,
-                    ).user;
-                    if (user == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'User tidak ditemukan, silakan login ulang',
-                          ),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
-
-                    try {
-                      await DataClearService.setupDummyData(
-                        user.email,
-                        user.role ?? 'crew',
-                      );
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Dummy data berhasil dibuat untuk ${user.role}',
-                            ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                        _loadDocumentRequirements();
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    }
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/document-status');
                   },
-                  icon: const Icon(Icons.add_circle, size: 18),
-                  label: const Text('Setup Data'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.orange,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text(
+                    'Lihat Status',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: ElevatedButton.icon(
+                child: OutlinedButton(
                   onPressed: () async {
-                    try {
-                      await DataClearService.clearAllDummyData();
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Data berhasil dihapus'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
-                        _loadDocumentRequirements();
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('documents_pending');
+                    if (mounted) {
+                      setState(() {
+                        _showPendingBanner = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Status pending dihapus. Anda bisa kirim ulang dokumen.'),
+                          backgroundColor: Colors.blue,
+                        ),
+                      );
                     }
                   },
-                  icon: const Icon(Icons.clear_all, size: 18),
-                  label: const Text('Clear Data'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                  style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white, width: 2),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text(
+                    'Reset',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -1124,13 +973,14 @@ class _HomeScreenState extends State<HomeScreen> {
         // Carousel - Full width
         CatchCarousel(),
         const SizedBox(height: 24),
-        
-        // Document Alert if exists
-        if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
-          _buildDocumentAlert(),
-        if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
-          const SizedBox(height: 24),
-        
+
+        // Document Alert - Admin sends from web, appears here automatically
+        // TODO: Uncomment when backend ready
+        // if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
+        //   _buildDocumentAlert(),
+        // if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
+        //   const SizedBox(height: 24),
+
         // Statistics Title and Cards in white container
         Container(
           padding: const EdgeInsets.all(24),
@@ -1162,21 +1012,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 32),
-        
+
         // Weekly Activity Chart - Full width
         _buildWeeklyActivity(),
         const SizedBox(height: 32),
-        
+
         // Recent Catches - Full width below chart
         _buildRecentCatches(),
-        const SizedBox(height: 32),
-        
-        // Dummy Data Button
-        _buildDummyDataButton(),
       ],
     );
   }
-  
+
   Widget _buildTabletStatisticsCards() {
     final provider = Provider.of<CatchProvider>(context);
     final todayCatches = provider.todayCatches;

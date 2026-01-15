@@ -11,12 +11,20 @@ class UserService {
   }
 
   static Future<UserModel?> getUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userData = prefs.getString(_userKey);
-    if (userData != null) {
-      return UserModel.fromJson(jsonDecode(userData));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userData = prefs.getString(_userKey);
+      if (userData != null) {
+        final json = jsonDecode(userData);
+        return UserModel.fromJson(json);
+      }
+      return null;
+    } catch (e) {
+      // Clear corrupted data
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userKey);
+      return null;
     }
-    return null;
   }
 
   static Future<void> updateVesselInfo({

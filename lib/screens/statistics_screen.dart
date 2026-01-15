@@ -16,6 +16,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = ResponsiveHelper.isTablet(context);
+
+    if (isTablet) {
+      return _buildTabletLayout();
+    }
+
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -60,6 +66,53 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildTabletLayout() {
+    return Consumer<CatchProvider>(
+      builder: (context, catchProvider, child) {
+        return SingleChildScrollView(
+          child: Container(
+            color: Colors.grey[100],
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPeriodSelector(),
+                      const SizedBox(height: 28),
+                      _buildSummaryCards(catchProvider),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 28),
+                _buildWeightChart(catchProvider),
+                const SizedBox(height: 28),
+                _buildRevenueChart(catchProvider),
+                const SizedBox(height: 28),
+                _buildFishTypeChart(catchProvider),
+                const SizedBox(height: 28),
+                _buildTripAnalysis(catchProvider),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

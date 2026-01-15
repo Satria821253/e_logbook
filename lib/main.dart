@@ -3,31 +3,39 @@ import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/zone_alert.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/services/getAPi/auth_service.dart';
-import 'package:e_logbook/services/data_clear_service.dart';
 import 'package:e_logbook/services/offline_sync_service.dart';
 import 'package:e_logbook/screens/profile_screen.dart';
 import 'package:e_logbook/screens/tracking/pre_trip_fromscreen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
 import 'package:e_logbook/screens/document_completion_screen.dart';
+import 'package:e_logbook/screens/document_status_screen.dart';
+import 'package:e_logbook/screens/vessel_selection_screen.dart';
 import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // Clear old corrupted photo URLs (one-time fix)
+    final prefs = await SharedPreferences.getInstance();
+    final userData = prefs.getString('user_data');
+    if (userData != null && userData.contains('api10-')) {
+      await prefs.remove('user_data');
+      await prefs.remove('user_profile');
+      debugPrint('🧹 Cleared corrupted cache');
+    }
+    
     AuthService.init();
     
     // Initialize Indonesian locale for date formatting
     await initializeDateFormatting('id_ID', null);
-
-    // Clear all dummy data on app start (fresh start every time)
-    await DataClearService.clearAllDummyData();
 
     // Start offline sync monitoring
     OfflineSyncService.startConnectivityMonitoring();
@@ -93,6 +101,14 @@ class MyApp extends StatelessWidget {
               case '/create-catch':
                 return MaterialPageRoute(
                   builder: (_) => const CreateCatchScreen(),
+                );
+              case '/document-status':
+                return MaterialPageRoute(
+                  builder: (_) => const DocumentStatusScreen(),
+                );
+              case '/vessel-selection':
+                return MaterialPageRoute(
+                  builder: (_) => const VesselSelectionScreen(),
                 );
               default:
                 return null;

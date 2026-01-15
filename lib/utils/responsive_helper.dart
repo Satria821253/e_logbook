@@ -69,24 +69,13 @@ class ResponsiveHelper {
     double? mobileLandscape,
     double? tabletLandscape,
   }) {
-    final val = value(
+    return value(
       context,
       mobile: mobile,
       tablet: tablet,
       mobileLandscape: mobileLandscape,
       tabletLandscape: tabletLandscape,
     );
-    
-    // Gunakan MediaQuery.textScaleFactor untuk konsistensi
-    final size = MediaQuery.sizeOf(context);
-    final textScale = MediaQuery.textScaleFactorOf(context);
-    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
-    
-    // Normalisasi berdasarkan density
-    final normalizedWidth = size.width / devicePixelRatio;
-    final scaleFactor = (normalizedWidth / 375.0).clamp(0.8, 1.5);
-    
-    return val * scaleFactor / textScale;
   }
 
   static double height(
@@ -96,23 +85,13 @@ class ResponsiveHelper {
     double? mobileLandscape,
     double? tabletLandscape,
   }) {
-    final val = value(
+    return value(
       context,
       mobile: mobile,
       tablet: tablet,
       mobileLandscape: mobileLandscape,
       tabletLandscape: tabletLandscape,
     );
-    
-    final size = MediaQuery.sizeOf(context);
-    final textScale = MediaQuery.textScaleFactorOf(context);
-    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
-    
-    // Normalisasi berdasarkan density
-    final normalizedHeight = size.height / devicePixelRatio;
-    final scaleFactor = (normalizedHeight / 812.0).clamp(0.8, 1.5);
-    
-    return val * scaleFactor / textScale;
   }
 
   static double font(
@@ -131,16 +110,7 @@ class ResponsiveHelper {
       mobileLandscape: mobileLandscape,
       tabletLandscape: tabletLandscape,
     );
-    
-    // Font size dengan normalisasi device pixel ratio
-    final size = MediaQuery.sizeOf(context);
-    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
-    final textScale = MediaQuery.textScaleFactorOf(context);
-    
-    final normalizedWidth = size.width / devicePixelRatio;
-    final scaleFactor = (normalizedWidth / 375.0).clamp(0.85, 1.3);
-
-    return (val * scaleFactor / textScale).clamp(min, max);
+    return val.clamp(min, max);
   }
 
   // ======================
@@ -254,8 +224,8 @@ class ResponsiveHelper {
 
     if (isTablet(context)) {
       return isLandscape(context)
-          ? size.shortestSide * 0.6
-          : size.shortestSide * 0.7;
+          ? size.shortestSide * 0.7
+          : size.shortestSide * 0.6;
     }
 
     return isLandscape(context)

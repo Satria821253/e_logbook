@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:e_logbook/screens/tracking/pre_tracking.dart';
 import 'package:e_logbook/screens/tracking/crew_edit_screen.dart';
 import 'package:e_logbook/provider/user_provider.dart';
+import 'package:e_logbook/widgets/custom_text_field.dart';
+import 'package:e_logbook/widgets/date_time_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-
 import 'package:lottie/lottie.dart';
 
 /// Screen untuk form lengkap sebelum memulai trip
@@ -342,8 +344,8 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                           SizedBox(height: sp(32)),
 
                           // ===== SECTION 1: DATA KAPAL =====
-                          _buildSectionHeader('1. Data Kapal', fs, sp),
-                          SizedBox(height: sp(12)),
+                          _buildSectionHeader('1. Data Kapal'),
+                          SizedBox(height: 12.h),
 
                           // Show vessel info if available
                           Consumer<UserProvider>(
@@ -489,38 +491,30 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             },
                           ),
 
-                          _buildTextField(
+                          CustomTextField(
                             controller: _vesselNameController,
                             label: 'Nama Kapal',
                             hint: 'Contoh: KM Bahari Jaya',
                             icon: Icons.directions_boat,
-                            validator: (value) =>
-                                value?.isEmpty ?? true ? 'Wajib diisi' : null,
-                            sp: sp,
-                            fs: fs,
                             readOnly: true,
                           ),
-                          SizedBox(height: sp(16)),
+                          SizedBox(height: 16.h),
 
-                          _buildTextField(
+                          CustomTextField(
                             controller: _vesselNumberController,
                             label: 'Nomor Registrasi Kapal',
                             hint: 'Contoh: KP-12345-JKT',
                             icon: Icons.tag,
-                            validator: (value) =>
-                                value?.isEmpty ?? true ? 'Wajib diisi' : null,
-                            sp: sp,
-                            fs: fs,
                             readOnly: true,
                           ),
 
-                          SizedBox(height: sp(24)),
+                          SizedBox(height: 24.h),
 
                           // ===== SECTION 2: DATA CREW =====
-                          _buildSectionHeader('2. Data Crew', fs, sp),
-                          SizedBox(height: sp(12)),
+                          _buildSectionHeader('2. Data Crew'),
+                          SizedBox(height: 12.h),
 
-                          _buildTextField(
+                          CustomTextField(
                             controller: _crewCountController,
                             label: 'Jumlah ABK',
                             hint: 'Contoh: 5',
@@ -529,14 +523,11 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             validator: (value) {
                               if (value?.isEmpty ?? true) return 'Wajib diisi';
                               final number = int.tryParse(value!);
-                              if (number == null || number < 1)
-                                return 'Minimal 1 ABK';
+                              if (number == null || number < 1) return 'Minimal 1 ABK';
                               return null;
                             },
-                            sp: sp,
-                            fs: fs,
                             readOnly: false,
-                            suffixIcon: IconButton(
+                            suffixWidget: IconButton(
                               icon: const Icon(
                                 Icons.edit,
                                 color: Color(0xFF1B4F9C),
@@ -634,12 +625,8 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                           SizedBox(height: sp(24)),
 
                           // ===== SECTION 3: PELABUHAN =====
-                          _buildSectionHeader(
-                            '3. Pelabuhan Keberangkatan',
-                            fs,
-                            sp,
-                          ),
-                          SizedBox(height: sp(12)),
+                          _buildSectionHeader('3. Pelabuhan Keberangkatan'),
+                          SizedBox(height: 12.h),
 
                           Container(
                             padding: EdgeInsets.all(sp(16)),
@@ -675,51 +662,42 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                           ),
                           SizedBox(height: sp(24)),
                           // ===== SECTION 4: ESTIMASI DURASI =====
-                          _buildSectionHeader(
-                            '4. Estimasi Durasi Trip',
-                            fs,
-                            sp,
-                          ),
-                          SizedBox(height: sp(12)),
+                          _buildSectionHeader('4. Estimasi Durasi Trip'),
+                          SizedBox(height: 12.h),
 
                           // Tanggal Keberangkatan (From Admin)
-                          _buildTextField(
-                            controller: TextEditingController(text: _departureDate != null ? '${_departureDate!.day}/${_departureDate!.month}/${_departureDate!.year}' : ''),
-                            label: 'Tanggal Keberangkatan',  
-                            hint: 'Dari data admin',
+                          DateTimePickerField(
+                            label: 'Tanggal Keberangkatan',
+                            value: _departureDate != null 
+                                ? '${_departureDate!.day}/${_departureDate!.month}/${_departureDate!.year}'
+                                : 'Belum ditentukan',
                             icon: Icons.calendar_today,
-                            validator: null,
-                            sp: sp,
-                            fs: fs,
-                            readOnly: true,
+                            onTap: () {},
+                            isRequired: true,
+                            hintText: 'Dari data admin',
                           ),
-                          SizedBox(height: sp(16)),
+                          SizedBox(height: 16.h),
 
                           // Waktu Keberangkatan 
-                          _buildTextField(
-                            controller: TextEditingController(text: _departureDate != null ? '${_departureDate!.hour.toString().padLeft(2, '0')}:${_departureDate!.minute.toString().padLeft(2, '0')}' : ''),
+                          DateTimePickerField(
                             label: 'Waktu Keberangkatan',
-                            hint: 'Dari data admin',
+                            value: _departureDate != null 
+                                ? '${_departureDate!.hour.toString().padLeft(2, '0')}:${_departureDate!.minute.toString().padLeft(2, '0')}'
+                                : 'Belum ditentukan',
                             icon: Icons.access_time,
-                            validator: null,
-                            sp: sp,
-                            fs: fs,
-                            readOnly: true,
+                            onTap: () {},
+                            isRequired: true,
+                            hintText: 'Dari data admin',
                           ),
-                          SizedBox(height: sp(16)),
+                          SizedBox(height: 16.h),
 
                           // Est Tanggal Kembali
-                          _buildTextField(
-                            controller: TextEditingController(text: _estimatedReturnDate != null ? '${_estimatedReturnDate!.day}/${_estimatedReturnDate!.month}/${_estimatedReturnDate!.year}' : ''),
+                          DateTimePickerField(
                             label: 'Est Tanggal Kembali',
-                            hint: 'Tap untuk pilih tanggal',
+                            value: _estimatedReturnDate != null 
+                                ? '${_estimatedReturnDate!.day}/${_estimatedReturnDate!.month}/${_estimatedReturnDate!.year}'
+                                : 'Pilih tanggal',
                             icon: Icons.event,
-                            validator: null,
-                            sp: sp,
-                            fs: fs,
-                            readOnly: true,
-                            suffixIcon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
-                            fillColor: Colors.white,
                             onTap: () async {
                               if (_departureDate == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -730,24 +708,12 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                 );
                                 return;
                               }
-                              final DateTime? picked = await showDatePicker(
+                              final DateTime? picked = await CustomDatePicker.show(
                                 context: context,
+                                title: 'Pilih Tanggal Kembali',
                                 initialDate: _estimatedReturnDate ?? _departureDate!.add(Duration(days: _estimatedDuration)),
                                 firstDate: _departureDate!,
                                 lastDate: DateTime.now().add(Duration(days: 365)),
-                                builder: (context, child) {
-                                  return Theme(
-                                    data: Theme.of(context).copyWith(
-                                      colorScheme: ColorScheme.light(
-                                        primary: Color(0xFF1B4F9C),
-                                        onPrimary: Colors.white,
-                                        surface: Colors.white,
-                                        onSurface: Colors.black,
-                                      ),
-                                    ),
-                                    child: child!,
-                                  );
-                                },
                               );
                               if (picked != null) {
                                 if (picked.isBefore(_departureDate!)) {
@@ -761,27 +727,26 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                 }
                                 setState(() {
                                   _estimatedReturnDate = picked;
-                                  // Normalize both dates to midnight for accurate day calculation
                                   final departureNormalized = DateTime(_departureDate!.year, _departureDate!.month, _departureDate!.day);
                                   final returnNormalized = DateTime(picked.year, picked.month, picked.day);
                                   final newDuration = returnNormalized.difference(departureNormalized).inDays;
                                   _estimatedDuration = newDuration > 0 ? newDuration : 1;
-                                  print('Debug: Departure normalized: $departureNormalized, Return normalized: $returnNormalized, Duration: $_estimatedDuration');
                                 });
                               }
                             },
+                            isRequired: true,
                           ),
-                          SizedBox(height: sp(16)),
+                          SizedBox(height: 16.h),
 
-                          _buildDurationSlider(sp, fs),
+                          _buildDurationSlider(),
 
-                          SizedBox(height: sp(24)),
+                          SizedBox(height: 24.h),
 
                           // ===== SECTION 5: PERSEDIAAN =====
-                          _buildSectionHeader('5. Persediaan', fs, sp),
-                          SizedBox(height: sp(12)),
+                          _buildSectionHeader('5. Persediaan'),
+                          SizedBox(height: 12.h),
 
-                          _buildTextField(
+                          CustomTextField(
                             controller: _fuelController,
                             label: 'Persediaan BBM (Liter)',
                             hint: 'Contoh: 500',
@@ -790,16 +755,13 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             validator: (value) {
                               if (value?.isEmpty ?? true) return 'Wajib diisi';
                               final number = double.tryParse(value!);
-                              if (number == null || number <= 0)
-                                return 'Harus lebih dari 0';
+                              if (number == null || number <= 0) return 'Harus lebih dari 0';
                               return null;
                             },
-                            sp: sp,
-                            fs: fs,
                           ),
-                          SizedBox(height: sp(16)),
+                          SizedBox(height: 16.h),
 
-                          _buildTextField(
+                          CustomTextField(
                             controller: _iceStorageController,
                             label: 'Kapasitas Penyimpanan Es (Kg)',
                             hint: 'Contoh: 1000',
@@ -808,12 +770,9 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             validator: (value) {
                               if (value?.isEmpty ?? true) return 'Wajib diisi';
                               final number = double.tryParse(value!);
-                              if (number == null || number <= 0)
-                                return 'Harus lebih dari 0';
+                              if (number == null || number <= 0) return 'Harus lebih dari 0';
                               return null;
                             },
-                            sp: sp,
-                            fs: fs,
                           ),
 
                           SizedBox(height: sp(24)),
@@ -1059,23 +1018,19 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
     );
   }
 
-  Widget _buildSectionHeader(
-    String title,
-    double Function(double) fs,
-    double Function(double) sp,
-  ) {
+  Widget _buildSectionHeader(String title) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: sp(12), vertical: sp(8)),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: const Color(0xFF1B4F9C).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(sp(8)),
+        borderRadius: BorderRadius.circular(8.r),
       ),
       child: Row(
         children: [
           Text(
             title,
             style: TextStyle(
-              fontSize: fs(16),
+              fontSize: 16.sp,
               fontWeight: FontWeight.bold,
               color: const Color(0xFF1B4F9C),
             ),
@@ -1085,64 +1040,14 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    required String? Function(String?)? validator,
-    required double Function(double) sp,
-    required double Function(double) fs,
-    TextInputType? keyboardType,
-    int? maxLines,
-    bool readOnly = false,
-    Widget? suffixIcon,
-    VoidCallback? onTap,
-    Color? fillColor,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      validator: validator,
-      maxLines: maxLines ?? 1,
-      readOnly: readOnly,
-      onTap: onTap,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon, color: const Color(0xFF1B4F9C)),
-        suffixIcon: suffixIcon,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(sp(12)),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(sp(12)),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(sp(12)),
-          borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
-        ),
-        filled: true,
-        fillColor: fillColor ?? (readOnly ? Colors.grey[100] : Colors.white),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: sp(16),
-          vertical: sp(14),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildDurationSlider(
-    double Function(double) sp,
-    double Function(double) fs,
-  ) {
+
+  Widget _buildDurationSlider() {
     return Container(
-      padding: EdgeInsets.all(sp(16)),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(sp(12)),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.grey[300]!),
       ),
       child: Column(
@@ -1153,21 +1058,21 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
             children: [
               Text(
                 'Perkiraan Lama Trip',
-                style: TextStyle(fontSize: fs(14), fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
               ),
               Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: sp(12),
-                  vertical: sp(6),
+                  horizontal: 12.w,
+                  vertical: 6.h,
                 ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1B4F9C),
-                  borderRadius: BorderRadius.circular(sp(20)),
+                  borderRadius: BorderRadius.circular(20.r),
                 ),
                 child: Text(
                   '$_estimatedDuration Hari',
                   style: TextStyle(
-                    fontSize: fs(14),
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -1189,11 +1094,11 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
             children: [
               Text(
                 '1 hari',
-                style: TextStyle(fontSize: fs(12), color: Colors.grey[600]),
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
               ),
               Text(
                 '30 hari',
-                style: TextStyle(fontSize: fs(12), color: Colors.grey[600]),
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
               ),
             ],
           ),
