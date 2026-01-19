@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../provider/user_provider.dart';
 import '../../services/getAPi/profile_service.dart';
-import '../../services/local_storage/local_profile_service.dart';
 import 'edit_name_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -43,60 +42,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!mounted) return;
       setState(() => _isLoading = true);
 
-      // 1. Save locally first
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final currentUser = userProvider.user;
-      final localPath = await LocalProfileService.saveProfilePictureLocally(
-        image.path,
-        userId: currentUser?.id.toString(),
-        role: currentUser?.role,
-      );
-      
-      if (localPath != null) {
-        // 2. Update UI immediately with local file
-        if (currentUser != null) {
-          userProvider.setUser(currentUser.copyWith(profilePicture: 'file://$localPath'));
-          // Force refresh to clear any cached images
-          userProvider.refreshProfilePicture();
-        }
+      try {
+        final result = await ProfileService.updateProfile(photoPath: image.path);
         
-        // 3. Try to upload to API in background
-        try {
-          print('📸 Starting photo upload to API...');
-          final result = await ProfileService.updateProfile(photoPath: image.path);
-          print('📸 Photo upload result: $result');
+        if (result['success'] == true) {
+          await _loadProfile();
           
-          if (result['success'] == true) {
-            print('✅ Photo uploaded successfully, reloading profile...');
-            // Reload from server to get API URL
-            await _loadProfile();
-            
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Foto profil berhasil diperbarui'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else {
-            print('❌ Photo upload failed: ${result['message']}');
-          }
-        } catch (e) {
-          print('❌ Photo upload exception: $e');
-          // API failed but local save succeeded
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Foto tersimpan lokal, akan disinkronkan saat online'),
-              backgroundColor: Colors.orange,
+              content: Text('Foto profil berhasil diperbarui'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Gagal mengupload foto'),
+              backgroundColor: Colors.red,
             ),
           );
         }
-      } else {
+      } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal menyimpan foto'),
+          SnackBar(
+            content: Text('Gagal mengupload foto: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -314,157 +286,166 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            title: const Text(
+              'Edit Profil',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            centerTitle: true,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                Consumer<UserProvider>(
+                  builder: (context, userProvider, child) {
+                    final user = userProvider.user;
+                    final photoUrl = user?.profilePicture;
+                    final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
+                    return GestureDetector(
+                      onTap: _isLoading ? null : _showImageSourcePicker,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 60,
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage: hasPhoto
+                                ? (photoUrl.startsWith('file://')
+                                    ? FileImage(File(photoUrl.replaceFirst('file://', '')))
+                                    : NetworkImage(photoUrl)) as ImageProvider
+                                : null,
+                            child: !hasPhoto
+                                ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: _isLoading ? Colors.grey : const Color(0xFF1B4F9C),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                Consumer<UserProvider>(
+                  builder: (context, userProvider, child) {
+                    final user = userProvider.user;
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildProfileItem(
+                            title: 'Nama',
+                            value: user?.name ?? 'Nama Pengguna',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const EditNameScreen(),
+                                ),
+                              ).then((_) => _loadProfile());
+                            },
+                          ),
+                          _buildProfileItem(
+                            title: 'Nama Pengguna',
+                            value: user?.username ?? 'username',
+                            onTap: null,
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 120),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'elogbook.com/@${user?.username ?? 'username'}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                      InkWell(
+                                        onTap: () {
+                                          Clipboard.setData(ClipboardData(
+                                            text: 'elogbook.com/@${user?.username ?? 'username'}',
+                                          ));
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Link disalin ke clipboard'),
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          child: Icon(
+                                            Icons.copy,
+                                            size: 16,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ),
-        title: const Text(
-          'Edit Profil',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Consumer<UserProvider>(
-              builder: (context, userProvider, child) {
-                final user = userProvider.user;
-                final photoUrl = user?.profilePicture;
-                final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
-
-                return GestureDetector(
-                  onTap: _showImageSourcePicker,
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: hasPhoto
-                            ? (photoUrl.startsWith('file://')
-                                ? FileImage(File(photoUrl.replaceFirst('file://', '')))
-                                : NetworkImage(photoUrl)) as ImageProvider
-                            : null,
-                        child: !hasPhoto
-                            ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                            : null,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF1B4F9C),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+        if (_isLoading)
+          Container(
+            color: Colors.black54,
+            child: const Center(
+              child: CircularProgressIndicator(color: Colors.white),
             ),
-            const SizedBox(height: 24),
-            Consumer<UserProvider>(
-              builder: (context, userProvider, child) {
-                final user = userProvider.user;
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      // Nama Field
-                      _buildProfileItem(
-                        title: 'Nama',
-                        value: user?.name ?? 'Nama Pengguna',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const EditNameScreen(),
-                            ),
-                          ).then((_) => _loadProfile());
-                        },
-                      ),
-                      // Username Field
-                      _buildProfileItem(
-                        title: 'Nama Pengguna',
-                        value: user?.username ?? 'username',
-                        onTap: null, // Non-editable
-                      ),
-                      // URL Field (separate item)
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 120), // Same width as title
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      'elogbook.com/@${user?.username ?? 'username'}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ),
-                                  InkWell(
-                                    onTap: () {
-                                      Clipboard.setData(ClipboardData(
-                                        text: 'elogbook.com/@${user?.username ?? 'username'}',
-                                      ));
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Link disalin ke clipboard'),
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      child: Icon(
-                                        Icons.copy,
-                                        size: 16,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );              },
-            ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../provider/user_provider.dart';
 import 'account_info_screen.dart';
 import 'password_screen.dart';
 

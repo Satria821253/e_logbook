@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:e_logbook/screens/Login/welcome_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
-import 'package:e_logbook/screens/document_completion_screen.dart';
 import 'package:e_logbook/services/getAPi/auth_service.dart';
-import 'package:e_logbook/provider/user_provider.dart';
-import 'package:e_logbook/models/user_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -49,26 +44,8 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
-    await _initializeUser();
     final nextScreen = await _determineNextScreen();
     _navigateToScreen(nextScreen);
-  }
-
-  Future<void> _initializeUser() async {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    await userProvider.loadUser();
-    
-    if (userProvider.user == null) {
-      final dummyUser = UserModel(
-        id: 1,
-        name: 'Budi Santoso',
-        email: 'budi@example.com',
-        phone: '081234567890',
-        token: 'dummy_token',
-        role: 'Nahkoda',
-      );
-      userProvider.setUser(dummyUser);
-    }
   }
 
   Future<Widget> _determineNextScreen() async {

@@ -1,5 +1,5 @@
 import 'package:e_logbook/screens/notification_detail_screen.dart';
-import 'package:e_logbook/screens/document_completion_screen.dart';
+import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
 import 'package:e_logbook/services/notification_service.dart';
 import 'package:e_logbook/services/admin_notification_service.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
@@ -714,12 +714,12 @@ class _NotificationScreenState extends State<NotificationScreen>
                   await AdminNotificationService.markNotificationAsRead(notification['id']);
                   await _updateUnreadCounts();
                   
-                  // Navigate to document completion screen
+                  // Navigate to document upload stepper
                   if (_documentRequirements.isNotEmpty) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const DocumentCompletionScreen(),
+                        builder: (context) => const DocumentUploadStepper(),
                       ),
                     );
                   }

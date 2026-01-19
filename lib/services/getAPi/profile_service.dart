@@ -1,11 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../models/user_model.dart';
-import '../local_storage/local_profile_service.dart';
 
 class ProfileService {
-  static const String baseUrl = 'http://192.168.1.12:5000/api';
+  static const String baseUrl = 'http://210.79.191.17:5000/api';
 
   static final Dio _dio = Dio(
     BaseOptions(
@@ -25,22 +23,6 @@ class ProfileService {
     try {
       final token = await _getToken();
       if (token == null) {
-        // Load from local cache if no token
-        final localProfile = await LocalProfileService.getProfile();
-        if (localProfile != null) {
-          // Check for local photo
-          final userId = localProfile['id']?.toString();
-          final role = localProfile['role'];
-          final localPhotoPath = await LocalProfileService.getProfilePicturePath(
-            userId: userId,
-            role: role,
-          );
-          if (localPhotoPath != null) {
-            localProfile['profile_picture'] = 'file://$localPhotoPath';
-          }
-          final user = UserModel.fromJson(localProfile);
-          return {'success': true, 'user': user, 'isFromCache': true};
-        }
         return {'success': false, 'message': 'Token tidak ditemukan'};
       }
 
@@ -52,7 +34,6 @@ class ProfileService {
       if (response.statusCode == 200 && response.data['success'] == true) {
         final data = response.data['data'];
 
-        // Map role
         String mappedRole = 'Nahkoda';
         if (data['role'] != null) {
           final apiRole = data['role'].toString().toLowerCase();
@@ -63,43 +44,32 @@ class ProfileService {
           }
         }
 
-        // Get photo URL - prioritize local photo, then API photo
         String? photoUrl;
-        final userId = data['id']?.toString();
-        final localPhotoPath = await LocalProfileService.getProfilePicturePath(
-          userId: userId,
-          role: mappedRole,
-        );
-        
-        if (localPhotoPath != null) {
-          // Use local photo if available
-          photoUrl = 'file://$localPhotoPath';
-        } else {
-          // Fallback to API photo
-          final fotoUrl = data['fotoUrl'];
-          final foto = data['foto'];
-          
-          if (fotoUrl != null && fotoUrl.toString().isNotEmpty) {
-            final path = fotoUrl.toString();
-            if (path.startsWith('http')) {
-              photoUrl = path;
-            } else if (path.startsWith('/')) {
-              photoUrl = 'http://192.168.1.12:5000$path';
-            } else {
-              photoUrl = 'http://192.168.1.12:5000/$path';
-            }
-          } else if (foto != null && foto.toString().isNotEmpty) {
-            final path = foto.toString();
-            if (path.startsWith('/')) {
-              photoUrl = '$baseUrl$path';
-            } else {
-              photoUrl = '$baseUrl/$path';
-            }
+        final fotoUrl = data['fotoUrl'];
+        final foto = data['foto'];
+
+        if (fotoUrl != null && fotoUrl.toString().isNotEmpty) {
+          final path = fotoUrl.toString();
+          if (path.startsWith('http')) {
+            photoUrl = path;
+          } else if (path.startsWith('/')) {
+            photoUrl = 'http://210.79.191.17:5000$path';
+          } else {
+            photoUrl = 'http://210.79.191.17:5000/$path';
+          }
+        } else if (foto != null && foto.toString().isNotEmpty) {
+          final path = foto.toString();
+          if (path.startsWith('/')) {
+            photoUrl = '$baseUrl$path';
+          } else {
+            photoUrl = '$baseUrl/$path';
           }
         }
 
         final user = UserModel(
-          id: data['id'] is int ? data['id'] : int.tryParse(data['id'].toString()) ?? 0,
+          id: data['id'] is int
+              ? data['id']
+              : int.tryParse(data['id'].toString()) ?? 0,
           name: data['nama'] ?? '',
           username: data['username'],
           email: data['email'] ?? '',
@@ -108,20 +78,6 @@ class ProfileService {
           role: mappedRole,
           profilePicture: photoUrl,
         );
-
-        // Save to local using LocalProfileService
-        await LocalProfileService.saveProfile({
-          'id': user.id,
-          'name': user.name,
-          'username': user.username,
-          'email': user.email,
-          'phone': user.phone,
-          'address': data['alamat'],
-          'role': user.role,
-          'isActive': data['isActive'] ?? true,
-          'lastLoginAt': data['lastLoginAt'],
-          'profile_picture': photoUrl,
-        });
 
         return {
           'success': true,
@@ -135,23 +91,6 @@ class ProfileService {
         'message': response.data['message'] ?? 'Gagal mengambil profil',
       };
     } on DioException catch (e) {
-      // Load from local cache if API fails
-      final localProfile = await LocalProfileService.getProfile();
-      if (localProfile != null) {
-        // Check for local photo
-        final userId = localProfile['id']?.toString();
-        final role = localProfile['role'];
-        final localPhotoPath = await LocalProfileService.getProfilePicturePath(
-          userId: userId,
-          role: role,
-        );
-        if (localPhotoPath != null) {
-          localProfile['profile_picture'] = 'file://$localPhotoPath';
-        }
-        final user = UserModel.fromJson(localProfile);
-        return {'success': true, 'user': user, 'isFromCache': true};
-      }
-      
       if (e.response?.statusCode == 401) {
         final message = e.response?.data['message'] ?? '';
         return {
@@ -162,23 +101,6 @@ class ProfileService {
       }
       return {'success': false, 'message': 'Gagal mengambil profil'};
     } catch (e) {
-      // Load from local cache if any error
-      final localProfile = await LocalProfileService.getProfile();
-      if (localProfile != null) {
-        // Check for local photo
-        final userId = localProfile['id']?.toString();
-        final role = localProfile['role'];
-        final localPhotoPath = await LocalProfileService.getProfilePicturePath(
-          userId: userId,
-          role: role,
-        );
-        if (localPhotoPath != null) {
-          localProfile['profile_picture'] = 'file://$localPhotoPath';
-        }
-        final user = UserModel.fromJson(localProfile);
-        return {'success': true, 'user': user, 'isFromCache': true};
-      }
-      
       return {
         'success': false,
         'message': 'Terjadi kesalahan: ${e.toString()}',
@@ -195,9 +117,11 @@ class ProfileService {
   }) async {
     try {
       print('🔄 Starting profile update...');
-      print('📝 Update data: name=$name, username=$username, phone=$phone, address=$address');
+      print(
+        '📝 Update data: name=$name, username=$username, phone=$phone, address=$address',
+      );
       if (photoPath != null) print('📸 Photo path: $photoPath');
-      
+
       final token = await _getToken();
       if (token == null) {
         print('❌ No token found');
@@ -216,8 +140,10 @@ class ProfileService {
             filename: photoPath.split(RegExp(r'[\\/]')).last,
           ),
       });
-      
-      print('📤 Sending FormData fields: ${formData.fields.map((f) => '${f.key}=${f.value}').join(', ')}');
+
+      print(
+        '📤 Sending FormData fields: ${formData.fields.map((f) => '${f.key}=${f.value}').join(', ')}',
+      );
       if (formData.files.isNotEmpty) {
         print('📎 Files: ${formData.files.map((f) => f.key).join(', ')}');
       }
@@ -232,53 +158,57 @@ class ProfileService {
           },
         ),
       );
-      
+
       print('📥 API Response Status: ${response.statusCode}');
       print('📥 API Response Data: ${response.data}');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         print('✅ Profile update successful!');
-        
+
         // Get updated photo URL from response - use fotoUrl field
         String? newPhotoUrl;
         if (response.data['data'] != null) {
-          print('📋 Response data fields: ${response.data['data'].keys.toList()}');
-          
+          print(
+            '📋 Response data fields: ${response.data['data'].keys.toList()}',
+          );
+
           // Check if name was updated
           if (response.data['data']['nama'] != null) {
             print('✅ Name updated in API: ${response.data['data']['nama']}');
           }
-          
+
           // Check if username was updated
           if (response.data['data']['username'] != null) {
-            print('✅ Username updated in API: ${response.data['data']['username']}');
+            print(
+              '✅ Username updated in API: ${response.data['data']['username']}',
+            );
           }
-          
+
           // Try fotoUrl first (full path from API)
           if (response.data['data']['fotoUrl'] != null) {
             final fotoPath = response.data['data']['fotoUrl'].toString();
             print('📸 Foto URL from API: $fotoPath');
-            
+
             if (fotoPath.isNotEmpty) {
               if (fotoPath.startsWith('http')) {
                 newPhotoUrl = fotoPath;
               } else if (fotoPath.startsWith('/')) {
-                newPhotoUrl = 'http://192.168.1.12:5000$fotoPath';
+                newPhotoUrl = 'http://210.79.191.17:5000$fotoPath';
               } else {
-                newPhotoUrl = 'http://192.168.1.12:5000/$fotoPath';
+                newPhotoUrl = 'http://210.79.191.17:5000/$fotoPath';
               }
               print('📸 Final photo URL: $newPhotoUrl');
             }
           }
         }
-        
+
         return {
           'success': true,
           'message': 'Profil berhasil diperbarui',
           'photoUrl': newPhotoUrl,
         };
       }
-      
+
       print('❌ API returned error: ${response.data}');
       return {
         'success': false,
@@ -289,7 +219,9 @@ class ProfileService {
       print('❌ Response: ${e.response?.data}');
       return {
         'success': false,
-        'message': e.response?.data['message'] ?? 'Gagal memperbarui profil: ${e.message}',
+        'message':
+            e.response?.data['message'] ??
+            'Gagal memperbarui profil: ${e.message}',
       };
     } catch (e) {
       print('❌ General Exception: $e');

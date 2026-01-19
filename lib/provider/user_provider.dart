@@ -1,20 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
-import '../services/user_service.dart';
 
 class UserProvider extends ChangeNotifier {
   UserModel? _user;
 
   UserModel? get user => _user;
 
-  Future<void> loadUser() async {
-    _user = await UserService.getUser();
-    notifyListeners();
-  }
-
   Future<void> setUser(UserModel user) async {
     _user = user;
-    await UserService.saveUser(_user!);
     notifyListeners();
   }
 
@@ -41,7 +34,6 @@ class UserProvider extends ChangeNotifier {
         crewCount: crewCount,
         crewNames: crewNames,
       );
-      await UserService.saveUser(_user!);
       notifyListeners();
     }
   }
@@ -63,7 +55,6 @@ class UserProvider extends ChangeNotifier {
         crewCount: _user!.crewCount,
         crewNames: _user!.crewNames,
       );
-      await UserService.saveUser(_user!);
       notifyListeners();
     }
   }
@@ -86,19 +77,16 @@ class UserProvider extends ChangeNotifier {
         crewNames: _user!.crewNames,
         profilePicture: path,
       );
-      await UserService.saveUser(_user!);
       notifyListeners();
     }
   }
 
-  // Force refresh profile picture to clear cache
   void refreshProfilePicture() {
     notifyListeners();
   }
 
   Future<void> clearUser() async {
     _user = null;
-    await UserService.clearUser();
     notifyListeners();
   }
 }

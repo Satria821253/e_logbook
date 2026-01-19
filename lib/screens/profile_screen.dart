@@ -7,12 +7,10 @@ import 'package:e_logbook/screens/nahkoda/screens/crew_attendance_screen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
 import 'package:e_logbook/services/getAPi/auth_service.dart';
 import 'package:e_logbook/services/getAPi/profile_service.dart';
-import 'package:e_logbook/services/getAPi/vessel_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
@@ -26,15 +24,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String? _vesselName;
-  String? _vesselNumber;
-  bool _isLoadingVessel = false;
-
   @override
   void initState() {
     super.initState();
     _loadProfile();
-    _loadVesselInfo();
   }
 
   Future<void> _loadProfile() async {
@@ -63,40 +56,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _loadVesselInfo() async {
-    print('🚢 Starting to load vessel info...');
-    setState(() => _isLoadingVessel = true);
-    try {
-      final vesselData = await VesselService().getVesselData();
-      print('🚢 Vessel data received: $vesselData');
-      
-      if (mounted && vesselData['kapal'] != null) {
-        final kapalInfo = vesselData['kapal'];
-        print('🚢 Kapal info: $kapalInfo');
-        print('🚢 Nama kapal: ${kapalInfo['namaKapal']}');
-        print('🚢 Nomor registrasi: ${kapalInfo['nomorRegistrasi']}');
-        
-        setState(() {
-          _vesselName = kapalInfo['namaKapal'];
-          _vesselNumber = kapalInfo['nomorRegistrasi'];
-        });
-        
-        print('🚢 State updated - Name: $_vesselName, Number: $_vesselNumber');
-      } else {
-        print('🚢 No kapal data in response');
-      }
-    } catch (e) {
-      print('❌ Error loading vessel info: $e');
-      // If error contains "Tidak ada kapal", it means user has no vessel assigned
-      if (e.toString().contains('Tidak ada kapal')) {
-        print('ℹ️ User has no vessel assigned');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingVessel = false);
-        print('🚢 Loading finished');
-      }
-    }
+  Future<void> _refreshProfile() async {
+    await _loadProfile();
   }
 
   @override
@@ -141,27 +102,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
 
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildProfileHeader(),
-            SizedBox(
-              height: ResponsiveHelper.height(
-                context,
-                mobile: 20,
-                tablet: 28,
+      body: RefreshIndicator(
+        onRefresh: _refreshProfile,
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _buildProfileHeader(),
+              SizedBox(
+                height: ResponsiveHelper.height(
+                  context,
+                  mobile: 20,
+                  tablet: 28,
+                ),
               ),
-            ),
-            _buildStatsCard(),
-            SizedBox(
-              height: ResponsiveHelper.height(
-                context,
-                mobile: 20,
-                tablet: 28,
+              _buildStatsCard(),
+              SizedBox(
+                height: ResponsiveHelper.height(
+                  context,
+                  mobile: 20,
+                  tablet: 28,
+                ),
               ),
-            ),
-            _buildMenuSection(),
-          ],
+              _buildMenuSection(),
+            ],
+          ),
         ),
       ),
     );
@@ -284,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return Column(
                 children: [
                   Text(
-                    user?.name ?? 'Budi Santoso',
+                    user?.name ?? 'Nama Pengguna',
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: ResponsiveHelper.font(
@@ -535,39 +500,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildMobileMenuList() {
     return Column(
       children: [
+        _buildMenuItem(
+          icon: Icons.directions_boat_rounded,
+          title: 'Informasi Kapal',
+          subtitle: 'Kelola persediaan dan sertifikat',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VesselInfoScreen(),
+              ),
+            );
+          },
+        ),
         Consumer<UserProvider>(
           builder: (context, userProvider, child) {
             final user = userProvider.user;
             if (user?.isNahkoda == true) {
-              return Column(
-                children: [
-                  _buildMenuItem(
-                    icon: Icons.directions_boat_rounded,
-                    title: 'Informasi Kapal',
-                    subtitle: 'Kelola persediaan dan sertifikat',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => VesselInfoScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildMenuItem(
-                    icon: Icons.people_outline_rounded,
-                    title: 'Kehadiran Crew',
-                    subtitle: 'Lihat kehadiran crew kapal',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CrewAttendanceScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+              return _buildMenuItem(
+                icon: Icons.people_outline_rounded,
+                title: 'Kehadiran Crew',
+                subtitle: 'Lihat kehadiran crew kapal',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CrewAttendanceScreen(),
+                    ),
+                  );
+                },
               );
             }
             return const SizedBox.shrink();
@@ -619,21 +580,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final user = userProvider.user;
         final menuItems = <Widget>[];
 
+        menuItems.add(
+          _buildMenuItem(
+            icon: Icons.directions_boat_rounded,
+            title: 'Informasi Kapal',
+            subtitle: 'Kelola persediaan dan sertifikat',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VesselInfoScreen(),
+                ),
+              );
+            },
+          ),
+        );
+
         if (user?.isNahkoda == true) {
-          menuItems.addAll([
-            _buildMenuItem(
-              icon: Icons.directions_boat_rounded,
-              title: 'Informasi Kapal',
-              subtitle: 'Kelola persediaan dan sertifikat',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VesselInfoScreen(),
-                  ),
-                );
-              },
-            ),
+          menuItems.add(
             _buildMenuItem(
               icon: Icons.people_outline_rounded,
               title: 'Kehadiran Crew',
@@ -647,7 +611,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 );
               },
             ),
-          ]);
+          );
         }
 
         menuItems.addAll([

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:e_logbook/screens/main_screen.dart';
-import 'package:e_logbook/screens/document_completion_screen.dart';
 import 'package:e_logbook/widgets/button_radio.dart';
 import 'package:e_logbook/widgets/account_inactive_dialog.dart';
 import 'package:e_logbook/services/getAPi/auth_service.dart';

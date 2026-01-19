@@ -10,7 +10,6 @@ import 'package:e_logbook/services/harbor_service.dart';
 import 'package:e_logbook/services/weather_service.dart';
 import 'package:e_logbook/widgets/ai_detection_loading_widget.dart';
 import 'package:e_logbook/widgets/ai_detection_result_widget.dart';
-import 'package:e_logbook/widgets/custom_text_field.dart';
 import 'package:e_logbook/widgets/image_picker.dart';
 import 'package:e_logbook/widgets/location_picker.dart';
 import 'package:e_logbook/widgets/section_title.dart';

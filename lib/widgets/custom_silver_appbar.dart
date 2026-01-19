@@ -765,7 +765,7 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                             radius: avatarRadius,
                             backgroundColor: Colors.white,
                             backgroundImage: hasPhoto
-                                ? (photoUrl!.startsWith('file://')
+                                ? (photoUrl.startsWith('file://')
                                     ? FileImage(File(photoUrl.replaceFirst('file://', '')))
                                     : NetworkImage('$photoUrl?t=${DateTime.now().millisecondsSinceEpoch}')) as ImageProvider
                                 : null,

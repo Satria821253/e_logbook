@@ -7,8 +7,8 @@ import 'package:e_logbook/services/offline_sync_service.dart';
 import 'package:e_logbook/screens/profile_screen.dart';
 import 'package:e_logbook/screens/tracking/pre_trip_fromscreen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
-import 'package:e_logbook/screens/document_completion_screen.dart';
 import 'package:e_logbook/screens/document_status_screen.dart';
+import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
 import 'package:e_logbook/screens/vessel_selection_screen.dart';
 import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
@@ -93,10 +93,8 @@ class MyApp extends StatelessWidget {
                   builder: (_) => VesselInfoScreen(arguments: arguments),
                 );
               case '/document-completion':
-                final arguments = settings.arguments as String?;
                 return MaterialPageRoute(
-                  builder: (_) => DocumentCompletionScreen(),
-                  settings: RouteSettings(arguments: arguments),
+                  builder: (_) => const DocumentUploadStepper(),
                 );
               case '/create-catch':
                 return MaterialPageRoute(

@@ -1,7 +1,7 @@
 import 'package:e_logbook/widgets/catch_corousel.dart';
 import 'package:e_logbook/widgets/custom_silver_appbar.dart';
-import 'package:e_logbook/screens/document_completion_screen.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
+import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
@@ -812,16 +812,13 @@ class _HomeScreenState extends State<HomeScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () async {
-                final result = await Navigator.push(
+              onPressed: () {
+                Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const DocumentCompletionScreen(),
+                    builder: (context) => const DocumentUploadStepper(),
                   ),
                 );
-                if (result == true || mounted) {
-                  _checkDocumentCompletion();
-                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
