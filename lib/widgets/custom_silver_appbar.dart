@@ -35,6 +35,13 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
     super.initState();
     _getCurrentLocation();
     _startWeatherUpdates();
+    // Refresh profile picture after hot reload
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        userProvider.notifyListeners();
+      }
+    });
   }
 
   @override
@@ -762,12 +769,13 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                           final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
                           
                           return CircleAvatar(
+                            key: ValueKey(photoUrl ?? ''),
                             radius: avatarRadius,
                             backgroundColor: Colors.white,
                             backgroundImage: hasPhoto
-                                ? (photoUrl.startsWith('file://')
-                                    ? FileImage(File(photoUrl.replaceFirst('file://', '')))
-                                    : NetworkImage('$photoUrl?t=${DateTime.now().millisecondsSinceEpoch}')) as ImageProvider
+                                ? (photoUrl.startsWith('http')
+                                    ? NetworkImage(photoUrl)
+                                    : FileImage(File(photoUrl.replaceFirst('file://', '')))) as ImageProvider
                                 : null,
                             child: !hasPhoto
                                 ? const Icon(

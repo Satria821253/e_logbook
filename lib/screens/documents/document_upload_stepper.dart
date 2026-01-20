@@ -14,10 +14,12 @@ import '../../services/getAPi/document_service.dart';
 
 class DocumentUploadStepper extends StatefulWidget {
   final int initialStep;
+  final String? rejectedDocType;
 
   const DocumentUploadStepper({
     Key? key,
     this.initialStep = 1,
+    this.rejectedDocType,
   }) : super(key: key);
 
   @override
@@ -27,8 +29,10 @@ class DocumentUploadStepper extends StatefulWidget {
 class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
   late int _currentStep;
   final int _totalSteps = 8;
-  late PageController _pageController;
+  PageController? _pageController;
   Set<String> _uploadedDocs = {};
+  List<String> _rejectedDocs = [];
+  Map<int, String> _documentStatuses = {}; // step -> status
   bool _isLoading = true;
 
   @override
@@ -46,19 +50,53 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
         final docs = result['documents'] as List;
         
         final uploadedTypes = <String>{};
+        final rejectedTypes = <String>[];
+        final statuses = <int, String>{};
+        
+        // Dokumen sudah difilter di service, jadi tidak ada duplikasi
         for (var doc in docs) {
           final jenis = doc['jenisDokumen'];
+          final status = doc['status'];
+          
           if (jenis != null) {
-            uploadedTypes.add(jenis.toString());
+            final step = _getStepForDocType(jenis.toString());
+            if (step > 0) {
+              statuses[step] = status ?? 'pending';
+              
+              // Hanya tambahkan ke uploadedTypes jika approved/pending
+              // Rejected tidak dianggap uploaded
+              if (status == 'approved' || status == 'pending') {
+                uploadedTypes.add(jenis.toString());
+              } else if (status == 'rejected') {
+                rejectedTypes.add(jenis.toString());
+              }
+            }
           }
         }
         
         _uploadedDocs = uploadedTypes;
-        _currentStep = _findNextStep();
+        _rejectedDocs = rejectedTypes;
+        _documentStatuses = statuses;
+        
+        print('📊 Document Status:');
+        print('  Uploaded: $_uploadedDocs');
+        print('  Rejected: $_rejectedDocs');
+        print('  Statuses: $_documentStatuses');
+        
+        // Tentukan step awal
+        if (widget.rejectedDocType != null) {
+          _currentStep = _getStepForDocType(widget.rejectedDocType!);
+        } else if (_rejectedDocs.isNotEmpty) {
+          // Jika ada rejected, mulai dari rejected pertama
+          _currentStep = _getStepForDocType(_rejectedDocs.first);
+        } else {
+          // Cari step pertama yang belum diupload
+          _currentStep = _findNextStep();
+        }
         
         _pageController = PageController(initialPage: _currentStep - 1);
-        _pageController.addListener(() {
-          int newStep = (_pageController.page?.round() ?? 0) + 1;
+        _pageController?.addListener(() {
+          int newStep = (_pageController?.page?.round() ?? 0) + 1;
           if (newStep != _currentStep) {
             setState(() {
               _currentStep = newStep;
@@ -70,33 +108,33 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
           _isLoading = false;
         });
       } else {
-        _pageController = PageController();
-        _pageController.addListener(() {
-          int newStep = (_pageController.page?.round() ?? 0) + 1;
-          if (newStep != _currentStep) {
-            setState(() {
-              _currentStep = newStep;
-            });
-          }
-        });
-        setState(() {
-          _isLoading = false;
-        });
+        _initializeDefaultController();
       }
     } catch (e) {
-      _pageController = PageController();
-      _pageController.addListener(() {
-        int newStep = (_pageController.page?.round() ?? 0) + 1;
-        if (newStep != _currentStep) {
-          setState(() {
-            _currentStep = newStep;
-          });
-        }
-      });
-      setState(() {
-        _isLoading = false;
-      });
+      print('❌ Error loading documents: $e');
+      _initializeDefaultController();
     }
+  }
+  
+  void _initializeDefaultController() {
+    _pageController = PageController();
+    _pageController?.addListener(() {
+      int newStep = (_pageController?.page?.round() ?? 0) + 1;
+      if (newStep != _currentStep) {
+        setState(() {
+          _currentStep = newStep;
+        });
+      }
+    });
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  int _getStepForDocType(String docType) {
+    final docTypes = ['KTP', 'Pas Foto', 'NPWP', 'Buku Pelaut', 'Sertifikat Nahkoda', 'BST', 'Surat Keterangan Sehat', 'SKCK'];
+    final index = docTypes.indexWhere((type) => type.toLowerCase() == docType.toLowerCase());
+    return index >= 0 ? index + 1 : 1;
   }
 
   int _findNextStep() {
@@ -111,19 +149,38 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pageController?.dispose();
     super.dispose();
   }
 
   void _goToNextStep() {
-    if (_currentStep < _totalSteps) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    } else {
-      _showCompletionDialog();
+    // Jika hanya 1 dokumen rejected, auto keluar setelah upload
+    if (_rejectedDocs.length == 1) {
+      Navigator.pop(context);
+      return;
     }
+    
+    // Jika lebih dari 1 rejected, cari rejected berikutnya
+    if (_rejectedDocs.length > 1) {
+      final currentDocType = _getDocTypeForStep(_currentStep);
+      final currentIndex = _rejectedDocs.indexOf(currentDocType);
+      
+      // Jika ada rejected berikutnya, pindah ke sana
+      if (currentIndex >= 0 && currentIndex < _rejectedDocs.length - 1) {
+        final nextRejectedDoc = _rejectedDocs[currentIndex + 1];
+        final nextStep = _getStepForDocType(nextRejectedDoc);
+        
+        _pageController?.animateToPage(
+          nextStep - 1,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+        return;
+      }
+    }
+    
+    // Jika sudah selesai semua rejected, keluar
+    Navigator.pop(context);
   }
 
   void _showCompletionDialog() {
@@ -237,6 +294,28 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
       ),
       body: Column(
         children: [
+          if (_isDocumentUploaded(_getDocTypeForStep(_currentStep)))
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.green[100],
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green[700], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Dokumen ini sudah diupload dan disetujui',
+                      style: TextStyle(
+                        color: Colors.green[900],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: PageView(
               controller: _pageController,
@@ -256,9 +335,19 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
           ProgressIndicatorWidget(
             currentStep: _currentStep,
             totalSteps: _totalSteps,
+            documentStatuses: _documentStatuses,
           ),
         ],
       ),
     );
+  }
+
+  bool _isDocumentUploaded(String docType) {
+    return _uploadedDocs.contains(docType);
+  }
+
+  String _getDocTypeForStep(int step) {
+    final docTypes = ['KTP', 'Pas Foto', 'NPWP', 'Buku Pelaut', 'Sertifikat Nahkoda', 'BST', 'Surat Keterangan Sehat', 'SKCK'];
+    return step > 0 && step <= docTypes.length ? docTypes[step - 1] : '';
   }
 }

@@ -36,7 +36,7 @@ class FishDetectionResult {
 }
 
 class GeminiFishDetectionService {
-  static const String _baseUrl =
+  static final String _baseUrl =
       '${ApiConfig.geminiBaseUrl}/${ApiConfig.geminiModel}:generateContent';
 
   static Future<FishDetectionResult> detectFish(File image) async {

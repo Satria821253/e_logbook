@@ -8,16 +8,18 @@ import 'package:flutter/material.dart';
 import '../../utils/account_status_interceptor.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://210.79.191.17/api';
+  // VPS Production Server
+  static const String baseUrl = 'http://210.79.191.17:5000/api';
+  
   static late Dio _dio;
 
   static void init() {
     _dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-        sendTimeout: const Duration(seconds: 10),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -114,8 +116,8 @@ class AuthService {
           final vesselDio = Dio(
             BaseOptions(
               baseUrl: 'http://210.79.191.17:5000',
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 10),
+              connectTimeout: const Duration(seconds: 30),
+              receiveTimeout: const Duration(seconds: 30),
             ),
           );
 
@@ -250,7 +252,7 @@ class AuthService {
 
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs
-        .clear(); // Hapus semua data termasuk token, user_data, vessel_data, dll
+    await prefs.clear(); // Hapus semua data termasuk token, user_data, vessel_data, dll
+    print('🚪 Logout: All data cleared');
   }
 }

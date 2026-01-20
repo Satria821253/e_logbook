@@ -24,6 +24,8 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
     // Simulate API call
     await Future.delayed(const Duration(seconds: 2));
     
+    if (!mounted) return;
+    
     // Dummy data - ganti dengan API call
     setState(() {
       _tripData = {

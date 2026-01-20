@@ -1,6 +1,14 @@
 # Environment variables
 .env
 .env.local
+*.env
+
+# Sensitive files
+*.key
+*.pem
+*.p12
+*.keystore
+*.jks
 
 # Google Maps API key
 android/app/src/main/res/values/google_maps_api.xml

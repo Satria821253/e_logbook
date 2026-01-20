@@ -41,6 +41,15 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _getCurrentLocation();
     AuthService.addAccountStatusInterceptor(context);
+    _loadUserData();
+  }
+  
+  Future<void> _loadUserData() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await userProvider.loadUserFromStorage();
+    print('DEBUG MainScreen: Loading user data...');
+    print('DEBUG MainScreen: Current user = ${userProvider.user}');
+    print('DEBUG MainScreen: Profile picture = ${userProvider.user?.profilePicture}');
   }
   
   Future<void> _getCurrentLocation() async {
@@ -122,12 +131,19 @@ class _MainScreenState extends State<MainScreen> {
           resizeToAvoidBottomInset: false,
           backgroundColor: Colors.white,
 
-          body: Stack(
+          body: IndexedStack(
+            index: selectedIndex,
             children: [
-              _screens[selectedIndex],
-              // Role-based floating menu
-              if (!isABK) const NahkodaFloatingMenu(),
-              if (isABK) const CrewFloatingMenu(),
+              Stack(
+                children: [
+                  _screens[0],
+                  if (!isABK) const NahkodaFloatingMenu(),
+                  if (isABK) const CrewFloatingMenu(),
+                ],
+              ),
+              _screens[1],
+              _screens[2],
+              _screens[3],
             ],
           ),
 

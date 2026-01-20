@@ -118,5 +118,5 @@ class UserModel {
   }
 
   bool get isNahkoda => (role ?? 'Nahkoda') == 'Nahkoda';
-  bool get isABK => (role ?? 'Nahkoda') == 'ABK';
+  bool get isABK => (role ?? 'Crew') == 'Crew' || (role ?? 'Crew') == 'ABK';
 }

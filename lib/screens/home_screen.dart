@@ -2,12 +2,16 @@ import 'package:e_logbook/widgets/catch_corousel.dart';
 import 'package:e_logbook/widgets/custom_silver_appbar.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
+import 'package:e_logbook/screens/documents/document_popup_helper.dart';
+import 'package:e_logbook/screens/documents/pending_popup_helper.dart';
+import 'package:e_logbook/services/getAPi/document_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../provider/catch_provider.dart';
+import '../provider/user_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,21 +20,142 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   bool _showDocumentAlert = false;
   bool _showPendingBanner = false;
+  bool _showRejectedAlert = false;
+  int _pendingCount = 0;
+  int _rejectedCount = 0;
+  int _totalCount = 8;
+  bool _hasShownPopup = false;
+  bool _hasLoggedInit = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _checkDocumentCompletion();
+    WidgetsBinding.instance.addObserver(this);
+    print('🚀 HomeScreen: initState called');
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAllData();
+    });
+  }
+
+
+
+  Future<void> _loadAllData() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await userProvider.loadUserFromStorage();
+    
+    await _checkDocumentCompletion();
+    
+    if (!_hasLoggedInit) {
+      print('🔍 HomeScreen: _hasShownPopup = $_hasShownPopup');
+      _hasLoggedInit = true;
+    }
+    
+    if (!_hasShownPopup && mounted) {
+      await _checkAndShowPopup();
+      _hasShownPopup = true;
+    }
+  }
+
+  Future<void> _checkAndShowPopup() async {
+    final prefs = await SharedPreferences.getInstance();
+    final documentsCompleted = prefs.getBool('documents_completed') ?? false;
+    final documentsPending = prefs.getBool('documents_pending') ?? false;
+
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final userRole = userProvider.user?.role ?? 'Crew';
+    
+    print('👤 HomeScreen: User role = $userRole');
+    print('📋 HomeScreen: documentsCompleted=$documentsCompleted, documentsPending=$documentsPending');
+
+    if (documentsPending && mounted) {
+      print('🟠 HomeScreen: Showing pending popup');
+      PendingPopupHelper.showPendingPopup(
+        context: context,
+        userRole: userRole,
+        pendingCount: _pendingCount,
+        totalCount: _totalCount,
+      );
+      return;
+    }
+
+    if (!documentsCompleted && !documentsPending && mounted) {
+      print('🎯 HomeScreen: Showing document upload popup');
+      DocumentPopupHelper.showDocumentPopup(context, userRole);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Tidak perlu auto-reload saat resumed
+    // User bisa swipe to refresh jika ingin update data
   }
 
   Future<void> _checkDocumentCompletion() async {
     final prefs = await SharedPreferences.getInstance();
     final documentsCompleted = prefs.getBool('documents_completed') ?? false;
-    final documentsPending = prefs.getBool('documents_pending') ?? false;
     
+    // Get real document counts from API with error handling
+    try {
+      final response = await DocumentService.getDocuments().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('⏱️ Document fetch timeout - using cached data');
+          return {'success': false};
+        },
+      );
+      
+      if (response['success'] == true) {
+        final docs = response['documents'] as List;
+        final pending = docs.where((d) => d['status'] == 'pending').length;
+        final approved = docs.where((d) => d['status'] == 'approved').length;
+        final rejected = docs.where((d) => d['status'] == 'rejected').length;
+        final total = docs.length;
+        
+        // Update pending status:
+        // - Pending = true jika masih ada dokumen pending
+        // - Pending = false jika semua sudah diverifikasi (approved atau rejected)
+        final hasPending = pending > 0;
+        final allVerified = pending == 0 && total > 0; // Semua sudah approved/rejected
+        
+        await prefs.setBool('documents_pending', hasPending);
+        
+        // Jika ada dokumen yang ditolak, set flag untuk menampilkan alert
+        if (rejected > 0 && !hasPending) {
+          await prefs.setBool('has_rejected_documents', true);
+        }
+        
+        if (mounted) {
+          setState(() {
+            _pendingCount = pending;
+            _rejectedCount = rejected;
+            _totalCount = total > 0 ? total : 8;
+            _showDocumentAlert = !documentsCompleted && !hasPending && rejected == 0;
+            _showPendingBanner = hasPending;
+            _showRejectedAlert = !hasPending && rejected > 0;
+          });
+        }
+        return;
+      }
+    } catch (e) {
+      print('⚠️ Error fetching documents (offline mode): $e');
+      // Continue with cached data - don't crash
+    }
+    
+    // Fallback if API fails - use cached data
+    final documentsPending = prefs.getBool('documents_pending') ?? false;
     if (mounted) {
       setState(() {
         _showDocumentAlert = !documentsCompleted && !documentsPending;
@@ -41,6 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     final isTablet = ResponsiveHelper.isTablet(context);
 
     if (isTablet) {
@@ -58,10 +184,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Mobile layout dengan CustomScrollView
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          CustomSliverAppBar(),
-          SliverToBoxAdapter(
+      body: RefreshIndicator(
+        onRefresh: _checkDocumentCompletion,
+        child: CustomScrollView(
+          slivers: [
+            CustomSliverAppBar(),
+            SliverToBoxAdapter(
             child: Transform.translate(
               offset: const Offset(0, -10),
               child: Container(
@@ -91,8 +219,30 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   // Document Alert
-                  if (_showDocumentAlert) _buildDocumentAlert(),
-                  if (_showDocumentAlert)
+                  ValueListenableBuilder<bool>(
+                    valueListenable: DocumentPopupHelper.isPopupVisible,
+                    builder: (context, isPopupVisible, child) {
+                      if (_showDocumentAlert && !isPopupVisible) {
+                        return Column(
+                          children: [
+                            _buildDocumentAlert(),
+                            SizedBox(
+                              height: ResponsiveHelper.height(
+                                context,
+                                mobile: 16,
+                                tablet: 20,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                  
+                  // Pending Banner
+                  if (_showPendingBanner) _buildPendingBanner(),
+                  if (_showPendingBanner)
                     SizedBox(
                       height: ResponsiveHelper.height(
                         context,
@@ -100,10 +250,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         tablet: 20,
                       ),
                     ),
-                  
-                  // Pending Banner
-                  if (_showPendingBanner) _buildPendingBanner(),
-                  if (_showPendingBanner)
+
+                  // Rejected Alert (berbeda dengan document alert)
+                  if (_showRejectedAlert) _buildRejectedAlert(),
+                  if (_showRejectedAlert)
                     SizedBox(
                       height: ResponsiveHelper.height(
                         context,
@@ -211,8 +361,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      ),
     );
-      
   }
 
   Widget _buildStatisticsCards() {
@@ -839,6 +989,96 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   
+  Widget _buildRejectedAlert() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFDC2626), Color(0xFFB91C1C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.error_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Dokumen Ditolak!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$_rejectedCount dokumen perlu diupload ulang',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                // Langsung ke status dokumen, bukan upload stepper
+                Navigator.pushNamed(context, '/document-status');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Color(0xFFDC2626),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: const Text(
+                'Lihat Dokumen Ditolak',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
   Widget _buildPendingBanner() {
     return Container(
       width: double.infinity,
@@ -863,18 +1103,27 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.pending,
-                  color: Colors.white,
-                  size: 20,
-                ),
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 1500),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Transform.rotate(
+                    angle: value * 2 * 3.14159,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(
+                        Icons.hourglass_empty,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -900,63 +1149,68 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 1000),
+                tween: Tween(begin: 1.0, end: 1.2),
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.5),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.pending,
+                        color: Color(0xFFFB8C00),
+                        size: 16,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/document-status');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.orange,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text(
-                    'Lihat Status',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
+          ElevatedButton(
+            onPressed: () {
+              final userProvider = Provider.of<UserProvider>(context, listen: false);
+              final userRole = userProvider.user?.role ?? 'crew';
+              
+              PendingPopupHelper.showPendingPopup(
+                context: context,
+                userRole: userRole,
+                pendingCount: _pendingCount,
+                totalCount: _totalCount,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.orange,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.remove('documents_pending');
-                    if (mounted) {
-                      setState(() {
-                        _showPendingBanner = false;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Status pending dihapus. Anda bisa kirim ulang dokumen.'),
-                          backgroundColor: Colors.blue,
-                        ),
-                      );
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white, width: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text(
-                    'Reset',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.info_outline, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Lihat Detail',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

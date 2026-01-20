@@ -246,8 +246,11 @@ class _DocumentStatusScreenState extends State<DocumentStatusScreen> {
                                 width: double.infinity,
                                 child: ElevatedButton.icon(
                                   onPressed: () {
-                                    // TODO: Navigate to re-upload
-                                    Navigator.pushNamed(context, '/document-completion');
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/document-completion',
+                                      arguments: {'rejectedDocType': doc['name']},
+                                    ).then((_) => _loadDocumentStatus());
                                   },
                                   icon: Icon(Icons.upload_file, size: isTablet ? 20 : 18),
                                   label: Text(

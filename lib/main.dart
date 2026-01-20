@@ -9,7 +9,6 @@ import 'package:e_logbook/screens/tracking/pre_trip_fromscreen.dart';
 import 'package:e_logbook/screens/vessel_info_screen.dart';
 import 'package:e_logbook/screens/document_status_screen.dart';
 import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
-import 'package:e_logbook/screens/vessel_selection_screen.dart';
 import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
 import 'package:flutter/material.dart';
@@ -17,12 +16,16 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // Load environment variables
+    await dotenv.load(fileName: ".env");
+    
     // Clear old corrupted photo URLs (one-time fix)
     final prefs = await SharedPreferences.getInstance();
     final userData = prefs.getString('user_data');
@@ -93,8 +96,25 @@ class MyApp extends StatelessWidget {
                   builder: (_) => VesselInfoScreen(arguments: arguments),
                 );
               case '/document-completion':
+                final args = settings.arguments as Map<String, dynamic>?;
                 return MaterialPageRoute(
-                  builder: (_) => const DocumentUploadStepper(),
+                  builder: (_) => DocumentUploadStepper(
+                    rejectedDocType: args?['rejectedDocType'],
+                  ),
+                );
+              case '/nahkoda-document-upload':
+                final args = settings.arguments as Map<String, dynamic>?;
+                return MaterialPageRoute(
+                  builder: (_) => DocumentUploadStepper(
+                    rejectedDocType: args?['rejectedDocType'],
+                  ),
+                );
+              case '/crew-document-upload':
+                final args = settings.arguments as Map<String, dynamic>?;
+                return MaterialPageRoute(
+                  builder: (_) => DocumentUploadStepper(
+                    rejectedDocType: args?['rejectedDocType'],
+                  ),
                 );
               case '/create-catch':
                 return MaterialPageRoute(
@@ -103,10 +123,6 @@ class MyApp extends StatelessWidget {
               case '/document-status':
                 return MaterialPageRoute(
                   builder: (_) => const DocumentStatusScreen(),
-                );
-              case '/vessel-selection':
-                return MaterialPageRoute(
-                  builder: (_) => const VesselSelectionScreen(),
                 );
               default:
                 return null;

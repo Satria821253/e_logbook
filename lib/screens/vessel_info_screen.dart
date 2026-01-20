@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../provider/user_provider.dart';
 import '../services/getAPi/vessel_service.dart';
+import 'vessel/fuel_management_screen.dart';
 import 'vessel/ice_management_screen.dart';
 import 'vessel/vessel_documents_screen.dart';
-import 'dart:convert';
 
 class VesselInfoScreen extends StatefulWidget {
   final Map<String, dynamic>? arguments;
@@ -19,101 +20,17 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
   String vesselName = "Belum memilih kapal";
   String vesselNumber = "-";
   Map<String, dynamic>? _vesselData;
-  String _userRole = 'Crew';
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _checkDocumentCompletion();
-  }
-
-  void _checkDocumentCompletion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isCompleted = prefs.getBool('personal_documents_completed') ?? false;
-    
-    if (!isCompleted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showDocumentRequiredDialog();
-      });
-    } else {
-      _loadUserRole();
-      _loadVesselData();
-    }
-  }
-
-  void _showDocumentRequiredDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.description, size: 40, color: Colors.orange),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Dokumen Belum Lengkap',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Anda harus melengkapi dokumen pribadi terlebih dahulu sebelum mengakses informasi kapal.',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/document-completion').then((_) {
-                    _checkDocumentCompletion();
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Lengkapi Dokumen', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _loadUserRole() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-
-    if (userDataString != null) {
-      final userData = json.decode(userDataString);
-      setState(() {
-        _userRole = userData['role']?.toString() ?? 'Crew';
-      });
-    }
+    _loadVesselData();
   }
 
   Future<void> _loadVesselData() async {
     setState(() => _isLoading = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('vessel_data');
-      
       final vesselData = await VesselService().getVesselData();
       
       if (mounted) {
@@ -200,65 +117,81 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final roleUpper = _userRole.toUpperCase();
-    final isNahkoda = roleUpper == 'NAHKODA' || roleUpper == 'NAKHODA';
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final user = userProvider.user;
+        final isNahkoda = user?.isNahkoda == true;
+        print('DEBUG: isNahkoda from UserProvider = $isNahkoda');
+        print('DEBUG: user role = ${user?.role}');
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        title: Text('Informasi Kapal', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadVesselData,
-        child: _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    SizedBox(height: 30),
-                    _buildHeader(),
-                    SizedBox(height: 16),
-                    Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _buildVesselInfoCard(),
-                          SizedBox(height: 16),
-                          _buildMenuCard(
-                            icon: Icons.description,
-                            title: 'Dokumen Kapal',
-                            subtitle: 'Lihat dokumen kapal',
-                            color: Colors.blue,
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VesselDocumentsScreen())),
-                          ),
-                          SizedBox(height: 16),
-                          if (!isNahkoda)
-                            _buildMenuCard(
-                              icon: Icons.ac_unit,
-                              title: 'Manajemen Es',
-                              subtitle: 'Input & history es',
-                              color: Colors.cyan,
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => IceManagementScreen())),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+        return Scaffold(
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            iconTheme: IconThemeData(color: Colors.white),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-      ),
+            ),
+            title: Text('Informasi Kapal', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+          body: RefreshIndicator(
+            onRefresh: _loadVesselData,
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    physics: AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      children: [
+                        SizedBox(height: 30),
+                        _buildHeader(),
+                        SizedBox(height: 16),
+                        Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              _buildVesselInfoCard(isNahkoda),
+                              SizedBox(height: 16),
+                              _buildMenuCard(
+                                icon: Icons.description,
+                                title: 'Dokumen Kapal',
+                                subtitle: 'Lihat dokumen kapal',
+                                color: Colors.blue,
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VesselDocumentsScreen())),
+                              ),
+                              SizedBox(height: 16),
+                              // Menu Manajemen BBM - HANYA untuk Nahkoda
+                              if (isNahkoda)
+                                _buildMenuCard(
+                                  icon: Icons.local_gas_station,
+                                  title: 'Manajemen BBM',
+                                  subtitle: 'Input & history bahan bakar',
+                                  color: Colors.orange,
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FuelManagementScreen())),
+                                ),
+                              // Menu Manajemen Es - HANYA untuk ABK
+                              if (!isNahkoda)
+                                _buildMenuCard(
+                                  icon: Icons.ac_unit,
+                                  title: 'Manajemen Es',
+                                  subtitle: 'Input & history es',
+                                  color: Colors.cyan,
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => IceManagementScreen())),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        );
+      },
     );
   }
 
@@ -282,10 +215,8 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
     );
   }
 
-  Widget _buildVesselInfoCard() {
+  Widget _buildVesselInfoCard(bool isNahkoda) {
     final nahkoda = _vesselData?['nahkoda'] as Map<String, dynamic>?;
-    final roleUpper = _userRole.toUpperCase();
-    final isNahkoda = roleUpper == 'NAHKODA' || roleUpper == 'NAKHODA';
 
     return Container(
       decoration: BoxDecoration(
@@ -326,6 +257,7 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
                 _buildInfoRow('Nama Kapal', vesselName, Icons.directions_boat_rounded, Color(0xFF1B4F9C)),
                 SizedBox(height: 16),
                 _buildInfoRow('Nomor Registrasi', vesselNumber, Icons.confirmation_number_outlined, Color(0xFF2563EB)),
+                // Info Nahkoda - HANYA untuk ABK
                 if (!isNahkoda) ...[
                   SizedBox(height: 16),
                   _buildInfoRow('Nahkoda', nahkoda?['nama'] ?? 'Tidak ada data', Icons.person, Color(0xFF10B981)),
