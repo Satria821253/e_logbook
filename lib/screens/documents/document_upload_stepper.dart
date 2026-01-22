@@ -11,6 +11,7 @@ import 'pages/step_6_bst.dart';
 import 'pages/step_7_surat_sehat.dart';
 import 'pages/step_8_skck.dart';
 import '../../services/getAPi/document_service.dart';
+import '../../services/realtime_update_service.dart';
 
 class DocumentUploadStepper extends StatefulWidget {
   final int initialStep;
@@ -158,6 +159,13 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
   void _goToNextStep() async {
     // Refresh document statuses setelah upload
     await _refreshDocumentStatuses();
+    
+    // Langsung notify listener untuk update banner di home screen
+    print('🔔 Manually triggering documents listener after upload');
+    final listener = RealtimeUpdateService.getListener('documents');
+    if (listener != null) {
+      listener();
+    }
     
     // Jika ada rejected docs, prioritaskan rejected docs
     if (_rejectedDocs.isNotEmpty) {

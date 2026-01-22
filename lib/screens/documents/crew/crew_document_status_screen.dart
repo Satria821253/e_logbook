@@ -1,6 +1,7 @@
 // lib/screens/documents/crew/crew_document_status_screen.dart
 
 import 'package:e_logbook/services/getAPi/document_service.dart';
+import 'package:e_logbook/services/realtime_update_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
@@ -38,6 +39,14 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
     );
     _animationController.forward();
     _loadDocuments();
+    
+    // Register listener untuk auto-refresh
+    RealtimeUpdateService.addListener('documents', () {
+      if (mounted) {
+        print('🔔 Documents changed, auto-refreshing status screen...');
+        _loadDocuments();
+      }
+    });
   }
 
   Future<void> _loadDocuments() async {
@@ -105,6 +114,7 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    RealtimeUpdateService.removeListener('documents');
     _animationController.dispose();
     _bubbleController.dispose();
     super.dispose();

@@ -5,6 +5,7 @@ import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
 import 'package:e_logbook/screens/documents/document_popup_helper.dart';
 import 'package:e_logbook/screens/documents/pending_popup_helper.dart';
 import 'package:e_logbook/services/getAPi/document_service.dart';
+import 'package:e_logbook/services/realtime_update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
@@ -39,21 +40,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     WidgetsBinding.instance.addObserver(this);
     print('🚀 HomeScreen: initState called');
     
-    // Clear popup session flag saat app dibuka
-    _clearPopupSessionFlag();
+    // Register listener untuk auto-refresh documents
+    RealtimeUpdateService.addListener('documents', () {
+      if (mounted) {
+        print('🔔 Documents changed, auto-refreshing home screen...');
+        // HANYA refresh banner, TIDAK tampilkan popup
+        _checkDocumentCompletion();
+      }
+    });
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadAllData();
     });
   }
-  
-  Future<void> _clearPopupSessionFlag() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('popup_shown_this_session');
-    print('🧹 Cleared popup session flag');
-  }
-
-
 
   Future<void> _loadAllData() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -148,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    RealtimeUpdateService.removeListener('documents');
     super.dispose();
   }
 
@@ -206,13 +206,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         // - Dokumen completed jika semua 8 dokumen sudah approved
         // - Pending popup HANYA muncul jika SEMUA 8 dokumen sudah diupload DAN ada yang pending
         // - Upload popup muncul jika belum lengkap 8 dokumen
+        // - Rejected HANYA jika ada dokumen dengan status rejected (bukan dihapus)
         final allDocsApproved = approved >= 8;
-        final totalUploaded = approved + pending;
+        final totalUploaded = approved + pending + rejected; // Total dokumen yang ada
         const totalRequired = 8;
         
         // Pending hanya jika sudah upload semua 8 dokumen dan ada yang masih pending
         final hasPending = totalUploaded >= totalRequired && pending > 0;
-        final hasRejected = rejected > 0;
+        final hasRejected = rejected > 0; // Hanya jika ada rejected, bukan dihapus
         
         // Update status
         await prefs.setBool('documents_completed', allDocsApproved);
@@ -221,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         await prefs.setInt('approved_count', approved);
         await prefs.setInt('total_uploaded', totalUploaded);
         
-        print('✅ [Validation] Approved: $approved, Pending: $pending, Total: $totalUploaded/8, Show pending popup: $hasPending');
+        print('✅ [Validation] Approved: $approved, Pending: $pending, Rejected: $rejected, Total: $totalUploaded/8, Show pending: $hasPending, Show rejected: $hasRejected');
         
         if (mounted) {
           setState(() {
@@ -229,10 +230,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             _rejectedCount = rejected;
             _totalCount = 8; // Total dokumen yang dibutuhkan
             
-            // Hanya tampilkan alert jika belum semua approved dan tidak ada pending/rejected
-            _showDocumentAlert = !allDocsApproved && !hasPending && !hasRejected;
-            _showPendingBanner = hasPending;
-            _showRejectedAlert = hasRejected && !hasPending;
+            // Prioritas: Rejected > Pending > Incomplete
+            if (hasRejected) {
+              // Ada rejected, tampilkan rejected alert
+              _showDocumentAlert = false;
+              _showPendingBanner = false;
+              _showRejectedAlert = true;
+            } else if (hasPending) {
+              // Ada pending (dan sudah 8 dokumen), tampilkan pending banner
+              _showDocumentAlert = false;
+              _showPendingBanner = true;
+              _showRejectedAlert = false;
+            } else if (!allDocsApproved) {
+              // Belum lengkap 8 dokumen atau belum semua approved, tampilkan upload alert
+              _showDocumentAlert = true;
+              _showPendingBanner = false;
+              _showRejectedAlert = false;
+            } else {
+              // Semua approved, tidak tampilkan apapun
+              _showDocumentAlert = false;
+              _showPendingBanner = false;
+              _showRejectedAlert = false;
+            }
           });
         }
         return;
@@ -1053,13 +1072,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const DocumentUploadStepper(),
                   ),
                 );
+                // Refresh status setelah kembali
+                if (mounted) await _checkDocumentCompletion();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -1147,8 +1168,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/document-status');
+              onPressed: () async {
+                await Navigator.pushNamed(context, '/document-status');
+                // Refresh status setelah kembali
+                if (mounted) await _checkDocumentCompletion();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -1271,8 +1294,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/document-status');
+            onPressed: () async {
+              await Navigator.pushNamed(context, '/document-status');
+              // Refresh status setelah kembali
+              if (mounted) await _checkDocumentCompletion();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,

@@ -6,6 +6,7 @@ import '../../models/user_model.dart';
 import '../admin_notification_service.dart';
 import 'package:flutter/material.dart';
 import '../../utils/account_status_interceptor.dart';
+import '../../utils/token_interceptor.dart';
 
 class AuthService {
   // VPS Production Server
@@ -34,6 +35,12 @@ class AuthService {
 
   static void addAccountStatusInterceptor(BuildContext context) {
     _dio.interceptors.add(AccountStatusInterceptor(context));
+  }
+
+  static void addTokenInterceptor(BuildContext context) {
+    // Remove old token interceptor if exists
+    _dio.interceptors.removeWhere((i) => i is TokenInterceptor);
+    _dio.interceptors.add(TokenInterceptor(context: context));
   }
 
   static Future<String?> getToken() async {

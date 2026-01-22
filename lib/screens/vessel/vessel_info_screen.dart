@@ -3,6 +3,7 @@ import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../../provider/user_provider.dart';
 import '../../services/getAPi/vessel_service.dart';
+import '../../services/realtime_update_service.dart';
 import 'fuel_management_screen.dart';
 import 'ice_management_screen.dart';
 import 'vessel_documents_screen.dart';
@@ -27,6 +28,14 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
   void initState() {
     super.initState();
     _loadVesselData();
+    
+    // Register listener untuk auto-update
+    RealtimeUpdateService.addListener('vessel', () {
+      if (mounted) {
+        print('🔔 Vessel data changed, auto-refreshing...');
+        _loadVesselData();
+      }
+    });
   }
 
   Future<void> _loadVesselData() async {
@@ -218,6 +227,12 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    RealtimeUpdateService.removeListener('vessel');
+    super.dispose();
   }
 
   @override
@@ -501,6 +516,16 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
             context,
             MaterialPageRoute(builder: (_) => VesselDocumentsScreen()),
           ),
+        ),
+        SizedBox(height: 12),
+        
+        // Upload Sertifikat - Untuk semua
+        _buildMenuCard(
+          icon: Icons.upload_file_rounded,
+          title: 'Upload Sertifikat',
+          subtitle: 'Upload sertifikat jalan kapal',
+          gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+          onTap: () => Navigator.pushNamed(context, '/certificate-upload'),
         ),
         SizedBox(height: 12),
         

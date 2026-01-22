@@ -4,6 +4,7 @@ import 'package:e_logbook/provider/zone_alert.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/services/getAPi/auth_service.dart';
 import 'package:e_logbook/services/offline_sync_service.dart';
+import 'package:e_logbook/services/realtime_update_service.dart';
 import 'package:e_logbook/screens/profile_screen.dart';
 import 'package:e_logbook/screens/tracking/pre_trip_fromscreen.dart';
 import 'package:e_logbook/screens/vessel/vessel_info_screen.dart';
@@ -11,6 +12,7 @@ import 'package:e_logbook/screens/vessel/vessel_documents_screen.dart';
 import 'package:e_logbook/screens/documents/document_status_helper.dart';
 import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
 import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
+import 'package:e_logbook/screens/vessel/certificate_upload_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -27,8 +29,12 @@ void main() async {
     // Load environment variables
     await dotenv.load(fileName: ".env");
     
-    // Clear old corrupted photo URLs (one-time fix)
+    // Clear popup session flag saat app restart
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('popup_shown_this_session');
+    debugPrint('🧹 Cleared popup session flag on app start');
+    
+    // Clear old corrupted photo URLs (one-time fix)
     final userData = prefs.getString('user_data');
     if (userData != null && userData.contains('api10-')) {
       await prefs.remove('user_data');
@@ -43,6 +49,9 @@ void main() async {
 
     // Start offline sync monitoring
     OfflineSyncService.startConnectivityMonitoring();
+    
+    // Start real-time polling
+    RealtimeUpdateService.startPolling();
   } catch (e) {
     debugPrint('Initialization error: $e');
   }
@@ -129,6 +138,10 @@ class MyApp extends StatelessWidget {
               case '/document-status':
                 return MaterialPageRoute(
                   builder: (_) => const DocumentStatusRoutes(),
+                );
+              case '/certificate-upload':
+                return MaterialPageRoute(
+                  builder: (_) => const CertificateUploadScreen(),
                 );
               default:
                 return null;

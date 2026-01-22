@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../services/getAPi/vessel_service.dart';
+import '../../services/realtime_update_service.dart';
 import 'vessel_certificates_screen.dart';
 import 'vessel_bbm_screen.dart';
 
@@ -19,10 +20,19 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
   void initState() {
     super.initState();
     _loadDocuments();
+    
+    // Register listener untuk auto-update
+    RealtimeUpdateService.addListener('certificates', () {
+      if (mounted) {
+        print('🔔 Certificates changed, auto-refreshing...');
+        _loadDocuments();
+      }
+    });
   }
 
   @override
   void dispose() {
+    RealtimeUpdateService.removeListener('certificates');
     super.dispose();
   }
 
@@ -129,13 +139,16 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
                           title: 'Sertifikat Jalan',
                           subtitle: 'Dokumen sertifikat kapal',
                           gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => VesselCertificatesScreen(documentsData: _documentsData),
                               ),
                             );
+                            if (result == true && mounted) {
+                              _loadDocuments();
+                            }
                           },
                         ),
                         SizedBox(height: 24),

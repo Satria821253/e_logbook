@@ -42,27 +42,140 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
         final totalUploaded = latestDocs.length;
         const totalRequired = 8;
         
+        // Cek berapa yang approved
+        final approvedCount = latestDocs.values.where((d) => d['status'] == 'approved').length;
+        
+        print('📊 [Sertifikat Check] Total: $totalUploaded, Approved: $approvedCount');
+        
+        // Jika semua 8 dokumen sudah approved, tampilkan popup upload sertifikat
+        if (approvedCount >= totalRequired) {
+          print('✅ All personal documents approved, show certificate upload popup');
+          _showNoCertificateUploadDialog();
+          return;
+        }
+        
+        // Jika belum lengkap 8 dokumen, ke upload dokumen pribadi
         if (totalUploaded < totalRequired) {
-          // Belum lengkap 8 dokumen, ke upload
           _showNoCertificateDialog(hasDocuments: false);
         } else {
-          // Sudah 8 dokumen, cek statusnya
-          final allApproved = latestDocs.values.every((d) => d['status'] == 'approved');
-          
-          if (allApproved) {
-            // Semua approved tapi belum ada sertifikat jalan
-            _showNoCertificateDialog(hasDocuments: false);
-          } else {
-            // Ada yang pending/rejected, ke status screen
-            _showNoCertificateDialog(hasDocuments: true);
-          }
+          // Sudah 8 dokumen tapi belum semua approved, ke status screen
+          _showNoCertificateDialog(hasDocuments: true);
         }
       } else {
         _showNoCertificateDialog(hasDocuments: false);
       }
     } catch (e) {
+      print('❌ Error checking documents: $e');
       _showNoCertificateDialog(hasDocuments: false);
     }
+  }
+
+  void _showNoCertificateUploadDialog() {
+    final shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    
+    final shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: shakeController,
+      curve: Curves.easeInOut,
+    ));
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async {
+            shakeController.forward(from: 0);
+            return false;
+          },
+          child: AnimatedBuilder(
+            animation: shakeAnimation,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: shakeAnimation.value,
+                child: child,
+              );
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back, color: Colors.grey[700]),
+                          onPressed: () {
+                            shakeController.dispose();
+                            Navigator.pop(context);
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.upload_file, size: 40, color: Colors.blue),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Belum Upload Sertifikat',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Dokumen pribadi Anda sudah lengkap dan disetujui.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Silakan upload Sertifikat Jalan kapal untuk melanjutkan.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        shakeController.dispose();
+                        Navigator.pop(context);
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/certificate-upload');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text('Upload Sertifikat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showNoCertificateDialog({required bool hasDocuments}) {
@@ -207,6 +320,24 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
           'Sertifikat Kapal',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
+        actions: [
+          // Upload button
+          IconButton(
+            icon: Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
+            onPressed: () async {
+              final result = await Navigator.pushNamed(context, '/certificate-upload');
+              if (result == true && mounted) {
+                // Refresh data setelah upload
+                setState(() {
+                  widget.documentsData?['sertifikatJalan'] = null;
+                });
+                // Reload from parent or refetch
+                Navigator.pop(context, true);
+              }
+            },
+            tooltip: 'Upload Sertifikat',
+          ),
+        ],
       ),
       body: Column(
         children: [

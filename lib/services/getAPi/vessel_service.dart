@@ -897,6 +897,93 @@ class VesselService {
     }
   }
 
+  Future<Map<String, dynamic>> uploadSertifikatJalan({
+    required String nama,
+    required String nomorSertifikat,
+    required String tanggalBerlaku,
+    required String filePath,
+  }) async {
+    try {
+      print('📄 Uploading sertifikat jalan...');
+      print('   Input nama: "$nama" (length: ${nama.length})');
+      print('   Input nomorSertifikat: "$nomorSertifikat" (length: ${nomorSertifikat.length})');
+      print('   Input tanggalBerlaku: "$tanggalBerlaku"');
+      print('   Input filePath: "$filePath"');
+      
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        throw Exception('Token tidak ditemukan');
+      }
+
+      final vesselData = await getVesselData();
+      if (vesselData == null) {
+        throw Exception('Tidak ada kapal yang di-assign.');
+      }
+
+      final kapalId = vesselData['kapal']['id'];
+      print('🚢 Kapal ID: $kapalId');
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/sertifikat-jalan'),
+      );
+
+      // Convert date to ISO 8601 datetime format
+      final dateTime = DateTime.parse(tanggalBerlaku);
+      final isoDateTime = dateTime.toUtc().toIso8601String();
+      print('   Converted to ISO: "$isoDateTime"');
+
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['nama'] = nama;
+      request.fields['nomor_sertifikat'] = nomorSertifikat;
+      request.fields['tanggal_berlaku'] = isoDateTime;
+      
+      print('📤 Request fields:');
+      print('   nama: "${request.fields['nama']}"');
+      print('   nomor_sertifikat: "${request.fields['nomor_sertifikat']}"');
+      print('   tanggal_berlaku: "${request.fields['tanggal_berlaku']}"');
+
+      final file = File(filePath);
+      if (await file.exists()) {
+        String contentType = 'application/pdf';
+        if (filePath.toLowerCase().endsWith('.jpg') || filePath.toLowerCase().endsWith('.jpeg')) {
+          contentType = 'image/jpeg';
+        } else if (filePath.toLowerCase().endsWith('.png')) {
+          contentType = 'image/png';
+        }
+
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'sertifikat',
+            filePath,
+            contentType: http_parser.MediaType.parse(contentType),
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(minutes: 2),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📊 Response status: ${response.statusCode}');
+      print('📊 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        print('✅ Sertifikat uploaded successfully');
+        return result;
+      } else {
+        throw Exception('Gagal upload sertifikat: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error uploading sertifikat: $e');
+      throw Exception('Error: $e');
+    }
+  }
+
   Future<bool> hasCertificate() async {
     try {
       final documents = await getVesselDocuments();

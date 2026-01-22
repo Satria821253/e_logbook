@@ -41,6 +41,7 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _getCurrentLocation();
     AuthService.addAccountStatusInterceptor(context);
+    AuthService.addTokenInterceptor(context); // Add token interceptor
     _loadUserData();
   }
   
