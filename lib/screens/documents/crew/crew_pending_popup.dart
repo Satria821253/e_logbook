@@ -217,6 +217,7 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
                 ),
               ),
             ),
+            )
         ],
       ),
       ),

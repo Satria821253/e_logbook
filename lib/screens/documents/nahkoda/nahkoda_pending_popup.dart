@@ -220,6 +220,7 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
                 ),
               ),
             ),
+          ),
         ],
       ),
       ),
