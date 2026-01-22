@@ -119,7 +119,7 @@ class _EditFuelScreenState extends State<EditFuelScreen> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.orange, Colors.deepOrange],
+              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -155,14 +155,14 @@ class _EditFuelScreenState extends State<EditFuelScreen> {
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
+              color: Color(0xFF1B4F9C).withOpacity(0.1),
               borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
             ),
             child: Row(
               children: [
-                Icon(Icons.local_gas_station, color: Colors.orange, size: 24),
+                Icon(Icons.local_gas_station, color: Color(0xFF1B4F9C), size: 24),
                 SizedBox(width: 12),
-                Text('Edit Data BBM', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange[800])),
+                Text('Edit Data BBM', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B4F9C))),
               ],
             ),
           ),
@@ -174,7 +174,7 @@ class _EditFuelScreenState extends State<EditFuelScreen> {
                   value: _jenisBahanBakar,
                   decoration: InputDecoration(
                     labelText: 'Jenis Bahan Bakar *',
-                    prefixIcon: Icon(Icons.local_gas_station, color: Colors.orange),
+                    prefixIcon: Icon(Icons.local_gas_station, color: Color(0xFF1B4F9C)),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   items: ['Solar', 'Bensin', 'Pertamax'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
@@ -345,7 +345,7 @@ class _EditFuelScreenState extends State<EditFuelScreen> {
       child: ElevatedButton(
         onPressed: _isLoading ? null : _updateFuelData,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange,
+          backgroundColor: Color(0xFF1B4F9C),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
         child: _isLoading

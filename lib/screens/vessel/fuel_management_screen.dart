@@ -44,8 +44,16 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
     if (_tanggalPengisian == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Tanggal pengisian harus diisi'),
+          content: Row(
+            children: [
+              Icon(Icons.warning_rounded, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Tanggal pengisian harus diisi'),
+            ],
+          ),
           backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       return;
@@ -58,19 +66,23 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
       final hargaPerLiter = double.parse(_hargaPerLiterController.text);
       final totalHarga = double.parse(_totalHargaController.text);
 
+      // Convert to UTC and format as ISO 8601 with Z
+      final tanggalISO = _tanggalPengisian!.toUtc().toIso8601String();
+
       print('🔥 Submitting fuel data:');
       print('   Jenis: $_jenisBahanBakar');
       print('   Jumlah: $jumlahLiter');
       print('   Harga/L: $hargaPerLiter');
       print('   Total: $totalHarga');
-      print('   Tanggal: ${_tanggalPengisian!.toIso8601String()}');
+      print('   Tanggal (Local): $_tanggalPengisian');
+      print('   Tanggal (ISO UTC): $tanggalISO');
 
       final result = await VesselService().uploadBahanBakar(
         jenisBahanBakar: _jenisBahanBakar,
         jumlahLiter: jumlahLiter,
         hargaPerLiter: hargaPerLiter,
         totalHarga: totalHarga,
-        tanggalPengisian: _tanggalPengisian!.toIso8601String(),
+        tanggalPengisian: tanggalISO,
         lokasiPengisian: _lokasiPengisianController.text.isNotEmpty
             ? _lokasiPengisianController.text
             : null,
@@ -85,8 +97,16 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Data BBM berhasil disimpan'),
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Data BBM berhasil disimpan'),
+              ],
+            ),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         Navigator.pop(context);
@@ -95,8 +115,16 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
       print('❌ Error uploading fuel: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal menyimpan data: $e'),
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(child: Text('Gagal menyimpan data: $e')),
+            ],
+          ),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } finally {
@@ -107,6 +135,7 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -114,14 +143,14 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.orange, Colors.deepOrange],
+              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
         ),
         title: Text(
-          'Manajemen BBM',
+          'Input Bahan Bakar',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
@@ -130,13 +159,66 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildHeaderInfo(),
+              SizedBox(height: 24),
               _buildInputCard(),
               SizedBox(height: 24),
               _buildSubmitButton(),
+              SizedBox(height: 16),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderInfo() {
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.orange.withOpacity(0.1), Colors.orange.withOpacity(0.05)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.info_outline, color: Colors.orange[800], size: 24),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pengisian Bahan Bakar',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange[800],
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Isi data dengan lengkap dan akurat',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -145,206 +227,362 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
             offset: Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Detail Pengisian',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
               ),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.local_gas_station, color: Colors.orange, size: 24),
-                SizedBox(width: 12),
-                Text(
-                  'Input Pengisian BBM',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange[800],
-                  ),
+            SizedBox(height: 20),
+            
+            // Jenis BBM
+            DropdownButtonFormField<String>(
+              value: _jenisBahanBakar,
+              decoration: InputDecoration(
+                labelText: 'Jenis Bahan Bakar',
+                labelStyle: TextStyle(color: Colors.grey[700]),
+                prefixIcon: Icon(Icons.local_gas_station_rounded, color: Colors.orange),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
-              ],
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.orange, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+              items: ['Solar', 'Bensin', 'Pertamax']
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (value) => setState(() => _jenisBahanBakar = value!),
             ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              children: [
-                DropdownButtonFormField<String>(
-                  value: _jenisBahanBakar,
-                  decoration: InputDecoration(
-                    labelText: 'Jenis Bahan Bakar *',
-                    prefixIcon: Icon(Icons.local_gas_station, color: Colors.orange),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  items: ['Solar', 'Bensin', 'Pertamax']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (value) => setState(() => _jenisBahanBakar = value!),
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: _jumlahLiterController,
-                  decoration: InputDecoration(
-                    labelText: 'Jumlah Liter *',
-                    suffixText: 'Liter',
-                    prefixIcon: Icon(Icons.water_drop, color: Colors.blue),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (value) => _calculateTotalHarga(),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) return 'Wajib diisi';
-                    if (double.tryParse(value!) == null) return 'Harus angka';
-                    return null;
-                  },
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: _hargaPerLiterController,
-                  decoration: InputDecoration(
-                    labelText: 'Harga Per Liter *',
-                    prefixText: 'Rp ',
-                    prefixIcon: Icon(Icons.attach_money, color: Colors.green),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) => _calculateTotalHarga(),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) return 'Wajib diisi';
-                    if (double.tryParse(value!) == null) return 'Harus angka';
-                    return null;
-                  },
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: _totalHargaController,
-                  decoration: InputDecoration(
-                    labelText: 'Total Harga *',
-                    prefixText: 'Rp ',
-                    prefixIcon: Icon(Icons.payments, color: Colors.purple),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                  ),
-                  readOnly: true,
-                ),
-                SizedBox(height: 16),
-                InkWell(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now().subtract(Duration(days: 1)),
-                      firstDate: DateTime.now().subtract(Duration(days: 365)),
-                      lastDate: DateTime.now().subtract(Duration(days: 1)),
+            SizedBox(height: 20),
+            
+            // Jumlah Liter
+            TextFormField(
+              controller: _jumlahLiterController,
+              decoration: _buildInputDecoration(
+                label: 'Jumlah Liter',
+                hint: 'Contoh: 500',
+                suffix: 'Liter',
+                icon: Icons.water_drop_rounded,
+                iconColor: Colors.blue,
+              ),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              onChanged: (value) => _calculateTotalHarga(),
+              validator: (value) {
+                if (value?.isEmpty ?? true) return 'Jumlah liter wajib diisi';
+                if (double.tryParse(value!) == null) return 'Harus berupa angka';
+                if (double.parse(value) <= 0) return 'Harus lebih dari 0';
+                return null;
+              },
+            ),
+            SizedBox(height: 20),
+            
+            // Harga per Liter
+            TextFormField(
+              controller: _hargaPerLiterController,
+              decoration: _buildInputDecoration(
+                label: 'Harga Per Liter',
+                hint: 'Contoh: 6800',
+                prefix: 'Rp ',
+                icon: Icons.attach_money_rounded,
+                iconColor: Colors.green,
+              ),
+              keyboardType: TextInputType.number,
+              onChanged: (value) => _calculateTotalHarga(),
+              validator: (value) {
+                if (value?.isEmpty ?? true) return 'Harga wajib diisi';
+                if (double.tryParse(value!) == null) return 'Harus berupa angka';
+                if (double.parse(value) <= 0) return 'Harus lebih dari 0';
+                return null;
+              },
+            ),
+            SizedBox(height: 20),
+            
+            // Total Harga (auto-calculated)
+            TextFormField(
+              controller: _totalHargaController,
+              decoration: _buildInputDecoration(
+                label: 'Total Harga',
+                prefix: 'Rp ',
+                icon: Icons.payments_rounded,
+                iconColor: Colors.purple,
+              ).copyWith(
+                filled: true,
+                fillColor: Colors.grey[100],
+              ),
+              readOnly: true,
+            ),
+            SizedBox(height: 20),
+            
+            // Tanggal Pengisian
+            InkWell(
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now().subtract(Duration(days: 1)),
+                  firstDate: DateTime.now().subtract(Duration(days: 365)),
+                  lastDate: DateTime.now().subtract(Duration(days: 1)),
+                  builder: (context, child) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: ColorScheme.light(
+                          primary: Colors.orange,
+                          onPrimary: Colors.white,
+                        ),
+                      ),
+                      child: child!,
                     );
-                    if (date != null) setState(() => _tanggalPengisian = date);
                   },
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: 'Tanggal Pengisian *',
-                      prefixIcon: Icon(Icons.calendar_today, color: Colors.red),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: Text(
+                );
+                if (date != null) setState(() => _tanggalPengisian = date);
+              },
+              child: InputDecorator(
+                decoration: _buildInputDecoration(
+                  label: 'Tanggal Pengisian',
+                  icon: Icons.calendar_today_rounded,
+                  iconColor: Colors.red,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
                       _tanggalPengisian != null
                           ? '${_tanggalPengisian!.day}/${_tanggalPengisian!.month}/${_tanggalPengisian!.year}'
-                          : 'Pilih tanggal',
+                          : 'Pilih tanggal pengisian',
                       style: TextStyle(
-                        color: _tanggalPengisian != null ? Colors.black : Colors.grey,
+                        color: _tanggalPengisian != null ? Colors.black87 : Colors.grey[500],
+                        fontSize: 16,
                       ),
                     ),
-                  ),
+                    Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+                  ],
                 ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: _lokasiPengisianController,
-                  decoration: InputDecoration(
-                    labelText: 'Lokasi Pengisian',
-                    hintText: 'Contoh: SPBU Pelabuhan',
-                    prefixIcon: Icon(Icons.location_on, color: Colors.red),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: _keteranganController,
-                  decoration: InputDecoration(
-                    labelText: 'Keterangan',
-                    prefixIcon: Icon(Icons.note, color: Colors.grey),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  maxLines: 2,
-                ),
-                SizedBox(height: 16),
-                _buildBuktiUpload(),
-              ],
+              ),
             ),
-          ),
-        ],
+            SizedBox(height: 20),
+            
+            // Lokasi (Optional)
+            TextFormField(
+              controller: _lokasiPengisianController,
+              decoration: _buildInputDecoration(
+                label: 'Lokasi Pengisian (Opsional)',
+                hint: 'Contoh: SPBU Pelabuhan Muara Baru',
+                icon: Icons.location_on_rounded,
+                iconColor: Colors.red,
+              ),
+            ),
+            SizedBox(height: 20),
+            
+            // Keterangan (Optional)
+            TextFormField(
+              controller: _keteranganController,
+              decoration: _buildInputDecoration(
+                label: 'Keterangan (Opsional)',
+                hint: 'Catatan tambahan...',
+                icon: Icons.note_alt_rounded,
+                iconColor: Colors.grey[700]!,
+              ),
+              maxLines: 3,
+            ),
+            SizedBox(height: 24),
+            
+            // Bukti Upload
+            _buildBuktiUpload(),
+          ],
+        ),
       ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration({
+    required String label,
+    String? hint,
+    String? prefix,
+    String? suffix,
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      labelStyle: TextStyle(color: Colors.grey[700]),
+      hintStyle: TextStyle(color: Colors.grey[400]),
+      prefixText: prefix,
+      suffixText: suffix,
+      prefixIcon: Icon(icon, color: iconColor),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.orange, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red, width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red, width: 2),
+      ),
+      filled: true,
+      fillColor: Colors.grey[50],
     );
   }
 
   Widget _buildBuktiUpload() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!, width: 2, style: BorderStyle.solid),
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.grey[50],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.receipt, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Bukti Pengisian (Opsional)', style: TextStyle(fontWeight: FontWeight.w500)),
+              Icon(Icons.receipt_long_rounded, color: Colors.blue[700], size: 24),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bukti Pengisian',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Opsional',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           if (_buktiFilePath != null) ...[
-            SizedBox(height: 8),
-            Text(_buktiFilePath!.split('/').last, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.green[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _buktiFilePath!.split('/').last,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.green[900],
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() => _buktiFilePath = null),
+                    color: Colors.green[700],
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
           ],
-          SizedBox(height: 12),
+          SizedBox(height: 16),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
+                child: ElevatedButton.icon(
                   onPressed: () async {
                     final picker = ImagePicker();
-                    final image = await picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+                    final image = await picker.pickImage(
+                      source: ImageSource.camera,
+                      imageQuality: 80,
+                    );
                     if (image != null) setState(() => _buktiFilePath = image.path);
                   },
-                  icon: Icon(Icons.camera_alt, size: 18),
+                  icon: Icon(Icons.camera_alt_rounded, size: 20),
                   label: Text('Kamera'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blue[700],
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: Colors.blue[200]!),
+                    ),
+                  ),
                 ),
               ),
-              SizedBox(width: 8),
+              SizedBox(width: 12),
               Expanded(
-                child: OutlinedButton.icon(
+                child: ElevatedButton.icon(
                   onPressed: () async {
                     final picker = ImagePicker();
-                    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+                    final image = await picker.pickImage(
+                      source: ImageSource.gallery,
+                      imageQuality: 80,
+                    );
                     if (image != null) setState(() => _buktiFilePath = image.path);
                   },
-                  icon: Icon(Icons.photo_library, size: 18),
+                  icon: Icon(Icons.photo_library_rounded, size: 20),
                   label: Text('Galeri'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.purple[700],
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: Colors.purple[200]!),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -361,17 +599,35 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
       child: ElevatedButton(
         onPressed: _isLoading ? null : _submitFuelData,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange,
+          backgroundColor: Color(0xFF1B4F9C),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: Colors.grey[300],
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 0,
+          shadowColor: Color(0xFF1B4F9C).withOpacity(0.4),
         ),
         child: _isLoading
-            ? CircularProgressIndicator(color: Colors.white)
+            ? SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.save, color: Colors.white),
+                  Icon(Icons.save_rounded, size: 22),
                   SizedBox(width: 12),
-                  Text('Simpan Data BBM', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(
+                    'Simpan Data BBM',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ],
               ),
       ),

@@ -2,9 +2,8 @@ import 'package:e_logbook/screens/Login/welcome_screen.dart';
 import 'package:e_logbook/screens/page/edit_profile_screen.dart';
 import 'package:e_logbook/screens/settings/settings_screen.dart';
 import 'package:e_logbook/screens/help_screen.dart';
-
 import 'package:e_logbook/screens/nahkoda/screens/crew_attendance_screen.dart';
-import 'package:e_logbook/screens/vessel_info_screen.dart';
+import 'package:e_logbook/screens/vessel/vessel_info_screen.dart';
 import 'package:e_logbook/services/getAPi/auth_service.dart';
 import 'package:e_logbook/services/getAPi/profile_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';

@@ -75,7 +75,6 @@ class ProgressIndicatorWidget extends StatelessWidget {
               int step = index + 1;
               bool isCurrent = step == currentStep;
               String? status = documentStatuses?[step];
-              bool isCompleted = step < currentStep && status == null; // Sudah diupload tapi belum ada status dari API
 
               // Tentukan warna berdasarkan status
               Color stepColor;
@@ -91,10 +90,6 @@ class ProgressIndicatorWidget extends StatelessWidget {
               } else if (status == 'rejected') {
                 stepColor = Colors.red; // Merah - Ditolak
                 stepIcon = Icons.close;
-              } else if (isCompleted) {
-                // Step yang sudah diupload (user baru)
-                stepColor = Colors.green; // Hijau - Sudah dikirim
-                stepIcon = Icons.send;
               } else {
                 // Jika tidak ada status (belum pernah upload)
                 if (isCurrent) {
@@ -118,7 +113,7 @@ class ProgressIndicatorWidget extends StatelessWidget {
                           shape: BoxShape.circle,
                           color: stepColor,
                           border: Border.all(
-                            color: isCurrent && status == null && !isCompleted ? Colors.blue : Colors.transparent,
+                            color: isCurrent && status == null ? Colors.blue : Colors.transparent,
                             width: 2,
                           ),
                         ),
@@ -132,7 +127,7 @@ class ProgressIndicatorWidget extends StatelessWidget {
                               : Text(
                                   '$step',
                                   style: TextStyle(
-                                    color: isCurrent || status != null || isCompleted
+                                    color: isCurrent || status != null
                                         ? Colors.white
                                         : Colors.grey[600],
                                     fontSize: 12,
@@ -146,12 +141,12 @@ class ProgressIndicatorWidget extends StatelessWidget {
                         _getStepLabel(step),
                         style: TextStyle(
                           fontSize: 9,
-                          color: isCurrent && status == null && !isCompleted
+                          color: isCurrent && status == null
                               ? Colors.blue
-                              : (status != null || isCompleted)
+                              : status != null
                                   ? stepColor
                                   : Colors.grey[600],
-                          fontWeight: isCurrent && status == null && !isCompleted ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isCurrent && status == null ? FontWeight.bold : FontWeight.normal,
                         ),
                         textAlign: TextAlign.center,
                         maxLines: 1,

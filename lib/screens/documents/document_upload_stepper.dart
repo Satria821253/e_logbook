@@ -15,11 +15,13 @@ import '../../services/getAPi/document_service.dart';
 class DocumentUploadStepper extends StatefulWidget {
   final int initialStep;
   final String? rejectedDocType;
+  final bool fromVesselDocs;
 
   const DocumentUploadStepper({
     Key? key,
     this.initialStep = 1,
     this.rejectedDocType,
+    this.fromVesselDocs = false,
   }) : super(key: key);
 
   @override
@@ -153,15 +155,12 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
     super.dispose();
   }
 
-  void _goToNextStep() {
-    // Jika hanya 1 dokumen rejected, auto keluar setelah upload
-    if (_rejectedDocs.length == 1) {
-      Navigator.pop(context);
-      return;
-    }
+  void _goToNextStep() async {
+    // Refresh document statuses setelah upload
+    await _refreshDocumentStatuses();
     
-    // Jika lebih dari 1 rejected, cari rejected berikutnya
-    if (_rejectedDocs.length > 1) {
+    // Jika ada rejected docs, prioritaskan rejected docs
+    if (_rejectedDocs.isNotEmpty) {
       final currentDocType = _getDocTypeForStep(_currentStep);
       final currentIndex = _rejectedDocs.indexOf(currentDocType);
       
@@ -177,62 +176,86 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
         );
         return;
       }
+      
+      // Jika sudah selesai semua rejected, keluar
+      if (currentIndex >= 0) {
+        Navigator.pop(context);
+        return;
+      }
     }
     
-    // Jika sudah selesai semua rejected, keluar
-    Navigator.pop(context);
+    // Jika tidak ada rejected atau bukan dari rejected, lanjut ke step berikutnya yang belum diupload
+    if (_currentStep < _totalSteps) {
+      final nextStep = _findNextUnuploadedStep(_currentStep + 1);
+      
+      if (nextStep <= _totalSteps) {
+        _pageController?.animateToPage(
+          nextStep - 1,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      } else {
+        // Semua dokumen sudah diupload
+        Navigator.pop(context);
+      }
+    } else {
+      // Sudah di step terakhir
+      Navigator.pop(context);
+    }
   }
-
-  void _showCompletionDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green[100],
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_circle, color: Colors.green, size: 32),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Upload Selesai!',
-                style: TextStyle(fontSize: 20),
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Semua dokumen berhasil diupload. Admin akan memverifikasi dokumen Anda.',
-          style: TextStyle(fontSize: 15),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Close stepper
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Selesai',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
+  
+  Future<void> _refreshDocumentStatuses() async {
+    try {
+      final result = await DocumentService.getDocuments();
+      
+      if (result['success'] == true && result['documents'] != null) {
+        final docs = result['documents'] as List;
+        
+        final uploadedTypes = <String>{};
+        final rejectedTypes = <String>[];
+        final statuses = <int, String>{};
+        
+        for (var doc in docs) {
+          final jenis = doc['jenisDokumen'];
+          final status = doc['status'];
+          
+          if (jenis != null) {
+            final step = _getStepForDocType(jenis.toString());
+            if (step > 0) {
+              statuses[step] = status ?? 'pending';
+              
+              if (status == 'approved' || status == 'pending') {
+                uploadedTypes.add(jenis.toString());
+              } else if (status == 'rejected') {
+                rejectedTypes.add(jenis.toString());
+              }
+            }
+          }
+        }
+        
+        if (mounted) {
+          setState(() {
+            _uploadedDocs = uploadedTypes;
+            _rejectedDocs = rejectedTypes;
+            _documentStatuses = statuses;
+          });
+        }
+        
+        print('🔄 [Refresh] Updated statuses: $_documentStatuses');
+      }
+    } catch (e) {
+      print('❌ Error refreshing statuses: $e');
+    }
+  }
+  
+  int _findNextUnuploadedStep(int startFrom) {
+    final docTypes = ['KTP', 'Pas Foto', 'NPWP', 'Buku Pelaut', 'Sertifikat Nahkoda', 'BST', 'Surat Keterangan Sehat', 'SKCK'];
+    for (int i = startFrom - 1; i < docTypes.length; i++) {
+      if (!_uploadedDocs.contains(docTypes[i])) {
+        return i + 1;
+      }
+    }
+    return _totalSteps + 1; // Semua sudah diupload
   }
 
   @override
@@ -245,8 +268,8 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -267,28 +290,14 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Keluar?'),
-                content: const Text(
-                  'Dokumen yang sudah diupload akan tetap tersimpan. Lanjutkan keluar?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Batal'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Keluar'),
-                  ),
-                ],
-              ),
-            );
+            if (widget.fromVesselDocs) {
+              // Khusus dari Sertifikat Kapal, kembali ke Dokumen Kapal
+              Navigator.of(context).popUntil((route) => route.isFirst);
+              Navigator.pushNamed(context, '/vessel-documents');
+            } else {
+              // Default: kembali ke Home
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            }
           },
         ),
       ),

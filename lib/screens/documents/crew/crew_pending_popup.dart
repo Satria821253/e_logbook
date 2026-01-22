@@ -1,6 +1,4 @@
 // lib/screens/documents/crew_pending_popup.dart
-
-import 'package:e_logbook/screens/documents/document_status_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:ui';
@@ -8,11 +6,15 @@ import 'dart:math' as math;
 
 class CrewPendingPopup extends StatefulWidget {
   final int pendingCount;
+  final int approvedCount;
+  final int rejectedCount;
   final int totalCount;
 
   const CrewPendingPopup({
     Key? key,
     this.pendingCount = 0,
+    this.approvedCount = 0,
+    this.rejectedCount = 0,
     this.totalCount = 6,
   }) : super(key: key);
 
@@ -25,8 +27,10 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
   late AnimationController _scaleController;
   late AnimationController _rotateController;
   late AnimationController _waveController;
+  late AnimationController _shakeController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotateAnimation;
+  late Animation<double> _shakeAnimation;
   bool _isMinimized = false;
 
   @override
@@ -48,6 +52,11 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
       duration: const Duration(seconds: 2),
     )..repeat();
 
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
     _scaleAnimation = CurvedAnimation(
       parent: _scaleController,
       curve: Curves.easeOutBack,
@@ -58,6 +67,17 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
       curve: Curves.easeOutCubic,
     );
 
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: _shakeController,
+      curve: Curves.easeInOut,
+    ));
+
     _scaleController.forward();
     _rotateController.forward();
   }
@@ -67,6 +87,7 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
     _scaleController.dispose();
     _rotateController.dispose();
     _waveController.dispose();
+    _shakeController.dispose();
     super.dispose();
   }
 
@@ -86,10 +107,12 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        _closePopup();
+        _shakeController.forward(from: 0);
         return false;
       },
-      child: Stack(
+      child: GestureDetector(
+        onTap: () => _shakeController.forward(from: 0),
+        child: Stack(
         children: [
           // Background blur
           if (!_isMinimized)
@@ -161,11 +184,19 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
           // Main popup
           if (!_isMinimized)
             Center(
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: RotationTransition(
-                  turns: Tween<double>(begin: -0.02, end: 0.0).animate(_rotateAnimation),
-                  child: Container(
+              child: AnimatedBuilder(
+                animation: _shakeAnimation,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _shakeAnimation.value,
+                    child: child,
+                  );
+                },
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: RotationTransition(
+                    turns: Tween<double>(begin: -0.02, end: 0.0).animate(_rotateAnimation),
+                    child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     constraints: const BoxConstraints(maxWidth: 450),
                     decoration: BoxDecoration(
@@ -188,19 +219,30 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
             ),
         ],
       ),
+      ),
     );
   }
 
   Widget _buildPopupContent() {
+    // Ubah warna jika ada rejected
+    final hasRejected = widget.rejectedCount > 0;
+    final gradientColors = hasRejected
+        ? [
+            Color(0xFFB91C1C), // Merah gelap
+            Color(0xFFDC2626), // Merah tua
+            Color(0xFFEF4444), // Merah
+          ]
+        : [
+            Color(0xFFF57C00),
+            Color(0xFFFB8C00),
+            Color(0xFFFFA726),
+          ];
+    
     return Container(
       height: 600,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFFF57C00),
-            Color(0xFFFB8C00),
-            Color(0xFFFFA726),
-          ],
+          colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -234,7 +276,7 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
                       _buildPendingIllustration(),
                       const SizedBox(height: 24),
                       const Text(
-                        '⏳ Sedang Diproses',
+                        'Sedang Diproses',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -517,7 +559,7 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
                     const Icon(Icons.check_circle, color: Colors.white, size: 32),
                     const SizedBox(height: 8),
                     Text(
-                      '${widget.totalCount - widget.pendingCount}',
+                      '${widget.approvedCount}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -613,7 +655,7 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).pop();
-          DocumentStatusHelper.navigateToStatus(context, 'crew');
+          Navigator.pushNamed(context, '/document-status');
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,

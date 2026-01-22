@@ -1,17 +1,19 @@
 // lib/screens/documents/nahkoda_pending_popup.dart
-
-import 'package:e_logbook/screens/documents/document_status_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:ui';
 
 class NahkodaPendingPopup extends StatefulWidget {
   final int pendingCount;
+  final int approvedCount;
+  final int rejectedCount;
   final int totalCount;
 
   const NahkodaPendingPopup({
     Key? key,
     this.pendingCount = 0,
+    this.approvedCount = 0,
+    this.rejectedCount = 0,
     this.totalCount = 8,
   }) : super(key: key);
 
@@ -24,9 +26,11 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
   late AnimationController _scaleController;
   late AnimationController _rotateController;
   late AnimationController _pulseController;
+  late AnimationController _shakeController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotateAnimation;
   late Animation<double> _pulseAnimation;
+  late Animation<double> _shakeAnimation;
   bool _isMinimized = false;
 
   @override
@@ -48,6 +52,11 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
     _scaleAnimation = CurvedAnimation(
       parent: _scaleController,
       curve: Curves.elasticOut,
@@ -62,6 +71,17 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: _shakeController,
+      curve: Curves.easeInOut,
+    ));
+
     _scaleController.forward();
     _rotateController.forward();
   }
@@ -71,6 +91,7 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
     _scaleController.dispose();
     _rotateController.dispose();
     _pulseController.dispose();
+    _shakeController.dispose();
     super.dispose();
   }
 
@@ -89,10 +110,12 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        _closePopup();
+        _shakeController.forward(from: 0);
         return false;
       },
-      child: Stack(
+      child: GestureDetector(
+        onTap: () => _shakeController.forward(from: 0),
+        child: Stack(
         children: [
           // Background blur
           if (!_isMinimized)
@@ -164,11 +187,19 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
           // Main popup
           if (!_isMinimized)
             Center(
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: RotationTransition(
-                  turns: Tween<double>(begin: 0.02, end: 0.0).animate(_rotateAnimation),
-                  child: Container(
+              child: AnimatedBuilder(
+                animation: _shakeAnimation,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _shakeAnimation.value,
+                    child: child,
+                  );
+                },
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: RotationTransition(
+                    turns: Tween<double>(begin: 0.02, end: 0.0).animate(_rotateAnimation),
+                    child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     constraints: const BoxConstraints(maxWidth: 450),
                     decoration: BoxDecoration(
@@ -191,19 +222,30 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
             ),
         ],
       ),
+      ),
     );
   }
 
   Widget _buildPopupContent() {
+    // Ubah warna jika ada rejected
+    final hasRejected = widget.rejectedCount > 0;
+    final gradientColors = hasRejected
+        ? [
+            Color(0xFFDC2626), // Merah tua
+            Color(0xFFEF4444), // Merah
+            Color(0xFFF87171), // Merah muda
+          ]
+        : [
+            Color(0xFFFFA726),
+            Color(0xFFFB8C00),
+            Color(0xFFF57C00),
+          ];
+    
     return Container(
       height: 600,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFFFFA726),
-            Color(0xFFFB8C00),
-            Color(0xFFF57C00),
-          ],
+          colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -231,7 +273,7 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
                       _buildPendingIllustration(),
                       const SizedBox(height: 24),
                       const Text(
-                        '⏳ Dokumen Sedang Diverifikasi',
+                        'Dokumen Sedang Diverifikasi',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -326,25 +368,6 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
     );
   }
 
-  Widget _buildFloatingIcon(IconData icon, int index) {
-    return TweenAnimationBuilder<double>(
-      duration: Duration(milliseconds: 2000 + (index * 300)),
-      tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, -10 * (1 - value)),
-          child: Opacity(
-            opacity: 0.2 + (0.3 * value),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 40,
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildPendingIllustration() {
     return ScaleTransition(
@@ -403,7 +426,7 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
   }
 
   Widget _buildProgressInfo() {
-    final progress = (widget.totalCount - widget.pendingCount) / widget.totalCount;
+    final progress = widget.approvedCount / widget.totalCount;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -452,7 +475,7 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${widget.totalCount - widget.pendingCount} Disetujui',
+                '${widget.approvedCount} Disetujui',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
@@ -474,68 +497,13 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
     );
   }
 
-  Widget _buildInfoCards() {
-    return const SizedBox.shrink(); // Removed all info cards
-  }
-
-  Widget _buildInfoCard({
-    required IconData icon,
-    required String title,
-    required String description,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActionButtons() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).pop();
-          DocumentStatusHelper.navigateToStatus(context, 'nahkoda');
+          Navigator.pushNamed(context, '/document-status');
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,

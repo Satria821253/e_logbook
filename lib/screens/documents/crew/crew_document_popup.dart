@@ -1,7 +1,6 @@
 // lib/screens/documents/crew_document_popup.dart
 
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
 import 'dart:ui';
 import '../document_upload_stepper.dart';
 
@@ -18,9 +17,11 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
   late AnimationController _fadeController;
   late AnimationController _rotateController;
   late AnimationController _bubbleController;
+  late AnimationController _shakeController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _rotateAnimation;
+  late Animation<double> _shakeAnimation;
   bool _isMinimized = false;
 
   @override
@@ -47,6 +48,11 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
       duration: const Duration(seconds: 3),
     )..repeat();
 
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
     _scaleAnimation = CurvedAnimation(
       parent: _scaleController,
       curve: Curves.easeOutBack,
@@ -62,6 +68,17 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
       curve: Curves.easeOutCubic,
     );
 
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: _shakeController,
+      curve: Curves.easeInOut,
+    ));
+
     _scaleController.forward();
     _fadeController.forward();
     _rotateController.forward();
@@ -73,6 +90,7 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
     _fadeController.dispose();
     _rotateController.dispose();
     _bubbleController.dispose();
+    _shakeController.dispose();
     super.dispose();
   }
 
@@ -97,10 +115,12 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        _closePopup();
+        _shakeController.forward(from: 0);
         return false;
       },
-      child: Stack(
+      child: GestureDetector(
+        onTap: () => _shakeController.forward(from: 0),
+        child: Stack(
         children: [
           if (!_isMinimized)
             FadeTransition(
@@ -168,15 +188,23 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
             ),
           if (!_isMinimized)
             Center(
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: RotationTransition(
-                    turns: Tween<double>(begin: 0.02, end: 0.0).animate(
-                      _rotateAnimation,
-                    ),
-                    child: Container(
+              child: AnimatedBuilder(
+                animation: _shakeAnimation,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _shakeAnimation.value,
+                    child: child,
+                  );
+                },
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: RotationTransition(
+                      turns: Tween<double>(begin: 0.02, end: 0.0).animate(
+                        _rotateAnimation,
+                      ),
+                      child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
                       constraints: const BoxConstraints(maxWidth: 450),
                       decoration: BoxDecoration(
@@ -199,6 +227,7 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
               ),
             ),
         ],
+      ),
       ),
     );
   }
@@ -252,7 +281,7 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
                       _buildCrewIllustration(),
                       const SizedBox(height: 24),
                       const Text(
-                        '🌊 Ahoy, Crew!',
+                        'Ahoy, Crew!',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,

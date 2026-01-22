@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 class VesselService {
   static const String baseUrl = 'http://210.79.191.17:5000';
@@ -130,20 +131,79 @@ class VesselService {
       final isCrewRole = actualRole == 'ABK' || actualRole == 'crew' || actualRole == 'Crew';
       print('🎯 Role: $actualRole, Is crew? $isCrewRole, Force refresh? $forceRefresh');
 
-      // Gunakan cache jika ada (untuk semua role)
-      if (!forceRefresh) {
+      // Cek apakah cache sudah expired (lebih dari 1 hari)
+      final lastCacheTime = prefs.getInt('vessel_data_timestamp');
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final oneDayInMs = 24 * 60 * 60 * 1000; // 1 hari dalam milliseconds
+      
+      bool cacheExpired = false;
+      if (lastCacheTime != null) {
+        final timeDiff = now - lastCacheTime;
+        cacheExpired = timeDiff > oneDayInMs;
+        if (cacheExpired) {
+          print('⏰ Cache expired (${(timeDiff / (60 * 60 * 1000)).toStringAsFixed(1)} hours old)');
+        } else {
+          print('✅ Cache still valid (${(timeDiff / (60 * 60 * 1000)).toStringAsFixed(1)} hours old)');
+        }
+      } else {
+        // Jika tidak ada timestamp, anggap cache expired (untuk backward compatibility)
+        cacheExpired = true;
+        print('⚠️ No timestamp found, treating cache as expired');
+      }
+
+      // Jika tidak force refresh dan cache belum expired, cek versi data dari backend
+      if (!forceRefresh && !cacheExpired) {
         final vesselDataString = prefs.getString('vessel_data');
         if (vesselDataString != null) {
           print('💾 Found cached vessel_data');
           final cachedData = json.decode(vesselDataString);
-          print('📋 [CACHE] Kapal: ${cachedData['kapal']}');
-          print('📋 [CACHE] Nahkoda: ${cachedData['nahkoda']}');
           
-          // Jika crew dan cache tidak punya nahkoda, fetch ulang
-          if (isCrewRole && cachedData['nahkoda'] == null) {
-            print('⚠️ [CREW] Cache tidak punya nahkoda, fetch dari API...');
-          } else {
-            print('✅ Using cache');
+          // Cek versi data dari backend (lightweight check)
+          try {
+            print('🔍 Checking data version from backend...');
+            final versionResponse = await http.get(
+              Uri.parse('$baseUrl/api/mobile/vessels/my-vessel'),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+            ).timeout(const Duration(seconds: 10));
+
+            if (versionResponse.statusCode == 200) {
+              final responseData = json.decode(versionResponse.body);
+              if (responseData['success'] == true) {
+                final vessels = responseData['data'] as List;
+                if (vessels.isNotEmpty) {
+                  final latestKapal = vessels[0];
+                  final cachedKapalId = cachedData['kapal']['id'];
+                  final latestKapalId = latestKapal['id'];
+                  
+                  // Cek apakah kapal ID berubah atau updatedAt berubah
+                  final cachedUpdatedAt = cachedData['kapal']['updatedAt'];
+                  final latestUpdatedAt = latestKapal['updatedAt'];
+                  
+                  if (cachedKapalId != latestKapalId) {
+                    print('🔄 Kapal ID changed: $cachedKapalId -> $latestKapalId');
+                    print('🔄 Forcing refresh due to vessel change');
+                    cacheExpired = true;
+                  } else if (cachedUpdatedAt != null && latestUpdatedAt != null && cachedUpdatedAt != latestUpdatedAt) {
+                    print('🔄 Kapal data updated: $cachedUpdatedAt -> $latestUpdatedAt');
+                    print('🔄 Forcing refresh due to data update');
+                    cacheExpired = true;
+                  } else {
+                    print('✅ Data version matches, using cache');
+                    print('📋 [CACHE] Kapal: ${cachedData['kapal']}');
+                    print('📋 [CACHE] Nahkoda: ${cachedData['nahkoda']}');
+                    print('========== getVesselData END (CACHE) ==========\n');
+                    return cachedData;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            print('⚠️ Failed to check version, using cache: $e');
+            print('📋 [CACHE] Kapal: ${cachedData['kapal']}');
+            print('📋 [CACHE] Nahkoda: ${cachedData['nahkoda']}');
             print('========== getVesselData END (CACHE) ==========\n');
             return cachedData;
           }
@@ -151,7 +211,11 @@ class VesselService {
           print('💾 No cache found');
         }
       } else {
-        print('🔄 Force refresh enabled, skipping cache');
+        if (forceRefresh) {
+          print('🔄 Force refresh enabled, skipping cache');
+        } else if (cacheExpired) {
+          print('🔄 Cache expired, refreshing from API');
+        }
       }
 
       // Fetch dari API
@@ -192,12 +256,14 @@ class VesselService {
                     'id': detailData['id'],
                     'namaKapal': detailData['namaKapal'],
                     'nomorRegistrasi': detailData['nomorRegistrasi'],
+                    'updatedAt': detailData['updatedAt'],
                   },
                   'nahkoda': detailData['nahkoda'],
                 };
                 
                 print('💾 [CREW] Saving to cache with nahkoda: ${vesselData['nahkoda']?['nama']}');
                 await prefs.setString('vessel_data', json.encode(vesselData));
+                await prefs.setInt('vessel_data_timestamp', now);
                 print('========== getVesselData END (API-CREW) ==========\n');
                 return vesselData;
               }
@@ -208,12 +274,14 @@ class VesselService {
                   'id': kapal['id'],
                   'namaKapal': kapal['namaKapal'],
                   'nomorRegistrasi': kapal['nomorRegistrasi'],
+                  'updatedAt': kapal['updatedAt'],
                 },
                 'nahkoda': kapal['nahkoda'],
               };
               
               print('💾 [NAHKODA] Saving to cache');
               await prefs.setString('vessel_data', json.encode(vesselData));
+              await prefs.setInt('vessel_data_timestamp', now);
               print('========== getVesselData END (API-NAHKODA) ==========\n');
               return vesselData;
             }
@@ -322,16 +390,22 @@ class VesselService {
     String? buktiFilePath,
   }) async {
     try {
+      print('\n========== UPLOAD BAHAN BAKAR START ==========');
+      
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
 
       if (token == null) {
+        print('❌ [uploadBahanBakar] Token tidak ditemukan');
         throw Exception('Token tidak ditemukan');
       }
+      
+      print('🔑 [uploadBahanBakar] Token found: ${token.substring(0, 20)}...');
 
       final vesselData = await getVesselData();
 
       if (vesselData == null) {
+        print('❌ [uploadBahanBakar] Vessel data is null');
         throw Exception(
           'Tidak ada kapal yang di-assign. Hubungi admin untuk assign kapal.',
         );
@@ -339,12 +413,23 @@ class VesselService {
 
       final kapalId = vesselData['kapal']['id'];
 
-      print('🚢 Using kapal ID: $kapalId');
+      print('🚢 [uploadBahanBakar] Using kapal ID: $kapalId');
+      print('📋 [uploadBahanBakar] Data yang akan dikirim:');
+      print('   - jenisBahanBakar: $jenisBahanBakar');
+      print('   - jumlahLiter: $jumlahLiter');
+      print('   - hargaPerLiter: $hargaPerLiter');
+      print('   - totalHarga: $totalHarga');
+      print('   - tanggalPengisian: $tanggalPengisian');
+      print('   - lokasiPengisian: ${lokasiPengisian ?? "(kosong)"}');
+      print('   - keterangan: ${keterangan ?? "(kosong)"}');
+      print('   - buktiFilePath: ${buktiFilePath ?? "(tidak ada)"}');
 
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/bahan-bakar'),
       );
+
+      print('🌐 [uploadBahanBakar] URL: $baseUrl/api/mobile/vessel/$kapalId/bahan-bakar');
 
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['jenisBahanBakar'] = jenisBahanBakar;
@@ -355,10 +440,12 @@ class VesselService {
 
       if (lokasiPengisian != null && lokasiPengisian.isNotEmpty) {
         request.fields['lokasiPengisian'] = lokasiPengisian;
+        print('📍 [uploadBahanBakar] Lokasi added: $lokasiPengisian');
       }
 
       if (keterangan != null && keterangan.isNotEmpty) {
         request.fields['keterangan'] = keterangan;
+        print('📝 [uploadBahanBakar] Keterangan added: $keterangan');
       }
 
       if (buktiFilePath != null && buktiFilePath.isNotEmpty) {
@@ -369,8 +456,9 @@ class VesselService {
             contentType = 'image/png';
           }
 
-          print('📎 Uploading file: ${buktiFilePath.split('/').last}');
-          print('📎 Content-Type: $contentType');
+          print('📎 [uploadBahanBakar] Uploading file: ${buktiFilePath.split('/').last}');
+          print('📎 [uploadBahanBakar] Content-Type: $contentType');
+          print('📎 [uploadBahanBakar] File size: ${await file.length()} bytes');
 
           request.files.add(
             await http.MultipartFile.fromPath(
@@ -379,27 +467,54 @@ class VesselService {
               contentType: http_parser.MediaType.parse(contentType),
             ),
           );
+        } else {
+          print('⚠️ [uploadBahanBakar] File not found: $buktiFilePath');
         }
+      } else {
+        print('ℹ️ [uploadBahanBakar] No file to upload');
       }
+
+      print('📤 [uploadBahanBakar] Sending request...');
+      print('📤 [uploadBahanBakar] Request fields: ${request.fields}');
+      print('📤 [uploadBahanBakar] Request files: ${request.files.length} file(s)');
 
       final streamedResponse = await request.send().timeout(
         const Duration(minutes: 2),
       );
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('📡 Response status: ${response.statusCode}');
-      print('📡 Response body: ${response.body}');
+      print('📡 [uploadBahanBakar] Response status: ${response.statusCode}');
+      print('📡 [uploadBahanBakar] Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
+        print('✅ [uploadBahanBakar] Upload successful!');
+        print('========== UPLOAD BAHAN BAKAR END (SUCCESS) ==========\n');
         return result;
+      } else if (response.statusCode == 404) {
+        // Kapal tidak ditemukan, clear cache dan retry
+        print('⚠️ [uploadBahanBakar] Kapal tidak ditemukan (404)');
+        print('🔄 [uploadBahanBakar] Clearing cache and refreshing vessel data...');
+        
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('vessel_data');
+        print('✅ [uploadBahanBakar] Cache cleared');
+        
+        print('========== UPLOAD BAHAN BAKAR END (CACHE CLEARED) ==========\n');
+        throw Exception(
+          'Data kapal tidak valid. Silakan logout dan login kembali untuk refresh data.',
+        );
       } else {
-        print('❌ Backend error response: ${response.body}');
+        print('❌ [uploadBahanBakar] Backend error response: ${response.body}');
+        print('========== UPLOAD BAHAN BAKAR END (FAILED) ==========\n');
         throw Exception(
           'Gagal upload bahan bakar: ${response.statusCode} - ${response.body}',
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ [uploadBahanBakar] Exception: $e');
+      print('❌ [uploadBahanBakar] Stack trace: $stackTrace');
+      print('========== UPLOAD BAHAN BAKAR END (EXCEPTION) ==========\n');
       throw Exception('Error: $e');
     }
   }
@@ -676,6 +791,167 @@ class VesselService {
     } catch (e) {
       print('❌ Error fetching documents: $e');
       throw Exception('Error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getFuelSummary({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      print('\n========== GET FUEL SUMMARY START ==========');
+      
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        print('❌ [getFuelSummary] Token tidak ditemukan');
+        throw Exception('Token tidak ditemukan');
+      }
+      
+      print('🔑 [getFuelSummary] Token found: ${token.substring(0, 20)}...');
+
+      final vesselData = await getVesselData();
+
+      if (vesselData == null) {
+        print('❌ [getFuelSummary] Vessel data is null');
+        throw Exception('Tidak ada kapal yang di-assign.');
+      }
+
+      final kapalId = vesselData['kapal']['id'];
+      print('🚢 [getFuelSummary] Kapal ID: $kapalId');
+      print('🚢 [getFuelSummary] Kapal Name: ${vesselData['kapal']['namaKapal']}');
+      
+      String url = '$baseUrl/api/mobile/vessel/$kapalId/fuel-summary';
+
+      if (startDate != null && endDate != null) {
+        final dateFormat = DateFormat('yyyy-MM-dd');
+        final startStr = dateFormat.format(startDate);
+        final endStr = dateFormat.format(endDate);
+        url += '?startDate=$startStr&endDate=$endStr';
+        print('📅 [getFuelSummary] Filter applied:');
+        print('   Start Date: $startStr');
+        print('   End Date: $endStr');
+      } else {
+        print('📅 [getFuelSummary] No date filter (all data)');
+      }
+
+      print('🌐 [getFuelSummary] Calling API: $url');
+
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📥 [getFuelSummary] Response status: ${response.statusCode}');
+      print('📥 [getFuelSummary] Response body length: ${response.body.length} chars');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('📊 [getFuelSummary] Response decoded successfully');
+        print('📊 [getFuelSummary] Success: ${responseData['success']}');
+        
+        if (responseData['success'] == true) {
+          final data = responseData['data'];
+          print('✅ [getFuelSummary] Data structure:');
+          print('   - kapal: ${data['kapal'] != null ? "Present" : "Missing"}');
+          print('   - summary: ${data['summary'] != null ? "Present" : "Missing"}');
+          print('   - details: ${data['details'] != null ? "Present (${(data['details'] as List?)?.length ?? 0} items)" : "Missing"}');
+          
+          if (data['summary'] != null) {
+            print('📈 [getFuelSummary] Summary data:');
+            print('   - totalPengisian: ${data['summary']['totalPengisian']}');
+            print('   - totalLiter: ${data['summary']['totalLiter']}');
+            print('   - totalBiaya: ${data['summary']['totalBiaya']}');
+            print('   - rataRataHarga: ${data['summary']['rataRataHarga']}');
+            print('   - pengisianTerakhir: ${data['summary']['pengisianTerakhir'] != null ? "Present" : "Null"}');
+          }
+          
+          print('✅ [getFuelSummary] Fuel summary loaded successfully');
+          print('========== GET FUEL SUMMARY END (SUCCESS) ==========\n');
+          return data;
+        } else {
+          print('❌ [getFuelSummary] Response success is false');
+          print('❌ [getFuelSummary] Message: ${responseData['message']}');
+          print('========== GET FUEL SUMMARY END (FAILED) ==========\n');
+          throw Exception('Response success is false');
+        }
+      } else {
+        print('❌ [getFuelSummary] HTTP Error: ${response.statusCode}');
+        print('❌ [getFuelSummary] Response body: ${response.body}');
+        print('========== GET FUEL SUMMARY END (HTTP ERROR) ==========\n');
+        throw Exception(
+          'Gagal mengambil ringkasan BBM: ${response.statusCode}',
+        );
+      }
+    } catch (e, stackTrace) {
+      print('❌ [getFuelSummary] Exception caught: $e');
+      print('❌ [getFuelSummary] Stack trace: $stackTrace');
+      print('========== GET FUEL SUMMARY END (EXCEPTION) ==========\n');
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<bool> hasCertificate() async {
+    try {
+      final documents = await getVesselDocuments();
+      final sertifikatJalan = documents['sertifikatJalan'] as List?;
+      return sertifikatJalan != null && sertifikatJalan.isNotEmpty;
+    } catch (e) {
+      return true; // Default: bisa akses jika error
+    }
+  }
+
+  Future<bool> canAddFuel() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) return true;
+
+      final vesselData = await getVesselData();
+      if (vesselData == null) return true;
+
+      final kapalId = vesselData['kapal']['id'];
+      
+      // Gunakan endpoint documents yang sudah ada
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/documents'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final documents = data['data'];
+          final dataBahanBakar = documents['dataBahanBakar'] as List?;
+          
+          // Jika ada data BBM, berarti sudah terisi
+          if (dataBahanBakar != null && dataBahanBakar.isNotEmpty) {
+            print('⚠️ [canAddFuel] BBM sudah terisi: ${dataBahanBakar.length} record(s)');
+            return false; // Tidak bisa tambah BBM
+          }
+          
+          print('✅ [canAddFuel] BBM belum terisi, bisa input');
+          return true; // Bisa tambah BBM
+        }
+      }
+      
+      // Default: bisa input jika ada error
+      return true;
+    } catch (e) {
+      print('⚠️ [canAddFuel] Error: $e');
+      return true; // Default: bisa input jika error
     }
   }
 }

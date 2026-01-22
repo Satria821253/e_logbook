@@ -35,13 +35,6 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
     super.initState();
     _getCurrentLocation();
     _startWeatherUpdates();
-    // Refresh profile picture after hot reload
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final userProvider = Provider.of<UserProvider>(context, listen: false);
-        userProvider.notifyListeners();
-      }
-    });
   }
 
   @override

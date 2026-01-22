@@ -11,6 +11,8 @@ class PendingPopupHelper {
     required BuildContext context,
     required String userRole,
     int pendingCount = 0,
+    int approvedCount = 0,
+    int rejectedCount = 0,
     int totalCount = 8,
   }) {
     showGeneralDialog(
@@ -25,11 +27,15 @@ class PendingPopupHelper {
         if (role == 'nahkoda' || role == 'captain') {
           return NahkodaPendingPopup(
             pendingCount: pendingCount,
+            approvedCount: approvedCount,
+            rejectedCount: rejectedCount,
             totalCount: totalCount,
           );
         } else {
           return CrewPendingPopup(
             pendingCount: pendingCount,
+            approvedCount: approvedCount,
+            rejectedCount: rejectedCount,
             totalCount: totalCount,
           );
         }

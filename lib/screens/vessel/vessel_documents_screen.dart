@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../../services/getAPi/vessel_service.dart';
-import 'edit_fuel_screen.dart';
+import 'vessel_certificates_screen.dart';
+import 'vessel_bbm_screen.dart';
 
 class VesselDocumentsScreen extends StatefulWidget {
   const VesselDocumentsScreen({Key? key}) : super(key: key);
@@ -19,6 +21,11 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
     _loadDocuments();
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   Future<void> _loadDocuments() async {
     setState(() => _isLoading = true);
     try {
@@ -26,31 +33,41 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
       print('📄 Documents data received:');
       print('   Sertifikat Jalan: ${(data['sertifikatJalan'] as List).length} items');
       print('   Data BBM: ${(data['dataBahanBakar'] as List).length} items');
-      if ((data['dataBahanBakar'] as List).isNotEmpty) {
-        print('   BBM List:');
-        for (var bbm in (data['dataBahanBakar'] as List)) {
-          print('     - ${bbm['jenisBahanBakar']}: ${bbm['jumlahLiter']} L');
-        }
-      }
+      
       setState(() {
         _documentsData = data;
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Error loading documents: $e');
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat dokumen: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('Gagal memuat dokumen: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     }
   }
 
+
+
   @override
   Widget build(BuildContext context) {
-    final sertifikatJalan = _documentsData?['sertifikatJalan'] as List? ?? [];
-    final dataBahanBakar = _documentsData?['dataBahanBakar'] as List? ?? [];
-    final isEmpty = sertifikatJalan.isEmpty && dataBahanBakar.isEmpty;
-
+    final kapalInfo = _documentsData?['kapal'];
+    
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -64,179 +81,202 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
             ),
           ),
         ),
-        title: Text('Dokumen Kapal', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text(
+          'Dokumen Kapal',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.description_outlined, size: 80, color: Colors.grey[400]),
-                      SizedBox(height: 16),
-                      Text('Belum ada dokumen kapal', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadDocuments,
-                  child: ListView(
-                    padding: EdgeInsets.all(16),
-                    children: [
-                      if (sertifikatJalan.isNotEmpty) ...[
-                        Text('Sertifikat Jalan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildHeaderBanner(kapalInfo),
+                  SizedBox(height: 24),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.only(left: 4, bottom: 12),
+                          child: Text(
+                            'Menu Dokumen',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                        ),
+                        _buildMenuCard(
+                          icon: Icons.local_gas_station_rounded,
+                          title: 'Data BBM',
+                          subtitle: 'Riwayat pengisian bahan bakar',
+                          gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => VesselBBMScreen(documentsData: _documentsData),
+                              ),
+                            );
+                          },
+                        ),
                         SizedBox(height: 12),
-                        ...sertifikatJalan.map((doc) => _buildSertifikatCard(doc)).toList(),
+                        _buildMenuCard(
+                          icon: Icons.description_rounded,
+                          title: 'Sertifikat Jalan',
+                          subtitle: 'Dokumen sertifikat kapal',
+                          gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => VesselCertificatesScreen(documentsData: _documentsData),
+                              ),
+                            );
+                          },
+                        ),
                         SizedBox(height: 24),
                       ],
-                      if (dataBahanBakar.isNotEmpty) ...[
-                        Text('Data Bahan Bakar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 12),
-                        ...dataBahanBakar.map((doc) => _buildBBMCard(doc)).toList(),
-                      ],
-                    ],
+                    ),
                   ),
-                ),
-    );
-  }
-
-  Widget _buildSertifikatCard(Map<String, dynamic> doc) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.description, color: Colors.blue, size: 24),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    doc['nama'] ?? 'Sertifikat Jalan',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildInfoRow('Nomor', doc['nomorSertifikat'] ?? '-'),
-                SizedBox(height: 12),
-                _buildInfoRow('Tanggal Berlaku', doc['tanggalBerlaku'] ?? '-'),
-                SizedBox(height: 12),
-                _buildInfoRow('Upload', doc['uploadedAt'] ?? '-'),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildBBMCard(Map<String, dynamic> doc) {
-    print('📊 BBM Card data: $doc');
-    print('🎯 BBM ID: ${doc['id']} (type: ${doc['id'].runtimeType})');
-    
+  Widget _buildHeaderBanner(Map<String, dynamic>? kapalInfo) {
+    final vesselName = kapalInfo?['namaKapal'] ?? 'Tidak ada nama';
+    final vesselNumber = kapalInfo?['nomorRegistrasi'] ?? '-';
+
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orange.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
+      width: double.infinity,
+      color: Colors.transparent,
       child: Column(
         children: [
+          SizedBox(height: 24),
           Container(
-            padding: EdgeInsets.all(16),
+            width: 100,
+            height: 100,
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+              color: Color(0xFFE0F2FE),
+              shape: BoxShape.circle,
+            ),
+            child: Lottie.asset(
+              'assets/animations/PreTrip.json',
+              width: 80,
+              height: 80,
+              errorBuilder: (context, error, stackTrace) {
+                return Icon(Icons.description_rounded, size: 50, color: Color(0xFF1B4F9C));
+              },
+            ),
+          ),
+          SizedBox(height: 16),
+          Text(
+            vesselName,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1B4F9C),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: Color(0xFF1B4F9C).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              vesselNumber,
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF1B4F9C),
+                fontWeight: FontWeight.w500,
               ),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.local_gas_station, color: Colors.orange, size: 24),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    doc['jenisBahanBakar'] ?? 'BBM',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.edit, color: Colors.blue, size: 20),
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => EditFuelScreen(fuelData: doc)),
-                    );
-                    if (result == true) {
-                      print('🔄 Force refreshing documents after edit...');
-                      await Future.delayed(Duration(seconds: 2));
-                      await _loadDocuments();
-                    }
-                  },
-                ),
-              ],
-            ),
           ),
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildInfoRow('Jumlah', '${doc['jumlahLiter'] ?? 0} Liter'),
-                SizedBox(height: 12),
-                _buildInfoRow('Total Harga', 'Rp ${doc['totalHarga'] ?? 0}'),
-                SizedBox(height: 12),
-                _buildInfoRow('Tanggal', doc['tanggalPengisian'] ?? '-'),
-              ],
-            ),
-          ),
+          SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-        Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-      ],
+
+
+  Widget _buildMenuCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Color> gradient,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: gradient[0].withOpacity(0.3),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: Colors.white, size: 28),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 18, color: Colors.white.withOpacity(0.8)),
+            ],
+          ),
+        ),
+      ),
     );
   }
+
 }

@@ -9,4 +9,10 @@ class NavigationProvider with ChangeNotifier {
     _selectedIndex = index;
     notifyListeners();
   }
+  
+  // Reset ke home screen (index 0)
+  void resetToHome() {
+    _selectedIndex = 0;
+    notifyListeners();
+  }
 }

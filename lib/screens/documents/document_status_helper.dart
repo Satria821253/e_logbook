@@ -1,20 +1,30 @@
 // lib/screens/documents/document_status_helper.dart
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'nahkoda/nahkoda_document_status_screen.dart';
-import '../document_status_screen.dart';
+import 'crew/crew_document_status_screen.dart';
 
 class DocumentStatusHelper {
-  /// Navigate to document status screen based on user role
-  static void navigateToStatus(BuildContext context, String userRole) {
+  /// Navigate to document status screen based on user role from SharedPreferences
+  static Future<void> navigateToStatus(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    
     Widget screen;
-
-    if (userRole.toLowerCase() == 'nahkoda' || 
-        userRole.toLowerCase() == 'captain') {
-      screen = const NahkodaDocumentStatusScreen();
+    
+    if (userDataString != null) {
+      final userData = json.decode(userDataString);
+      final userRole = userData['role']?.toString().toLowerCase() ?? 'crew';
+      
+      if (userRole == 'nahkoda' || userRole == 'captain') {
+        screen = const NahkodaDocumentStatusScreen();
+      } else {
+        screen = const CrewDocumentStatusScreen();
+      }
     } else {
-      // ABK, Crew, or any other role - use generic document status screen
-      screen = const DocumentStatusScreen();
+      screen = const CrewDocumentStatusScreen();
     }
 
     Navigator.push(
@@ -23,20 +33,38 @@ class DocumentStatusHelper {
     );
   }
 
-  /// Show status as bottom sheet (alternative)
-  static void showStatusBottomSheet(BuildContext context, String userRole) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.9,
-          child: userRole.toLowerCase() == 'nahkoda' || 
-                 userRole.toLowerCase() == 'captain'
-              ? const NahkodaDocumentStatusScreen()
-              : const DocumentStatusScreen(),
-        );
+  /// Get screen widget based on user role (for direct use)
+  static Future<Widget> getScreenByRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    
+    if (userDataString != null) {
+      final userData = json.decode(userDataString);
+      final userRole = userData['role']?.toString().toLowerCase() ?? 'crew';
+      
+      if (userRole == 'nahkoda' || userRole == 'captain') {
+        return const NahkodaDocumentStatusScreen();
+      } else {
+        return const CrewDocumentStatusScreen();
+      }
+    }
+    return const CrewDocumentStatusScreen();
+  }
+}
+
+/// Router widget for named routes
+class DocumentStatusRoutes extends StatelessWidget {
+  const DocumentStatusRoutes({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Widget>(
+      future: DocumentStatusHelper.getScreenByRole(),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return snapshot.data!;
+        }
+        return const SizedBox.shrink();
       },
     );
   }

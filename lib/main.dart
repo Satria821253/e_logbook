@@ -6,8 +6,9 @@ import 'package:e_logbook/services/getAPi/auth_service.dart';
 import 'package:e_logbook/services/offline_sync_service.dart';
 import 'package:e_logbook/screens/profile_screen.dart';
 import 'package:e_logbook/screens/tracking/pre_trip_fromscreen.dart';
-import 'package:e_logbook/screens/vessel_info_screen.dart';
-import 'package:e_logbook/screens/document_status_screen.dart';
+import 'package:e_logbook/screens/vessel/vessel_info_screen.dart';
+import 'package:e_logbook/screens/vessel/vessel_documents_screen.dart';
+import 'package:e_logbook/screens/documents/document_status_helper.dart';
 import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
 import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
@@ -95,6 +96,10 @@ class MyApp extends StatelessWidget {
                 return MaterialPageRoute(
                   builder: (_) => VesselInfoScreen(arguments: arguments),
                 );
+              case '/vessel-documents':
+                return MaterialPageRoute(
+                  builder: (_) => const VesselDocumentsScreen(),
+                );
               case '/document-completion':
                 final args = settings.arguments as Map<String, dynamic>?;
                 return MaterialPageRoute(
@@ -107,6 +112,7 @@ class MyApp extends StatelessWidget {
                 return MaterialPageRoute(
                   builder: (_) => DocumentUploadStepper(
                     rejectedDocType: args?['rejectedDocType'],
+                    fromVesselDocs: args?['fromVesselDocs'] ?? false,
                   ),
                 );
               case '/crew-document-upload':
@@ -122,7 +128,7 @@ class MyApp extends StatelessWidget {
                 );
               case '/document-status':
                 return MaterialPageRoute(
-                  builder: (_) => const DocumentStatusScreen(),
+                  builder: (_) => const DocumentStatusRoutes(),
                 );
               default:
                 return null;

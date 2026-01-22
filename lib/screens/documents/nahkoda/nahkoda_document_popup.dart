@@ -17,9 +17,11 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
   late AnimationController _scaleController;
   late AnimationController _fadeController;
   late AnimationController _slideController;
+  late AnimationController _shakeController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _shakeAnimation;
   bool _isMinimized = false;
 
   @override
@@ -41,6 +43,11 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
       duration: const Duration(milliseconds: 350),
     );
 
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
     _scaleAnimation = CurvedAnimation(
       parent: _scaleController,
       curve: Curves.easeOutCubic,
@@ -59,6 +66,17 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
       curve: Curves.easeOutCubic,
     ));
 
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: _shakeController,
+      curve: Curves.easeInOut,
+    ));
+
     // Start animations
     _scaleController.forward();
     _fadeController.forward();
@@ -70,7 +88,12 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
     _scaleController.dispose();
     _fadeController.dispose();
     _slideController.dispose();
+    _shakeController.dispose();
     super.dispose();
+  }
+
+  void _shakePopup() {
+    _shakeController.forward(from: 0);
   }
 
 
@@ -95,17 +118,17 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        _closePopup();
+        _shakePopup();
         return false;
       },
       child: Stack(
         children: [
           // Background blur effect
           if (!_isMinimized)
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            GestureDetector(
+              onTap: _shakePopup,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
                 child: Container(
                   color: Colors.black.withOpacity(0.5),
                 ),
@@ -171,28 +194,37 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
           // Main popup content
           if (!_isMinimized)
             Center(
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 24),
-                      constraints: const BoxConstraints(maxWidth: 450),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 40,
-                            offset: const Offset(0, 20),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(32),
-                        child: _buildPopupContent(),
+              child: AnimatedBuilder(
+                animation: _shakeAnimation,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _shakeAnimation.value,
+                    child: child,
+                  );
+                },
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 24),
+                        constraints: const BoxConstraints(maxWidth: 450),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 40,
+                              offset: const Offset(0, 20),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(32),
+                          child: _buildPopupContent(),
+                        ),
                       ),
                     ),
                   ),
@@ -206,7 +238,7 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
 
   Widget _buildPopupContent() {
     return Container(
-      height: 600,
+      height: 525,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -240,52 +272,54 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
 
               // Main content
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      // Captain illustration
-                      _buildCaptainIllustration(),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          children: [
+                            // Captain illustration
+                            _buildCaptainIllustration(),
 
-                      const SizedBox(height: 24),
+                            const SizedBox(height: 24),
 
-                      // Title
-                      const Text(
-                        '⚓ Selamat Datang, Nahkoda!',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          height: 1.2,
-                          decoration: TextDecoration.none,
+                            // Title
+                            const Text(
+                              'Selamat Datang, Nahkoda!',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                height: 1.2,
+                                decoration: TextDecoration.none,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            const Text(
+                              'Lengkapi dokumen kepelayaran Anda untuk memulai perjalanan',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.white,
+                                height: 1.4,
+                                decoration: TextDecoration.none,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
                       ),
+                    ),
 
-                      const SizedBox(height: 12),
-
-                      const Text(
-                        'Lengkapi dokumen kepelayaran Anda untuk memulai perjalanan',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.white,
-                          height: 1.4,
-                          decoration: TextDecoration.none,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Document requirements
-                      _buildDocumentList(),
-
-                      const SizedBox(height: 32),
-
-                      // Action buttons
-                      _buildActionButtons(),
-                    ],
-                  ),
+                    // Action buttons at bottom
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: _buildActionButtons(),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -410,121 +444,6 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
                 );
               },
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDocumentList() {
-    final documents = [
-      {'icon': Icons.credit_card, 'name': 'KTP', 'category': 'Identitas'},
-      {'icon': Icons.portrait, 'name': 'Pas Foto', 'category': 'Foto'},
-      {'icon': Icons.book, 'name': 'Buku Pelaut', 'category': 'Sertifikasi'},
-      {'icon': Icons.military_tech, 'name': 'Sertifikat Nahkoda', 'category': 'Keahlian'},
-      {'icon': Icons.health_and_safety, 'name': 'BST', 'category': 'Keselamatan'},
-      {'icon': Icons.medical_services, 'name': 'Surat Sehat', 'category': 'Kesehatan'},
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.checklist, color: Colors.amber, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Dokumen yang Diperlukan',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...documents.map((doc) => _buildDocumentItem(
-                icon: doc['icon'] as IconData,
-                name: doc['name'] as String,
-                category: doc['category'] as String,
-              )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDocumentItem({
-    required IconData icon,
-    required String name,
-    required String category,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.blue.withOpacity(0.3),
-                  Colors.blue.withOpacity(0.1),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-                Text(
-                  category,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.white60,
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            Icons.arrow_forward_ios,
-            color: Colors.white.withOpacity(0.4),
-            size: 14,
           ),
         ],
       ),

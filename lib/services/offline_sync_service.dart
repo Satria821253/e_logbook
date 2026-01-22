@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class OfflineSyncService {
@@ -16,23 +17,33 @@ class OfflineSyncService {
   }
 
   static Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'offline_sync.db');
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: (db, version) {
-        return db.execute('''
-          CREATE TABLE $_tableName(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            catch_data TEXT NOT NULL,
-            image_path TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            retry_count INTEGER DEFAULT 0,
-            last_error TEXT
-          )
-        ''');
-      },
-    );
+    try {
+      // Only initialize database on mobile platforms
+      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+        String path = join(await getDatabasesPath(), 'offline_sync.db');
+        return await openDatabase(
+          path,
+          version: 1,
+          onCreate: (db, version) {
+            return db.execute('''
+              CREATE TABLE $_tableName(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                catch_data TEXT NOT NULL,
+                image_path TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                retry_count INTEGER DEFAULT 0,
+                last_error TEXT
+              )
+            ''');
+          },
+        );
+      } else {
+        throw UnsupportedError('Database not supported on this platform');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Database initialization failed: $e');
+      rethrow;
+    }
   }
 
   // Simpan data catch yang gagal dikirim
@@ -40,21 +51,30 @@ class OfflineSyncService {
     required Map<String, dynamic> catchData,
     required String imagePath,
   }) async {
-    final db = await database;
-    await db.insert(_tableName, {
-      'catch_data': json.encode(catchData),
-      'image_path': imagePath,
-      'created_at': DateTime.now().toIso8601String(),
-      'retry_count': 0,
-      'last_error': null,
-    });
-    debugPrint('📱 Catch saved offline: ${catchData['fishName']}');
+    try {
+      final db = await database;
+      await db.insert(_tableName, {
+        'catch_data': json.encode(catchData),
+        'image_path': imagePath,
+        'created_at': DateTime.now().toIso8601String(),
+        'retry_count': 0,
+        'last_error': null,
+      });
+      debugPrint('📱 Catch saved offline: ${catchData['fishName']}');
+    } catch (e) {
+      debugPrint('⚠️ Failed to save offline catch: $e');
+    }
   }
 
   // Ambil semua data pending
   static Future<List<Map<String, dynamic>>> getPendingCatches() async {
-    final db = await database;
-    return await db.query(_tableName, orderBy: 'created_at ASC');
+    try {
+      final db = await database;
+      return await db.query(_tableName, orderBy: 'created_at ASC');
+    } catch (e) {
+      debugPrint('⚠️ Failed to get pending catches: $e');
+      return [];
+    }
   }
 
   // Hapus data yang sudah berhasil dikirim
@@ -158,9 +178,14 @@ class OfflineSyncService {
 
   // Get pending count untuk UI
   static Future<int> getPendingCount() async {
-    final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM $_tableName');
-    return result.first['count'] as int;
+    try {
+      final db = await database;
+      final result = await db.rawQuery('SELECT COUNT(*) as count FROM $_tableName');
+      return result.first['count'] as int;
+    } catch (e) {
+      debugPrint('⚠️ Failed to get pending count: $e');
+      return 0;
+    }
   }
 
   // Cek apakah catch ID ada di pending (untuk status di riwayat)

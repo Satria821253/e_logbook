@@ -161,7 +161,7 @@ class DocumentService {
         }
         
         // Filter untuk hanya ambil dokumen terbaru per jenis
-        final filteredDocs = _filterLatestDocuments(documentsData as List);
+        final filteredDocs = _filterLatestDocuments(documentsData);
         print('📋 Filtered ${documentsData.length} docs to ${filteredDocs.length} unique docs');
         
         return {'success': true, 'documents': filteredDocs};
