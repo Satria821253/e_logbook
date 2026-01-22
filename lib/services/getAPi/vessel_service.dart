@@ -158,10 +158,17 @@ class VesselService {
           print('💾 Found cached vessel_data');
           final cachedData = json.decode(vesselDataString);
           
+          // Jika crew dan nahkoda null di cache, force refresh
+          if (isCrewRole && cachedData['nahkoda'] == null) {
+            print('⚠️ [CREW] Cache has null nahkoda, forcing refresh...');
+            cacheExpired = true;
+          }
+          
           // Cek versi data dari backend (lightweight check)
-          try {
-            print('🔍 Checking data version from backend...');
-            final versionResponse = await http.get(
+          if (!cacheExpired) {
+            try {
+              print('🔍 Checking data version from backend...');
+              final versionResponse = await http.get(
               Uri.parse('$baseUrl/api/mobile/vessels/my-vessel'),
               headers: {
                 'Authorization': 'Bearer $token',
@@ -182,9 +189,17 @@ class VesselService {
                   final cachedUpdatedAt = cachedData['kapal']['updatedAt'];
                   final latestUpdatedAt = latestKapal['updatedAt'];
                   
+                  // Cek perubahan data nahkoda
+                  final cachedNahkodaId = cachedData['nahkoda']?['id'];
+                  final latestNahkodaId = latestKapal['nahkoda']?['id'];
+                  
                   if (cachedKapalId != latestKapalId) {
                     print('🔄 Kapal ID changed: $cachedKapalId -> $latestKapalId');
                     print('🔄 Forcing refresh due to vessel change');
+                    cacheExpired = true;
+                  } else if (cachedNahkodaId != latestNahkodaId) {
+                    print('🔄 Nahkoda changed: $cachedNahkodaId -> $latestNahkodaId');
+                    print('🔄 Forcing refresh due to nahkoda change');
                     cacheExpired = true;
                   } else if (cachedUpdatedAt != null && latestUpdatedAt != null && cachedUpdatedAt != latestUpdatedAt) {
                     print('🔄 Kapal data updated: $cachedUpdatedAt -> $latestUpdatedAt');
@@ -200,12 +215,13 @@ class VesselService {
                 }
               }
             }
-          } catch (e) {
-            print('⚠️ Failed to check version, using cache: $e');
-            print('📋 [CACHE] Kapal: ${cachedData['kapal']}');
-            print('📋 [CACHE] Nahkoda: ${cachedData['nahkoda']}');
-            print('========== getVesselData END (CACHE) ==========\n');
-            return cachedData;
+            } catch (e) {
+              print('⚠️ Failed to check version, using cache: $e');
+              print('📋 [CACHE] Kapal: ${cachedData['kapal']}');
+              print('📋 [CACHE] Nahkoda: ${cachedData['nahkoda']}');
+              print('========== getVesselData END (CACHE) ==========\n');
+              return cachedData;
+            }
           }
         } else {
           print('💾 No cache found');
@@ -521,8 +537,8 @@ class VesselService {
 
   Future<Map<String, dynamic>> uploadIceData({
     required String jenisEs,
-    required double jumlah,
-    required double hargaPerUnit,
+    required double jumlahKg,
+    required double hargaPerKg,
     required double totalHarga,
     required String tanggalPembelian,
     String? lokasiPembelian,
@@ -530,6 +546,7 @@ class VesselService {
     String? buktiFilePath,
   }) async {
     try {
+      print('\n========== UPLOAD ICE DATA START ==========');
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
 
@@ -546,6 +563,7 @@ class VesselService {
       }
 
       final kapalId = vesselData['kapal']['id'];
+      print('🚢 Kapal ID: $kapalId');
 
       var request = http.MultipartRequest(
         'POST',
@@ -554,8 +572,8 @@ class VesselService {
 
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['jenisEs'] = jenisEs;
-      request.fields['jumlah'] = jumlah.toString();
-      request.fields['hargaPerUnit'] = hargaPerUnit.toString();
+      request.fields['jumlahKg'] = jumlahKg.toString();
+      request.fields['hargaPerKg'] = hargaPerKg.toString();
       request.fields['totalHarga'] = totalHarga.toString();
       request.fields['tanggalPembelian'] = tanggalPembelian;
 
@@ -585,18 +603,73 @@ class VesselService {
         }
       }
 
+      print('📤 Sending ice data...');
       final streamedResponse = await request.send().timeout(
         const Duration(minutes: 2),
       );
       final response = await http.Response.fromStream(streamedResponse);
 
+      print('📥 Response status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
+        print('✅ Ice data uploaded successfully');
+        print('========== UPLOAD ICE DATA END ==========\n');
         return result;
       } else {
+        print('❌ Upload failed: ${response.body}');
+        print('========== UPLOAD ICE DATA END ==========\n');
         throw Exception('Gagal upload data es: ${response.statusCode}');
       }
     } catch (e) {
+      print('❌ Exception: $e');
+      print('========== UPLOAD ICE DATA END ==========\n');
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getIceData() async {
+    try {
+      print('\n========== GET ICE DATA START ==========');
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        throw Exception('Token tidak ditemukan');
+      }
+
+      final vesselData = await getVesselData();
+      if (vesselData == null) {
+        throw Exception('Tidak ada kapal yang di-assign.');
+      }
+
+      final kapalId = vesselData['kapal']['id'];
+      print('🚢 Kapal ID: $kapalId');
+
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/ice-data'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📥 Response status: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          print('✅ Ice data retrieved successfully');
+          print('========== GET ICE DATA END ==========\n');
+          return responseData['data'];
+        }
+      }
+      print('❌ Failed to get ice data');
+      print('========== GET ICE DATA END ==========\n');
+      throw Exception('Gagal mengambil data es: ${response.statusCode}');
+    } catch (e) {
+      print('❌ Exception: $e');
+      print('========== GET ICE DATA END ==========\n');
       throw Exception('Error: $e');
     }
   }

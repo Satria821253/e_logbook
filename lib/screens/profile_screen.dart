@@ -1,4 +1,4 @@
-import 'package:e_logbook/screens/Login/welcome_screen.dart';
+import 'package:e_logbook/screens/splash_screen.dart';
 import 'package:e_logbook/screens/page/edit_profile_screen.dart';
 import 'package:e_logbook/screens/settings/settings_screen.dart';
 import 'package:e_logbook/screens/help_screen.dart';
@@ -706,7 +706,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (context) => const WelcomeScreen(),
+            builder: (context) => const SplashScreen(),
           ),
           (route) => false,
         );

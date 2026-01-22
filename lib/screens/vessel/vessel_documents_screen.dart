@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:provider/provider.dart';
+import '../../provider/user_provider.dart';
 import '../../services/getAPi/vessel_service.dart';
 import '../../services/realtime_update_service.dart';
 import 'vessel_certificates_screen.dart';
 import 'vessel_bbm_screen.dart';
+import 'vessel_ice_screen.dart';
 
 class VesselDocumentsScreen extends StatefulWidget {
   const VesselDocumentsScreen({Key? key}) : super(key: key);
@@ -14,6 +17,7 @@ class VesselDocumentsScreen extends StatefulWidget {
 
 class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
   Map<String, dynamic>? _documentsData;
+  Map<String, dynamic>? _vesselData;
   bool _isLoading = true;
 
   @override
@@ -39,13 +43,17 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
   Future<void> _loadDocuments() async {
     setState(() => _isLoading = true);
     try {
+      // Load vessel data untuk nahkoda info
+      final vesselData = await VesselService().getVesselData();
       final data = await VesselService().getVesselDocuments();
       print('📄 Documents data received:');
       print('   Sertifikat Jalan: ${(data['sertifikatJalan'] as List).length} items');
       print('   Data BBM: ${(data['dataBahanBakar'] as List).length} items');
+      print('👨✈️ Nahkoda: ${vesselData?['nahkoda']?['nama']}');
       
       setState(() {
         _documentsData = data;
+        _vesselData = vesselData;
         _isLoading = false;
       });
     } catch (e) {
@@ -76,94 +84,119 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
   Widget build(BuildContext context) {
     final kapalInfo = _documentsData?['kapal'];
     
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        title: Text(
-          'Dokumen Kapal',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildHeaderBanner(kapalInfo),
-                  SizedBox(height: 24),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.only(left: 4, bottom: 12),
-                          child: Text(
-                            'Menu Dokumen',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                        ),
-                        _buildMenuCard(
-                          icon: Icons.local_gas_station_rounded,
-                          title: 'Data BBM',
-                          subtitle: 'Riwayat pengisian bahan bakar',
-                          gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => VesselBBMScreen(documentsData: _documentsData),
-                              ),
-                            );
-                          },
-                        ),
-                        SizedBox(height: 12),
-                        _buildMenuCard(
-                          icon: Icons.description_rounded,
-                          title: 'Sertifikat Jalan',
-                          subtitle: 'Dokumen sertifikat kapal',
-                          gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                          onTap: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => VesselCertificatesScreen(documentsData: _documentsData),
-                              ),
-                            );
-                            if (result == true && mounted) {
-                              _loadDocuments();
-                            }
-                          },
-                        ),
-                        SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
-                ],
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final user = userProvider.user;
+        final isNahkoda = user?.isNahkoda == true;
+        
+        return Scaffold(
+          backgroundColor: Colors.grey[50],
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            iconTheme: IconThemeData(color: Colors.white),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
             ),
+            title: Text(
+              'Dokumen Kapal',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+          body: _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildHeaderBanner(kapalInfo, isNahkoda),
+                      SizedBox(height: 24),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.only(left: 4, bottom: 12),
+                              child: Text(
+                                'Menu Dokumen',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                            ),
+                            if (isNahkoda) ...[
+                              _buildMenuCard(
+                                icon: Icons.local_gas_station_rounded,
+                                title: 'Data BBM',
+                                subtitle: 'Riwayat pengisian bahan bakar',
+                                gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => VesselBBMScreen(documentsData: _documentsData),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ] else ...[
+                              _buildMenuCard(
+                                icon: Icons.ac_unit_rounded,
+                                title: 'Data Es',
+                                subtitle: 'Riwayat pembelian es',
+                                gradient: [Color(0xFF06B6D4), Color(0xFF0891B2)],
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => VesselIceScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                            SizedBox(height: 12),
+                            _buildMenuCard(
+                              icon: Icons.description_rounded,
+                              title: 'Sertifikat Jalan',
+                              subtitle: 'Dokumen sertifikat kapal',
+                              gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                              onTap: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => VesselCertificatesScreen(documentsData: _documentsData),
+                                  ),
+                                );
+                                if (result == true && mounted) {
+                                  _loadDocuments();
+                                }
+                              },
+                            ),
+                            SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        );
+      },
     );
   }
 
-  Widget _buildHeaderBanner(Map<String, dynamic>? kapalInfo) {
+  Widget _buildHeaderBanner(Map<String, dynamic>? kapalInfo, bool isNahkoda) {
     final vesselName = kapalInfo?['namaKapal'] ?? 'Tidak ada nama';
     final vesselNumber = kapalInfo?['nomorRegistrasi'] ?? '-';
+    final nahkodaName = _vesselData?['nahkoda']?['nama'];
 
     return Container(
       width: double.infinity,
@@ -213,6 +246,32 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
               ),
             ),
           ),
+          if (!isNahkoda && nahkodaName != null) ...[
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Color(0xFF10B981).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Color(0xFF10B981).withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.person, size: 16, color: Color(0xFF10B981)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Nahkoda: $nahkodaName',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF10B981),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           SizedBox(height: 24),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../screens/crew/screens/abk_attendance_mark_screen.dart';
 import '../screens/crew/screens/data_raw_screen.dart';
 import '../screens/crew/screens/fish_photo_tips_screen.dart';
@@ -44,5 +45,40 @@ class CrewRoutes {
       context, 
       'Fitur emergency akan segera tersedia'
     );
+  }
+
+  static void navigateToCustomerService(BuildContext context) async {
+    final phoneNumber = '6282116927632';
+    final message = Uri.encodeComponent(
+      'Halo Admin E-Logbook 👋\n\n'
+      'Saya ingin bertanya terkait:\n'
+      '"Silakan jelaskan kendala Anda di sini"\n\n'
+      'Terima kasih sebelumnya 🙏'
+    );
+    final whatsappUrl = Uri.parse('https://wa.me/$phoneNumber?text=$message');
+    
+    try {
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tidak dapat membuka WhatsApp'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

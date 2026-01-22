@@ -356,6 +356,8 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
 
   Widget _buildVesselInfoCard(bool isNahkoda) {
     final nahkoda = _vesselData?['nahkoda'] as Map<String, dynamic>?;
+    print('🔍 [VesselInfo] isNahkoda: $isNahkoda');
+    print('🔍 [VesselInfo] nahkoda data: $nahkoda');
 
     return Container(
       decoration: BoxDecoration(
@@ -426,13 +428,26 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
               children: [
                 // Info Nahkoda - HANYA untuk ABK
                 if (!isNahkoda && nahkoda != null) ...[
-                  _buildDetailRow(
-                    icon: Icons.person,
-                    label: 'Nahkoda',
-                    value: nahkoda['nama'] ?? 'Tidak ada data',
-                    color: Color(0xFF10B981),
-                  ),
+                  () {
+                    print('✅ [VesselInfo] Menampilkan info nahkoda untuk crew: ${nahkoda['nama']}');
+                    return _buildDetailRow(
+                      icon: Icons.person,
+                      label: 'Nahkoda',
+                      value: nahkoda['nama'] ?? 'Tidak ada data',
+                      color: Color(0xFF10B981),
+                    );
+                  }(),
                   SizedBox(height: 16),
+                ] else if (!isNahkoda) ...[
+                  () {
+                    print('⚠️ [VesselInfo] Data nahkoda tidak tersedia untuk crew');
+                    return SizedBox.shrink();
+                  }(),
+                ] else ...[
+                  () {
+                    print('ℹ️ [VesselInfo] User adalah nahkoda, info nahkoda tidak ditampilkan');
+                    return SizedBox.shrink();
+                  }(),
                 ],
                 
                 // Status (example - bisa diganti dengan data real)
@@ -565,9 +580,9 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
         if (!isNahkoda) ...[
           _buildMenuCard(
             icon: Icons.ac_unit_rounded,
-            title: 'Manajemen Es',
+            title: 'Data Es',
             subtitle: 'Input & riwayat pembelian es',
-            gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+            gradient: [Color(0xFF06B6D4), Color(0xFF0891B2)],
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => IceManagementScreen()),

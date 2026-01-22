@@ -77,8 +77,8 @@ class _IceManagementScreenState extends State<IceManagementScreen> {
 
       final result = await VesselService().uploadIceData(
         jenisEs: _jenisEs,
-        jumlah: jumlah,
-        hargaPerUnit: hargaPerUnit,
+        jumlahKg: jumlah,
+        hargaPerKg: hargaPerUnit,
         totalHarga: totalHarga,
         tanggalPembelian: _tanggalPembelian!.toIso8601String(),
         lokasiPembelian: _lokasiPembelianController.text.isNotEmpty

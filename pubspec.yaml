@@ -99,7 +99,6 @@ flutter:
      - assets/audio/alarm.m4a
      - assets/animations/alert.json
      - assets/animations/emergecy.json
-     - assets/animations/call.json
      - assets/animations/tripsiang.json
      - assets/animations/tripmalam.json 
      - assets/animations/PreTrip.json
@@ -125,6 +124,8 @@ flutter:
      - assets/animations/GPSBLUE.json
      - assets/animations/clock.json
      - assets/animations/AI.json
+     - assets/animations/listfitur.json
+     - assets/animations/wa.json
      - assets/icons/icon_ai.png
      - assets/icons/iot.png
      - assets/oipb.png

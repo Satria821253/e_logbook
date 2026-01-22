@@ -321,19 +321,37 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: _closePopup,
-            icon: const Icon(Icons.close, color: Colors.white),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.groups, color: Colors.white, size: 16),
+                SizedBox(width: 6),
+                Text(
+                  'CREW',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ],
+            ),
           ),
           IconButton(
-            onPressed: () {
-              setState(() {
-                _isMinimized = true;
-              });
-              _scaleController.reverse();
-              _fadeController.reverse();
-            },
-            icon: const Icon(Icons.minimize, color: Colors.white),
+            onPressed: _closePopup,
+            icon: const Icon(Icons.close, color: Colors.white, size: 24),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.2),
+            ),
           ),
         ],
       ),
@@ -363,46 +381,35 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
   }
 
   Widget _buildActionButtons() {
-    return Column(
-      children: [
-        ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const DocumentUploadStepper(),
-              ),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF0891B2),
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.of(context).pop();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const DocumentUploadStepper(),
             ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFF0891B2),
+          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
           ),
-          child: const Text(
-            'Lengkapi Dokumen',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          elevation: 4,
+        ),
+        child: const Text(
+          'Lengkapi Dokumen',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: _closePopup,
-          child: const Text(
-            'Nanti Saja',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

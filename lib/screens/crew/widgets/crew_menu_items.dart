@@ -17,26 +17,10 @@ class CrewMenuItems extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Emergency
-        Positioned(
-          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 140, tablet: 180),
-          child: ScaleTransition(
-            scale: animation,
-            child: CrewFloatingActionButton(
-              icon: Icons.emergency,
-              color: Colors.red,
-              onTap: () {
-                onMenuToggle();
-                CrewRoutes.showEmergencyDialog(context);
-              },
-            ),
-          ),
-        ),
         // Daftar Hadir
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 200, tablet: 264),
+          bottom: ResponsiveHelper.height(context, mobile: 150, tablet: 190),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -52,7 +36,7 @@ class CrewMenuItems extends StatelessWidget {
         // Data Raw
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 260, tablet: 348),
+          bottom: ResponsiveHelper.height(context, mobile: 220, tablet: 290),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -61,6 +45,22 @@ class CrewMenuItems extends StatelessWidget {
               onTap: () {
                 onMenuToggle();
                 CrewRoutes.navigateToDataRaw(context);
+              },
+            ),
+          ),
+        ),
+        // Customer Service (WhatsApp)
+        Positioned(
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
+          child: ScaleTransition(
+            scale: animation,
+            child: CrewFloatingActionButton(
+              icon: Icons.support_agent,
+              color: Colors.blue,
+              onTap: () {
+                onMenuToggle();
+                CrewRoutes.navigateToCustomerService(context);
               },
             ),
           ),

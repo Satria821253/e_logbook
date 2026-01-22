@@ -17,18 +17,18 @@ class NahkodaMenuItems extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Emergency
+        // Customer Service (WhatsApp) - paling bawah
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 140, tablet: 180),
+          bottom: ResponsiveHelper.height(context, mobile: 150, tablet: 190),
           child: ScaleTransition(
             scale: animation,
             child: FloatingActionButtonWidget(
-              icon: Icons.emergency,
-              color: Colors.red,
+              icon: Icons.support_agent,
+              color: Colors.orange,
               onTap: () {
                 onMenuToggle();
-                NahkodaRoutes.showEmergencyDialog(context);
+                NahkodaRoutes.navigateToCustomerService(context);
               },
             ),
           ),
@@ -36,7 +36,7 @@ class NahkodaMenuItems extends StatelessWidget {
         // Kehadiran Crew
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 200, tablet: 264),
+          bottom: ResponsiveHelper.height(context, mobile: 220, tablet: 290),
           child: ScaleTransition(
             scale: animation,
             child: FloatingActionButtonWidget(
@@ -49,10 +49,10 @@ class NahkodaMenuItems extends StatelessWidget {
             ),
           ),
         ),
-        // Data Raw
+        // Data Raw (paling atas)
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 260, tablet: 348),
+          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
           child: ScaleTransition(
             scale: animation,
             child: FloatingActionButtonWidget(
@@ -61,22 +61,6 @@ class NahkodaMenuItems extends StatelessWidget {
               onTap: () {
                 onMenuToggle();
                 NahkodaRoutes.navigateToDataRaw(context);
-              },
-            ),
-          ),
-        ),
-        // Info Trip
-        Positioned(
-          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 320, tablet: 432),
-          child: ScaleTransition(
-            scale: animation,
-            child: FloatingActionButtonWidget(
-              icon: Icons.info_outline,
-              color: Colors.orange,
-              onTap: () {
-                onMenuToggle();
-                NahkodaRoutes.navigateToTripInfo(context);
               },
             ),
           ),

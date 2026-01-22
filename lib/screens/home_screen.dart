@@ -58,16 +58,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     await userProvider.loadUserFromStorage();
     
+    // Tampilkan popup dulu jika perlu
+    if (!_hasShownPopup && mounted) {
+      await _checkAndShowPopup();
+      _hasShownPopup = true;
+    }
+    
+    // Setelah popup, baru load dan tampilkan banner
     await _checkDocumentCompletion();
     
     if (!_hasLoggedInit) {
       print('🔍 HomeScreen: _hasShownPopup = $_hasShownPopup');
       _hasLoggedInit = true;
-    }
-    
-    if (!_hasShownPopup && mounted) {
-      await _checkAndShowPopup();
-      _hasShownPopup = true;
     }
   }
 

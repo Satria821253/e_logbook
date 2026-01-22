@@ -563,9 +563,10 @@ class _LoginScreenState extends State<LoginScreen> {
           final userProvider = Provider.of<UserProvider>(context, listen: false);
           await userProvider.setUser(user);
           
-          Navigator.pushReplacement(
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const MainScreen()),
+            (route) => false,
           );
         }
       } else {

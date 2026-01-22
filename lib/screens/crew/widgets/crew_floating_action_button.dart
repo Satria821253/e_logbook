@@ -24,6 +24,10 @@ class CrewFloatingActionButton extends StatelessWidget {
         lottieAsset = 'assets/animations/call.json';
         useLottie = true;
         break;
+      case Icons.support_agent:
+        lottieAsset = 'assets/animations/wa.json';
+        useLottie = true;
+        break;
       case Icons.my_location:
         final now = DateTime.now();
         final isNight = now.hour >= 18 || now.hour < 6;
@@ -34,20 +38,23 @@ class CrewFloatingActionButton extends StatelessWidget {
         break;
     }
 
+    // Special handling for WhatsApp (no border, green shadow)
+    final isWhatsApp = icon == Icons.support_agent;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: ResponsiveHelper.width(context, mobile: 48, tablet: 64),
-        height: ResponsiveHelper.height(context, mobile: 48, tablet: 64),
+        width: ResponsiveHelper.width(context, mobile: 56, tablet: 70),
+        height: ResponsiveHelper.height(context, mobile: 56, tablet: 70),
         decoration: BoxDecoration(
           color: useLottie ? Colors.transparent : color,
           shape: BoxShape.circle,
-          border: useLottie ? Border.all(color: color, width: 2) : null,
+          border: (useLottie && !isWhatsApp) ? Border.all(color: color, width: 2.5) : (isWhatsApp ? Border.all(color: Colors.green, width: 2.5) : null),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(useLottie ? 0.4 : 0.3),
+              color: (isWhatsApp ? Colors.green : color).withOpacity(useLottie ? 0.4 : 0.3),
               blurRadius: useLottie ? 12 : 8,
-              offset: const Offset(0, 4),
+              offset: const Offset(0, 0),
             ),
           ],
         ),
