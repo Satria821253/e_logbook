@@ -40,11 +40,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     WidgetsBinding.instance.addObserver(this);
     print('🚀 HomeScreen: initState called');
     
-    // Register listener untuk auto-refresh documents
-    RealtimeUpdateService.addListener('documents', () {
+    // Register listener untuk auto-refresh documents (gunakan key unik)
+    RealtimeUpdateService.addListener('documents-home', () {
+      print('🔔 [HOME] Documents listener triggered! mounted=$mounted');
       if (mounted) {
         print('🔔 Documents changed, auto-refreshing home screen...');
-        // HANYA refresh banner, TIDAK tampilkan popup
+        // Force rebuild dengan memanggil setState dulu
+        setState(() {
+          // Trigger rebuild
+        });
+        // Kemudian refresh data
+        _checkDocumentCompletion().then((_) {
+          print('✅ [HOME] Banner refresh completed');
+        });
+      } else {
+        print('⚠️ [HOME] Widget not mounted, skipping refresh');
+      }
+    });
+    
+    // Juga listen ke 'documents' untuk compatibility
+    RealtimeUpdateService.addListener('documents', () {
+      print('🔔 [HOME] Documents (global) listener triggered!');
+      if (mounted) {
+        setState(() {});
+        _checkDocumentCompletion();
+      }
+    });
+    
+    // Register listener untuk auto-refresh saat admin memverifikasi
+    RealtimeUpdateService.addListener('document-verified', () {
+      print('🔔 [HOME] Document-verified listener triggered! mounted=$mounted');
+      if (mounted) {
+        print('🔔 Document verified by admin, auto-refreshing banner...');
+        setState(() {});
         _checkDocumentCompletion();
       }
     });
@@ -75,81 +103,86 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
 
   Future<void> _checkAndShowPopup() async {
     final prefs = await SharedPreferences.getInstance();
-    final documentsCompleted = prefs.getBool('documents_completed') ?? false;
-    final documentsPending = prefs.getBool('documents_pending') ?? false;
-    final hasRejected = prefs.getBool('has_rejected_documents') ?? false;
-    final approvedCount = prefs.getInt('approved_count') ?? 0;
     
     // Check if popup already shown in this session
     final popupShownThisSession = prefs.getBool('popup_shown_this_session') ?? false;
-
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final userRole = userProvider.user?.role ?? 'Crew';
-    
-    print('👤 HomeScreen: User role = $userRole');
-    print('📋 HomeScreen: completed=$documentsCompleted, pending=$documentsPending, rejected=$hasRejected');
-    print('🔒 Popup shown this session: $popupShownThisSession');
-
-    // Jika semua dokumen sudah completed, jangan tampilkan popup apapun
-    if (documentsCompleted) {
-      print('✅ HomeScreen: All documents completed, no popup needed');
-      return;
-    }
-    
-    // Jika popup sudah ditampilkan di session ini, skip
     if (popupShownThisSession) {
       print('⏭️ HomeScreen: Popup already shown this session, skip');
       return;
     }
 
-    // Jika ada rejected, tampilkan popup rejected (prioritas tertinggi)
-    if (hasRejected && mounted) {
-      print('🔴 HomeScreen: Showing rejected popup');
-      await prefs.setBool('popup_shown_this_session', true);
-      PendingPopupHelper.showPendingPopup(
-        context: context,
-        userRole: userRole,
-        pendingCount: _pendingCount,
-        approvedCount: approvedCount,
-        rejectedCount: _rejectedCount,
-        totalCount: _totalCount,
-      );
-      return;
-    }
-    
-    // Jika ada pending, tampilkan pending popup
-    if (documentsPending && mounted) {
-      print('🟠 HomeScreen: Showing pending popup');
-      await prefs.setBool('popup_shown_this_session', true); // Mark as shown
-      PendingPopupHelper.showPendingPopup(
-        context: context,
-        userRole: userRole,
-        pendingCount: _pendingCount,
-        approvedCount: approvedCount,
-        rejectedCount: _rejectedCount,
-        totalCount: _totalCount,
-      );
-      return;
-    }
+    // Ambil data dokumen dari API untuk mendapatkan count yang akurat
+    try {
+      final response = await DocumentService.getDocuments();
+      if (response['success'] == true) {
+        final docs = response['documents'] as List;
+        final pending = docs.where((d) => d['status'] == 'pending').length;
+        final approved = docs.where((d) => d['status'] == 'approved').length;
+        final rejected = docs.where((d) => d['status'] == 'rejected').length;
+        
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final userRole = userProvider.user?.role ?? 'Crew';
+        
+        print('👤 HomeScreen: User role = $userRole');
+        print('📋 HomeScreen: approved=$approved, pending=$pending, rejected=$rejected');
 
-    // Jika ada rejected, jangan tampilkan popup (sudah ada banner)
-    if (hasRejected) {
-      print('🔴 HomeScreen: Has rejected docs, showing banner only');
-      return;
-    }
+        // Jika semua dokumen sudah completed (8 dokumen approved), jangan tampilkan popup apapun
+        if (approved >= 8) {
+          print('✅ HomeScreen: All 8 documents approved, no popup needed');
+          return;
+        }
 
-    // Jika belum lengkap dan tidak ada pending/rejected, tampilkan upload popup
-    if (!documentsCompleted && !documentsPending && !hasRejected && mounted) {
-      print('🎯 HomeScreen: Showing document upload popup');
-      await prefs.setBool('popup_shown_this_session', true); // Mark as shown
-      DocumentPopupHelper.showDocumentPopup(context, userRole);
+        // Jika ada rejected, tampilkan popup rejected (prioritas tertinggi)
+        if (rejected > 0 && mounted) {
+          print('🔴 HomeScreen: Showing rejected popup with rejectedCount=$rejected');
+          await prefs.setBool('popup_shown_this_session', true);
+          PendingPopupHelper.showPendingPopup(
+            context: context,
+            userRole: userRole,
+            pendingCount: pending,
+            approvedCount: approved,
+            rejectedCount: rejected,
+            totalCount: 8,
+          );
+          return;
+        }
+        
+        // Jika ada pending dan sudah upload 8 dokumen, tampilkan pending popup
+        final totalUploaded = approved + pending + rejected;
+        if (pending > 0 && totalUploaded >= 8 && mounted) {
+          print('🟠 HomeScreen: Showing pending popup with pendingCount=$pending');
+          await prefs.setBool('popup_shown_this_session', true);
+          PendingPopupHelper.showPendingPopup(
+            context: context,
+            userRole: userRole,
+            pendingCount: pending,
+            approvedCount: approved,
+            rejectedCount: rejected,
+            totalCount: 8,
+          );
+          return;
+        }
+
+        // Jika belum lengkap 8 dokumen, tampilkan upload popup
+        if (totalUploaded < 8 && mounted) {
+          print('🎯 HomeScreen: Showing document upload popup');
+          await prefs.setBool('popup_shown_this_session', true);
+          DocumentPopupHelper.showDocumentPopup(context, userRole);
+        }
+      }
+    } catch (e) {
+      print('⚠️ Error checking documents for popup: $e');
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    RealtimeUpdateService.removeListener('documents');
+    // JANGAN remove listener karena home screen menggunakan AutomaticKeepAliveClientMixin
+    // Listener akan tetap aktif untuk menerima update real-time
+    print('🗑️ HomeScreen: dispose called (listeners kept active)');
+    // RealtimeUpdateService.removeListener('documents');
+    // RealtimeUpdateService.removeListener('document-verified');
     super.dispose();
   }
 
@@ -158,11 +191,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     // Auto-reload ketika app resumed (kembali dari background)
     if (state == AppLifecycleState.resumed) {
       print('🔄 App resumed, refreshing document status...');
+      // Re-register listeners jika belum ada
+      if (RealtimeUpdateService.getListener('documents') == null) {
+        print('🔔 Re-registering documents listener');
+        RealtimeUpdateService.addListener('documents', () {
+          print('🔔 [HOME] Documents listener triggered!');
+          if (mounted) {
+            print('🔔 Documents changed, auto-refreshing home screen...');
+            _checkDocumentCompletion();
+          }
+        });
+      }
+      if (RealtimeUpdateService.getListener('document-verified') == null) {
+        print('🔔 Re-registering document-verified listener');
+        RealtimeUpdateService.addListener('document-verified', () {
+          print('🔔 [HOME] Document-verified listener triggered!');
+          if (mounted) {
+            print('🔔 Document verified by admin, auto-refreshing banner...');
+            _checkDocumentCompletion();
+          }
+        });
+      }
       _checkDocumentCompletion();
     }
   }
 
   Future<void> _checkDocumentCompletion() async {
+    print('🔍 [HOME] _checkDocumentCompletion called');
     final prefs = await SharedPreferences.getInstance();
     
     // Get real document counts from API with error handling
@@ -225,6 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         await prefs.setInt('total_uploaded', totalUploaded);
         
         print('✅ [Validation] Approved: $approved, Pending: $pending, Rejected: $rejected, Total: $totalUploaded/8, Show pending: $hasPending, Show rejected: $hasRejected');
+        print('🎨 [UI UPDATE] Setting state - showRejected: $hasRejected, showPending: $hasPending, showAlert: ${!allDocsApproved && !hasPending && !hasRejected}');
         
         if (mounted) {
           setState(() {
@@ -238,23 +294,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
               _showDocumentAlert = false;
               _showPendingBanner = false;
               _showRejectedAlert = true;
+              print('🔴 [UI] Showing REJECTED banner');
             } else if (hasPending) {
               // Ada pending (dan sudah 8 dokumen), tampilkan pending banner
               _showDocumentAlert = false;
               _showPendingBanner = true;
               _showRejectedAlert = false;
+              print('🟠 [UI] Showing PENDING banner');
             } else if (!allDocsApproved) {
               // Belum lengkap 8 dokumen atau belum semua approved, tampilkan upload alert
               _showDocumentAlert = true;
               _showPendingBanner = false;
               _showRejectedAlert = false;
+              print('🟡 [UI] Showing UPLOAD alert');
             } else {
               // Semua approved, tidak tampilkan apapun
               _showDocumentAlert = false;
               _showPendingBanner = false;
               _showRejectedAlert = false;
+              print('✅ [UI] Hiding all banners (all approved)');
             }
           });
+          print('✅ [UI] setState completed');
         }
         return;
       }
@@ -1443,3 +1504,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     );
   }
 }
+
+
+
+

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/getAPi/vessel_service.dart';
+import '../../services/getAPi/document_service.dart';
 
 class FuelManagementScreen extends StatefulWidget {
   const FuelManagementScreen({Key? key}) : super(key: key);
@@ -9,7 +10,7 @@ class FuelManagementScreen extends StatefulWidget {
   State<FuelManagementScreen> createState() => _FuelManagementScreenState();
 }
 
-class _FuelManagementScreenState extends State<FuelManagementScreen> {
+class _FuelManagementScreenState extends State<FuelManagementScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   String _jenisBahanBakar = 'Solar';
   final _jumlahLiterController = TextEditingController();
@@ -20,6 +21,162 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> {
   final _keteranganController = TextEditingController();
   String? _buktiFilePath;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkPersonalDocuments();
+    });
+  }
+
+  Future<void> _checkPersonalDocuments() async {
+    try {
+      final response = await DocumentService.getDocuments();
+      if (response['success'] == true) {
+        final docs = response['documents'] as List;
+        
+        final Map<String, dynamic> latestDocs = {};
+        for (var doc in docs) {
+          final docType = doc['jenisDokumen'] ?? 'Unknown';
+          final docId = doc['id'];
+          if (!latestDocs.containsKey(docType) || docId > latestDocs[docType]['id']) {
+            latestDocs[docType] = doc;
+          }
+        }
+        
+        final approvedCount = latestDocs.values.where((d) => d['status'] == 'approved').length;
+        
+        if (approvedCount < 8) {
+          final totalUploaded = latestDocs.length;
+          if (totalUploaded < 8) {
+            _showDocumentIncompleteDialog(hasDocuments: false);
+          } else {
+            _showDocumentIncompleteDialog(hasDocuments: true);
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ Error checking documents: $e');
+    }
+  }
+
+  void _showDocumentIncompleteDialog({required bool hasDocuments}) {
+    late AnimationController shakeController;
+    shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    
+    final shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: shakeController,
+      curve: Curves.easeInOut,
+    ));
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async {
+            shakeController.forward(from: 0);
+            return false;
+          },
+          child: AnimatedBuilder(
+            animation: shakeAnimation,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: shakeAnimation.value,
+                child: child,
+              );
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back, color: Colors.grey[700]),
+                          onPressed: () {
+                            shakeController.dispose();
+                            Navigator.pop(context);
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.description_outlined, size: 40, color: Colors.orange),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Dokumen Belum Lengkap',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Dokumen pribadi Anda belum lengkap atau belum disetujui.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Silakan lengkapi dokumen pribadi terlebih dahulu sebelum input data BBM.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        shakeController.dispose();
+                        Navigator.pop(context);
+                        Navigator.pop(context);
+                        if (hasDocuments) {
+                          Navigator.pushNamed(context, '/document-status');
+                        } else {
+                          Navigator.pushNamed(
+                            context,
+                            '/nahkoda-document-upload',
+                            arguments: {'fromVesselDocs': true},
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text('Lengkapi Sekarang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   void dispose() {

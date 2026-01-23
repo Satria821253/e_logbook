@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../services/getAPi/vessel_service.dart';
+import '../../services/getAPi/document_service.dart';
 
 class FuelSummaryScreen extends StatefulWidget {
   const FuelSummaryScreen({Key? key}) : super(key: key);
@@ -9,7 +10,7 @@ class FuelSummaryScreen extends StatefulWidget {
   State<FuelSummaryScreen> createState() => _FuelSummaryScreenState();
 }
 
-class _FuelSummaryScreenState extends State<FuelSummaryScreen> {
+class _FuelSummaryScreenState extends State<FuelSummaryScreen> with TickerProviderStateMixin {
   Map<String, dynamic>? _summaryData;
   bool _isLoading = true;
   DateTime? _startDate;
@@ -20,7 +21,279 @@ class _FuelSummaryScreenState extends State<FuelSummaryScreen> {
   void initState() {
     super.initState();
     print('\n========== FUEL SUMMARY SCREEN INIT ==========');
-    _loadSummary();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkPersonalDocuments();
+    });
+  }
+
+  Future<void> _checkPersonalDocuments() async {
+    try {
+      final response = await DocumentService.getDocuments();
+      if (response['success'] == true) {
+        final docs = response['documents'] as List;
+        
+        final Map<String, dynamic> latestDocs = {};
+        for (var doc in docs) {
+          final docType = doc['jenisDokumen'] ?? 'Unknown';
+          final docId = doc['id'];
+          if (!latestDocs.containsKey(docType) || docId > latestDocs[docType]['id']) {
+            latestDocs[docType] = doc;
+          }
+        }
+        
+        final approvedCount = latestDocs.values.where((d) => d['status'] == 'approved').length;
+        
+        if (approvedCount < 8) {
+          final totalUploaded = latestDocs.length;
+          if (totalUploaded < 8) {
+            _showDocumentIncompleteDialog(hasDocuments: false);
+          } else {
+            _showDocumentIncompleteDialog(hasDocuments: true);
+          }
+          return; // Jangan load summary jika dokumen belum lengkap
+        }
+      }
+    } catch (e) {
+      print('❌ Error checking documents: $e');
+    }
+    
+    // Hanya load summary jika dokumen sudah lengkap
+    await _loadSummary();
+    
+    // Setelah load, cek apakah ada data BBM
+    if (mounted && _summaryData != null) {
+      final summary = _summaryData?['summary'];
+      final totalPengisian = summary?['totalPengisian'] ?? 0;
+      
+      if (totalPengisian == 0) {
+        _showNoFuelDataDialog();
+      }
+    }
+  }
+
+  void _showDocumentIncompleteDialog({required bool hasDocuments}) {
+    late AnimationController shakeController;
+    shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    
+    final shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: shakeController,
+      curve: Curves.easeInOut,
+    ));
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async {
+            shakeController.forward(from: 0);
+            return false;
+          },
+          child: AnimatedBuilder(
+            animation: shakeAnimation,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: shakeAnimation.value,
+                child: child,
+              );
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back, color: Colors.grey[700]),
+                          onPressed: () {
+                            shakeController.dispose();
+                            Navigator.pop(context);
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.description_outlined, size: 40, color: Colors.orange),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Dokumen Belum Lengkap',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Dokumen pribadi Anda belum lengkap atau belum disetujui.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Silakan lengkapi dokumen pribadi terlebih dahulu sebelum melihat data BBM.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        shakeController.dispose();
+                        Navigator.pop(context);
+                        Navigator.pop(context);
+                        if (hasDocuments) {
+                          Navigator.pushNamed(context, '/document-status');
+                        } else {
+                          Navigator.pushNamed(
+                            context,
+                            '/nahkoda-document-upload',
+                            arguments: {'fromVesselDocs': true},
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text('Lengkapi Sekarang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showNoFuelDataDialog() {
+    late AnimationController shakeController;
+    shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    
+    final shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: shakeController,
+      curve: Curves.easeInOut,
+    ));
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async {
+            shakeController.forward(from: 0);
+            return false;
+          },
+          child: AnimatedBuilder(
+            animation: shakeAnimation,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: shakeAnimation.value,
+                child: child,
+              );
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back, color: Colors.grey[700]),
+                          onPressed: () {
+                            shakeController.dispose();
+                            Navigator.pop(context);
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.local_gas_station_outlined, size: 40, color: Colors.blue),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Belum Ada Data BBM',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Anda belum pernah melakukan pengisian BBM.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Silakan input data BBM terlebih dahulu untuk melihat ringkasan.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        shakeController.dispose();
+                        Navigator.pop(context);
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text('Input BBM Sekarang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _loadSummary() async {

@@ -25,10 +25,31 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
     super.initState();
     _loadDocuments();
     
-    // Register listener untuk auto-update
+    // Register listeners untuk auto-update
     RealtimeUpdateService.addListener('certificates', () {
       if (mounted) {
         print('🔔 Certificates changed, auto-refreshing...');
+        _loadDocuments();
+      }
+    });
+    
+    RealtimeUpdateService.addListener('bbm', () {
+      if (mounted) {
+        print('🔔 BBM data changed, auto-refreshing...');
+        _loadDocuments();
+      }
+    });
+    
+    RealtimeUpdateService.addListener('ice', () {
+      if (mounted) {
+        print('🔔 Ice data changed, auto-refreshing...');
+        _loadDocuments();
+      }
+    });
+    
+    RealtimeUpdateService.addListener('vessel', () {
+      if (mounted) {
+        print('🔔 Vessel data changed, auto-refreshing...');
         _loadDocuments();
       }
     });
@@ -37,15 +58,24 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
   @override
   void dispose() {
     RealtimeUpdateService.removeListener('certificates');
+    RealtimeUpdateService.removeListener('bbm');
+    RealtimeUpdateService.removeListener('ice');
+    RealtimeUpdateService.removeListener('vessel');
     super.dispose();
   }
 
   Future<void> _loadDocuments() async {
     setState(() => _isLoading = true);
     try {
-      // Load vessel data untuk nahkoda info
-      final vesselData = await VesselService().getVesselData();
-      final data = await VesselService().getVesselDocuments();
+      // Load kedua API secara paralel untuk lebih cepat
+      final results = await Future.wait([
+        VesselService().getVesselData(),
+        VesselService().getVesselDocuments(),
+      ]);
+      
+      final vesselData = results[0] as Map<String, dynamic>?;
+      final data = results[1] as Map<String, dynamic>;
+      
       print('📄 Documents data received:');
       print('   Sertifikat Jalan: ${(data['sertifikatJalan'] as List).length} items');
       print('   Data BBM: ${(data['dataBahanBakar'] as List).length} items');
@@ -152,7 +182,7 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
                                 icon: Icons.ac_unit_rounded,
                                 title: 'Data Es',
                                 subtitle: 'Riwayat pembelian es',
-                                gradient: [Color(0xFF06B6D4), Color(0xFF0891B2)],
+                                gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
                                 onTap: () {
                                   Navigator.push(
                                     context,

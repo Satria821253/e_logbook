@@ -5,10 +5,13 @@ import 'getAPi/document_service.dart';
 
 class RealtimeUpdateService {
   static Timer? _pollingTimer;
-  static final Map<String, Function> _listeners = {};
+  static final Map<String, List<Function>> _listeners = {}; // Changed to List<Function>
   static Map<String, dynamic>? _lastVesselData;
   static List<dynamic>? _lastDocuments;
   static Map<String, dynamic>? _lastCertificates;
+  static List<dynamic>? _lastBBMData;
+  static List<dynamic>? _lastIceData;
+  static Map<String, dynamic>? _lastUserProfile;
   
   // Polling interval (30 detik)
   static const Duration _pollingInterval = Duration(seconds: 30);
@@ -38,8 +41,11 @@ class RealtimeUpdateService {
 
   /// Register listener untuk data tertentu
   static void addListener(String key, Function callback) {
-    _listeners[key] = callback;
-    print('👂 Listener registered: $key');
+    if (_listeners[key] == null) {
+      _listeners[key] = [];
+    }
+    _listeners[key]!.add(callback);
+    print('👂 Listener registered: $key (total: ${_listeners[key]!.length})');
   }
 
   /// Remove listener
@@ -49,7 +55,7 @@ class RealtimeUpdateService {
   }
   
   /// Get listener (untuk manual trigger)
-  static Function? getListener(String key) {
+  static List<Function>? getListener(String key) {
     return _listeners[key];
   }
 
@@ -179,8 +185,48 @@ class RealtimeUpdateService {
             _lastCertificates = {'count': currentCount};
           }
         }
+        
+        // Check BBM data
+        final bbmData = certData['dataBahanBakar'] as List?;
+        if (bbmData != null) {
+          if (_lastBBMData == null) {
+            _lastBBMData = bbmData;
+          } else if (_hasListChanged(_lastBBMData!, bbmData)) {
+            print('🔔 BBM data changed');
+            changes.add('bbm');
+            _lastBBMData = bbmData;
+          }
+        }
+        
+        // Check Ice data
+        final iceData = certData['dataEs'] as List?;
+        if (iceData != null) {
+          if (_lastIceData == null) {
+            _lastIceData = iceData;
+          } else if (_hasListChanged(_lastIceData!, iceData)) {
+            print('🔔 Ice data changed');
+            changes.add('ice');
+            _lastIceData = iceData;
+          }
+        }
       } catch (e) {
-        print('⚠️ Error checking certificates: $e');
+        print('⚠️ Error checking vessel documents: $e');
+      }
+      
+      // Check user profile changes
+      try {
+        final userDataStr = prefs.getString('user_data');
+        if (userDataStr != null) {
+          if (_lastUserProfile == null) {
+            _lastUserProfile = {'data': userDataStr};
+          } else if (_lastUserProfile!['data'] != userDataStr) {
+            print('🔔 User profile changed');
+            changes.add('profile');
+            _lastUserProfile = {'data': userDataStr};
+          }
+        }
+      } catch (e) {
+        print('⚠️ Error checking user profile: $e');
       }
 
       if (changes.isNotEmpty) {
@@ -199,18 +245,56 @@ class RealtimeUpdateService {
 
   /// Notify all listeners
   static void _notifyListeners(List<String> changes) {
+    print('📢 Notifying listeners for changes: ${changes.join(", ")}');
+    print('👂 Active listeners: ${_listeners.keys.join(", ")}');
+    
     for (var change in changes) {
-      final listener = _listeners[change];
-      if (listener != null) {
-        listener();
+      final listeners = _listeners[change];
+      if (listeners != null && listeners.isNotEmpty) {
+        print('🔔 Calling ${listeners.length} listener(s) for: $change');
+        for (var listener in listeners) {
+          try {
+            listener();
+            print('✅ Listener called successfully');
+          } catch (e) {
+            print('❌ Error calling listener $change: $e');
+          }
+        }
+      } else {
+        print('⚠️ No listener registered for: $change');
       }
     }
     
     // Notify global listener
-    final globalListener = _listeners['global'];
-    if (globalListener != null) {
-      globalListener(changes);
+    final globalListeners = _listeners['global'];
+    if (globalListeners != null && globalListeners.isNotEmpty) {
+      print('🔔 Calling ${globalListeners.length} global listener(s)');
+      for (var listener in globalListeners) {
+        try {
+          listener(changes);
+          print('✅ Global listener called successfully');
+        } catch (e) {
+          print('❌ Error calling global listener: $e');
+        }
+      }
     }
+  }
+
+  /// Helper to check if list data changed
+  static bool _hasListChanged(List oldList, List newList) {
+    if (oldList.length != newList.length) return true;
+    
+    for (int i = 0; i < oldList.length; i++) {
+      final oldItem = oldList[i];
+      final newItem = newList[i];
+      
+      // Compare by ID if available
+      if (oldItem is Map && newItem is Map) {
+        if (oldItem['id'] != newItem['id']) return true;
+        if (oldItem['updatedAt'] != newItem['updatedAt']) return true;
+      }
+    }
+    return false;
   }
 
   /// Force refresh all data
@@ -219,6 +303,9 @@ class RealtimeUpdateService {
     _lastVesselData = null;
     _lastDocuments = null;
     _lastCertificates = null;
+    _lastBBMData = null;
+    _lastIceData = null;
+    _lastUserProfile = null;
     await _checkForUpdates();
   }
 }

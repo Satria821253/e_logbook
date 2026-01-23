@@ -47,6 +47,14 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
         _loadDocuments();
       }
     });
+    
+    // Register listener untuk auto-refresh saat ada perubahan dari admin
+    RealtimeUpdateService.addListener('document-verified', () {
+      if (mounted) {
+        print('🔔 Document verified by admin, auto-refreshing...');
+        _loadDocuments();
+      }
+    });
   }
 
   Future<void> _loadDocuments() async {
@@ -114,7 +122,9 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    RealtimeUpdateService.removeListener('documents');
+    // JANGAN remove listener agar home screen tetap bisa menerima update
+    // RealtimeUpdateService.removeListener('documents');
+    // RealtimeUpdateService.removeListener('document-verified');
     _animationController.dispose();
     _bubbleController.dispose();
     super.dispose();
@@ -203,6 +213,7 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.white,
+              decoration: TextDecoration.none,
             ),
           ),
           const Spacer(),
@@ -236,7 +247,8 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
   }
 
   Widget _buildProgressSummary() {
-    final progress = _uploadedCount / _totalCount;
+    final progress = _totalCount > 0 ? _uploadedCount / _totalCount : 0.0;
+    final progressPercent = _totalCount > 0 ? (_uploadedCount / _totalCount * 100).toInt() : 0;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -285,11 +297,12 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          '${(_uploadedCount / _totalCount * 100).toInt()}%',
+                          '$progressPercent%',
                           style: const TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
+                            decoration: TextDecoration.none,
                           ),
                         ),
                       ],
@@ -362,13 +375,15 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.white,
+              decoration: TextDecoration.none,
             ),
           ),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 11,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white,
+              decoration: TextDecoration.none,
             ),
           ),
         ],
@@ -401,6 +416,7 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1A1A1A),
+                    decoration: TextDecoration.none,
                   ),
                 ),
               ],
@@ -502,6 +518,7 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.none,
                               ),
                             ),
                             Text(
@@ -509,6 +526,7 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey[600],
+                                decoration: TextDecoration.none,
                               ),
                             ),
                           ],
@@ -535,6 +553,7 @@ class _CrewDocumentStatusScreenState extends State<CrewDocumentStatusScreen>
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.red[700],
+                                decoration: TextDecoration.none,
                               ),
                             ),
                           ),

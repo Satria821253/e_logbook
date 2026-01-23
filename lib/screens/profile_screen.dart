@@ -6,6 +6,7 @@ import 'package:e_logbook/screens/nahkoda/screens/crew_attendance_screen.dart';
 import 'package:e_logbook/screens/vessel/vessel_info_screen.dart';
 import 'package:e_logbook/services/getAPi/auth_service.dart';
 import 'package:e_logbook/services/getAPi/profile_service.dart';
+import 'package:e_logbook/services/realtime_update_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
@@ -27,6 +28,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    
+    // Register listener untuk auto-update profile
+    RealtimeUpdateService.addListener('profile', () {
+      if (mounted) {
+        print('🔔 Profile changed, auto-refreshing...');
+        _loadProfile();
+      }
+    });
+    
+    RealtimeUpdateService.addListener('documents', () {
+      if (mounted) {
+        print('🔔 Documents changed, refreshing profile...');
+        _loadProfile();
+      }
+    });
+  }
+  
+  @override
+  void dispose() {
+    RealtimeUpdateService.removeListener('profile');
+    RealtimeUpdateService.removeListener('documents');
+    super.dispose();
   }
 
   Future<void> _loadProfile() async {
@@ -701,6 +724,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (shouldLogout == true) {
+      // Reset navigation ke home screen
+      Provider.of<NavigationProvider>(context, listen: false).resetToHome();
+      
       await AuthService.logout();
       if (mounted) {
         Navigator.pushAndRemoveUntil(

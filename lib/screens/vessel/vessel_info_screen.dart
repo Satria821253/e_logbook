@@ -176,6 +176,109 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
     );
   }
 
+  void _showIceAlreadyFilledDialog() {
+    final kapalInfo = _vesselData?['kapal'];
+    final namaKapal = kapalInfo?['namaKapal'] ?? '-';
+    final nomorRegistrasi = kapalInfo?['nomorRegistrasi'] ?? '-';
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.cyan.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.ac_unit, size: 40, color: Colors.cyan),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Es Sudah Terisi',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.cyan.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.directions_boat, color: Colors.cyan, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'Nama Kapal',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      namaKapal,
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.tag, color: Colors.cyan, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'No. Registrasi',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      nomorRegistrasi,
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Es sudah terisi untuk trip ini.',
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Untuk update data, silakan ke menu Dokumen Kapal. Es dapat diisi kembali setelah trip selesai.',
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyan,
+                  padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text('OK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   void _showNoVesselDialog() {
     showDialog(
@@ -549,7 +652,7 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
           _buildMenuCard(
             icon: Icons.local_gas_station_rounded,
             title: 'Manajemen BBM',
-            subtitle: 'Input & riwayat bahan bakar',
+            subtitle: 'Input bahan bakar kapal',
             gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
             onTap: () async {
               final canAdd = await VesselService().canAddFuel();
@@ -580,13 +683,20 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
         if (!isNahkoda) ...[
           _buildMenuCard(
             icon: Icons.ac_unit_rounded,
-            title: 'Data Es',
-            subtitle: 'Input & riwayat pembelian es',
-            gradient: [Color(0xFF06B6D4), Color(0xFF0891B2)],
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => IceManagementScreen()),
-            ),
+            title: 'Manajemen Es',
+            subtitle: 'Input data es kapal',
+            gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+            onTap: () async {
+              final canAdd = await VesselService().canAddIce();
+              if (!canAdd && mounted) {
+                _showIceAlreadyFilledDialog();
+              } else if (mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => IceManagementScreen()),
+                );
+              }
+            },
           ),
         ],
       ],

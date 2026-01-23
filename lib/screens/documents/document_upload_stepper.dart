@@ -162,9 +162,11 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
     
     // Langsung notify listener untuk update banner di home screen
     print('🔔 Manually triggering documents listener after upload');
-    final listener = RealtimeUpdateService.getListener('documents');
-    if (listener != null) {
-      listener();
+    final listeners = RealtimeUpdateService.getListener('documents');
+    if (listeners != null) {
+      for (var listener in listeners) {
+        listener();
+      }
     }
     
     // Jika ada rejected docs, prioritaskan rejected docs
@@ -187,6 +189,14 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
       
       // Jika sudah selesai semua rejected, keluar
       if (currentIndex >= 0) {
+        // Trigger update sebelum keluar
+        print('🔔 All rejected docs uploaded, triggering listener before exit');
+        final listeners = RealtimeUpdateService.getListener('documents');
+        if (listeners != null) {
+          for (var listener in listeners) {
+            listener();
+          }
+        }
         Navigator.pop(context);
         return;
       }
@@ -204,10 +214,26 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
         );
       } else {
         // Semua dokumen sudah diupload
+        // Trigger update sebelum keluar
+        print('🔔 All documents uploaded, triggering listener before exit');
+        final listeners = RealtimeUpdateService.getListener('documents');
+        if (listeners != null) {
+          for (var listener in listeners) {
+            listener();
+          }
+        }
         Navigator.pop(context);
       }
     } else {
       // Sudah di step terakhir
+      // Trigger update sebelum keluar
+      print('🔔 Last step completed, triggering listener before exit');
+      final listeners = RealtimeUpdateService.getListener('documents');
+      if (listeners != null) {
+        for (var listener in listeners) {
+          listener();
+        }
+      }
       Navigator.pop(context);
     }
   }
@@ -298,6 +324,15 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
+            // Trigger update sebelum kembali
+            print('🔔 Triggering documents listener before going back');
+            final listeners = RealtimeUpdateService.getListener('documents');
+            if (listeners != null) {
+              for (var listener in listeners) {
+                listener();
+              }
+            }
+            
             if (widget.fromVesselDocs) {
               // Khusus dari Sertifikat Kapal, kembali ke Dokumen Kapal
               Navigator.of(context).popUntil((route) => route.isFirst);

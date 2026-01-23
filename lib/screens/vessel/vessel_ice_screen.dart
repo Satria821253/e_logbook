@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../services/getAPi/vessel_service.dart';
+import '../../services/getAPi/document_service.dart';
 
 class VesselIceScreen extends StatefulWidget {
   const VesselIceScreen({Key? key}) : super(key: key);
@@ -9,7 +10,7 @@ class VesselIceScreen extends StatefulWidget {
   State<VesselIceScreen> createState() => _VesselIceScreenState();
 }
 
-class _VesselIceScreenState extends State<VesselIceScreen> {
+class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderStateMixin {
   final _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   bool _isLoading = true;
   Map<String, dynamic>? _iceData;
@@ -17,7 +18,276 @@ class _VesselIceScreenState extends State<VesselIceScreen> {
   @override
   void initState() {
     super.initState();
-    _loadIceData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkValidations();
+    });
+  }
+
+  Future<void> _checkValidations() async {
+    // 1. Cek dokumen pribadi
+    try {
+      final response = await DocumentService.getDocuments();
+      if (response['success'] == true) {
+        final docs = response['documents'] as List;
+        
+        final Map<String, dynamic> latestDocs = {};
+        for (var doc in docs) {
+          final docType = doc['jenisDokumen'] ?? 'Unknown';
+          final docId = doc['id'];
+          if (!latestDocs.containsKey(docType) || docId > latestDocs[docType]['id']) {
+            latestDocs[docType] = doc;
+          }
+        }
+        
+        final approvedCount = latestDocs.values.where((d) => d['status'] == 'approved').length;
+        
+        if (approvedCount < 8) {
+          final totalUploaded = latestDocs.length;
+          if (totalUploaded < 8) {
+            _showDocumentIncompleteDialog(hasDocuments: false);
+          } else {
+            _showDocumentIncompleteDialog(hasDocuments: true);
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      print('❌ Error checking documents: $e');
+    }
+    
+    // 2. Load data es
+    await _loadIceData();
+    
+    // 3. Cek apakah ada data es
+    if (mounted && _iceData != null) {
+      final iceDataList = _iceData?['iceData'] as List? ?? [];
+      if (iceDataList.isEmpty) {
+        _showNoIceDataDialog();
+      }
+    }
+  }
+
+  void _showDocumentIncompleteDialog({required bool hasDocuments}) {
+    late AnimationController shakeController;
+    shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    
+    final shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: shakeController,
+      curve: Curves.easeInOut,
+    ));
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async {
+            shakeController.forward(from: 0);
+            return false;
+          },
+          child: AnimatedBuilder(
+            animation: shakeAnimation,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: shakeAnimation.value,
+                child: child,
+              );
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back, color: Colors.grey[700]),
+                          onPressed: () {
+                            shakeController.dispose();
+                            Navigator.pop(context);
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.description_outlined, size: 40, color: Colors.orange),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Dokumen Belum Lengkap',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Dokumen pribadi Anda belum lengkap atau belum disetujui.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Silakan lengkapi dokumen pribadi terlebih dahulu sebelum melihat data es.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final nav = Navigator.of(context);
+                        shakeController.dispose();
+                        nav.pop();
+                        nav.pop();
+                        await Future.delayed(Duration(milliseconds: 200));
+                        if (hasDocuments) {
+                          nav.pushNamed('/document-status');
+                        } else {
+                          nav.pushNamed('/crew-document-upload');
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text('Lengkapi Sekarang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showNoIceDataDialog() {
+    late AnimationController shakeController;
+    shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    
+    final shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: shakeController,
+      curve: Curves.easeInOut,
+    ));
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async {
+            shakeController.forward(from: 0);
+            return false;
+          },
+          child: AnimatedBuilder(
+            animation: shakeAnimation,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: shakeAnimation.value,
+                child: child,
+              );
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back, color: Colors.grey[700]),
+                          onPressed: () {
+                            shakeController.dispose();
+                            Navigator.pop(context);
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.cyan.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.ac_unit_outlined, size: 40, color: Colors.cyan),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Belum Ada Data Es',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Anda belum pernah melakukan pembelian es.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Silakan input data es terlebih dahulu untuk melihat riwayat.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        shakeController.dispose();
+                        Navigator.pop(context);
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.cyan,
+                        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text('Input Es Sekarang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _loadIceData() async {

@@ -1114,4 +1114,30 @@ class VesselService {
       return true; // Default: bisa input jika error
     }
   }
+
+  Future<bool> canAddIce() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) return true;
+
+      final iceData = await getIceData();
+      if (iceData == null) return true;
+
+      final iceDataList = iceData['iceData'] as List?;
+      
+      // Jika ada data Es, berarti sudah terisi
+      if (iceDataList != null && iceDataList.isNotEmpty) {
+        print('⚠️ [canAddIce] Es sudah terisi: ${iceDataList.length} record(s)');
+        return false; // Tidak bisa tambah Es
+      }
+      
+      print('✅ [canAddIce] Es belum terisi, bisa input');
+      return true; // Bisa tambah Es
+    } catch (e) {
+      print('⚠️ [canAddIce] Error: $e');
+      return true; // Default: bisa input jika error
+    }
+  }
 }

@@ -227,6 +227,8 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
   Widget _buildPopupContent() {
     // Ubah warna jika ada rejected
     final hasRejected = widget.rejectedCount > 0;
+    print('🎨 [CREW POPUP] rejectedCount: ${widget.rejectedCount}, hasRejected: $hasRejected');
+    
     final gradientColors = hasRejected
         ? [
             Color(0xFFB91C1C), // Merah gelap
@@ -238,6 +240,8 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
             Color(0xFFFB8C00),
             Color(0xFFFFA726),
           ];
+    
+    print('🎨 [CREW POPUP] Using colors: ${hasRejected ? "RED" : "ORANGE"}');
     
     return Container(
       height: 600,
@@ -297,8 +301,6 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
-                      _buildCountdownCard(),
-                      const SizedBox(height: 24),
                       _buildQuickInfo(),
                       const SizedBox(height: 32),
                       _buildActionButtons(),
@@ -373,36 +375,7 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
     );
   }
 
-  Widget _buildFloatingHourglasses() {
-    return Stack(
-      children: [
-        _buildFloatingIcon(Icons.hourglass_top, 50, 100, 0),
-        _buildFloatingIcon(Icons.hourglass_bottom, 300, 80, 1),
-        _buildFloatingIcon(Icons.timer, 80, 350, 2),
-        _buildFloatingIcon(Icons.access_time, 320, 450, 3),
-      ],
-    );
-  }
 
-  Widget _buildFloatingIcon(IconData icon, double left, double top, int index) {
-    return Positioned(
-      left: left,
-      top: top,
-      child: TweenAnimationBuilder<double>(
-        duration: Duration(milliseconds: 1500 + (index * 200)),
-        tween: Tween(begin: 0.0, end: 1.0),
-        builder: (context, value, child) {
-          return Transform.rotate(
-            angle: (value * 2 * math.pi) / 8,
-            child: Opacity(
-              opacity: 0.15 + (0.1 * value),
-              child: Icon(icon, color: Colors.white, size: 30),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   Widget _buildPendingIllustration() {
     return AnimatedBuilder(
@@ -465,174 +438,102 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
     );
   }
 
-  Widget _buildCountdownCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildTimeBox('1-2', 'Hari'),
-              const SizedBox(width: 12),
-              const Text(
-                '⏰',
-                style: TextStyle(
-                  fontSize: 24,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-              const SizedBox(width: 12),
-              _buildTimeBox('24', 'Jam'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(16),
+  Widget _buildFloatingHourglasses() {
+    return Stack(
+      children: [
+        _buildFloatingIcon(Icons.hourglass_top, 50, 100, 0),
+        _buildFloatingIcon(Icons.hourglass_bottom, 300, 80, 1),
+      ],
+    );
+  }
+
+  Widget _buildFloatingIcon(IconData icon, double left, double top, int index) {
+    return Positioned(
+      left: left,
+      top: top,
+      child: TweenAnimationBuilder<double>(
+        duration: Duration(milliseconds: 1500 + (index * 200)),
+        tween: Tween(begin: 0.0, end: 1.0),
+        builder: (context, value, child) {
+          return Transform.rotate(
+            angle: (value * 2 * math.pi) / 8,
+            child: Opacity(
+              opacity: 0.15 + (0.1 * value),
+              child: Icon(icon, color: Colors.white, size: 30),
             ),
-            child: const Text(
-              'Estimasi Waktu Verifikasi',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildTimeBox(String value, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white, width: 2),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
+
+
 
   Widget _buildQuickInfo() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.white, size: 32),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${widget.approvedCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Selesai',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 60,
-                color: Colors.white.withOpacity(0.3),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    const Icon(Icons.pending_actions, color: Colors.white, size: 32),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${widget.pendingCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Pending',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.white, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Anda akan menerima notifikasi saat verifikasi selesai',
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 32),
+                const SizedBox(height: 8),
+                Text(
+                  '${widget.approvedCount}',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.none,
                   ),
                 ),
-              ),
-            ],
+                Text(
+                  'Selesai',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+          SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              children: [
+                const Icon(Icons.pending_actions, color: Colors.white, size: 32),
+                const SizedBox(height: 8),
+                Text(
+                  '${widget.pendingCount}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+                Text(
+                  'Pending',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
