@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../provider/user_provider.dart';
 import '../../services/getAPi/vessel_service.dart';
 import '../../services/getAPi/document_service.dart';
 
@@ -14,6 +16,7 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
   final _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   bool _isLoading = true;
   Map<String, dynamic>? _iceData;
+  Map<String, dynamic>? _vesselData;
 
   @override
   void initState() {
@@ -24,7 +27,38 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
   }
 
   Future<void> _checkValidations() async {
-    // 1. Cek dokumen pribadi
+    print('🔍 [ICE] _checkValidations called');
+    // Cek role user
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final isNahkoda = userProvider.user?.isNahkoda == true;
+    print('👤 [ICE] User role: ${isNahkoda ? "Nahkoda" : "Crew"}');
+    
+    // Jika Nahkoda, cek apakah ada data es
+    if (isNahkoda) {
+      print('👨‍✈️ [ICE] Nahkoda detected, loading ice data...');
+      await _loadIceData();
+      
+      print('📊 [ICE] Ice data loaded: ${_iceData != null}');
+      if (mounted) {
+        if (_iceData == null) {
+          print('⚠️ [ICE] Failed to load data (null), showing popup...');
+          _showNoIceDataDialog();
+        } else {
+          final iceDataList = _iceData?['iceData'] as List? ?? [];
+          print('🧊 [ICE] Ice data count: ${iceDataList.length}');
+          if (iceDataList.isEmpty) {
+            print('⚠️ [ICE] No ice data, showing popup...');
+            _showNoIceDataDialog();
+          } else {
+            print('✅ [ICE] Ice data available, showing list');
+          }
+        }
+      }
+      return;
+    }
+    
+    // Untuk Crew: Cek dokumen pribadi
+    print('👥 [ICE] Crew detected, checking documents...');
     try {
       final response = await DocumentService.getDocuments();
       if (response['success'] == true) {
@@ -40,6 +74,7 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
         }
         
         final approvedCount = latestDocs.values.where((d) => d['status'] == 'approved').length;
+        print('📝 [ICE] Approved documents: $approvedCount/8');
         
         if (approvedCount < 8) {
           final totalUploaded = latestDocs.length;
@@ -55,14 +90,18 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
       print('❌ Error checking documents: $e');
     }
     
-    // 2. Load data es
+    // Load data es
     await _loadIceData();
     
-    // 3. Cek apakah ada data es
-    if (mounted && _iceData != null) {
-      final iceDataList = _iceData?['iceData'] as List? ?? [];
-      if (iceDataList.isEmpty) {
+    // Cek apakah ada data es (hanya untuk crew)
+    if (mounted) {
+      if (_iceData == null) {
         _showNoIceDataDialog();
+      } else {
+        final iceDataList = _iceData?['iceData'] as List? ?? [];
+        if (iceDataList.isEmpty) {
+          _showNoIceDataDialog();
+        }
       }
     }
   }
@@ -243,10 +282,10 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: Colors.cyan.withOpacity(0.1),
+                        color: Colors.blue.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.ac_unit_outlined, size: 40, color: Colors.cyan),
+                      child: Icon(Icons.ac_unit_outlined, size: 40, color: Colors.blue),
                     ),
                     SizedBox(height: 20),
                     Text(
@@ -256,13 +295,13 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
                     ),
                     SizedBox(height: 12),
                     Text(
-                      'Anda belum pernah melakukan pembelian es.',
+                      'Crew belum melakukan pembelian es.',
                       style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Silakan input data es terlebih dahulu untuk melihat riwayat.',
+                      'Silakan tunggu crew untuk input data es terlebih dahulu.',
                       style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       textAlign: TextAlign.center,
                     ),
@@ -274,11 +313,11 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.cyan,
+                        backgroundColor: Colors.blue,
                         padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: Text('Input Es Sekarang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: Text('OK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -293,9 +332,14 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
   Future<void> _loadIceData() async {
     setState(() => _isLoading = true);
     try {
-      final data = await VesselService().getIceData();
+      final results = await Future.wait([
+        VesselService().getIceData(),
+        VesselService().getVesselData(),
+      ]);
+      
       setState(() {
-        _iceData = data;
+        _iceData = results[0] as Map<String, dynamic>;
+        _vesselData = results[1];
         _isLoading = false;
       });
     } catch (e) {
@@ -361,6 +405,10 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
   }
 
   Widget _buildKapalHeader(Map<String, dynamic> kapal) {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final isNahkoda = userProvider.user?.isNahkoda == true;
+    final nahkodaName = _vesselData?['nahkoda']?['nama'];
+    
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -373,42 +421,72 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            padding: EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(Icons.directions_boat_rounded, color: Colors.white, size: 28),
               ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(Icons.directions_boat_rounded, color: Colors.white, size: 28),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  kapal['namaKapal'] ?? '-',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      kapal['namaKapal'] ?? '-',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      kapal['nomorRegistrasi'] ?? '-',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 4),
-                Text(
-                  kapal['nomorRegistrasi'] ?? '-',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
+          if (!isNahkoda && nahkodaName != null) ...[
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Color(0xFF10B981).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Color(0xFF10B981).withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.person, size: 16, color: Color(0xFF10B981)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Nahkoda: $nahkodaName',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF10B981),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

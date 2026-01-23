@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/getAPi/vessel_service.dart';
 import '../../services/getAPi/document_service.dart';
+import '../../services/realtime_update_service.dart';
 
 class FuelManagementScreen extends StatefulWidget {
   const FuelManagementScreen({Key? key}) : super(key: key);
@@ -252,6 +253,9 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> with Ticker
       print('✅ Upload result: $result');
 
       if (mounted) {
+        // Trigger auto-refresh di parent screen
+        RealtimeUpdateService.notifyListeners('vessel');
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -266,7 +270,7 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> with Ticker
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       }
     } catch (e) {
       print('❌ Error uploading fuel: $e');

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'edit_fuel_screen.dart';
+import 'fuel_management_screen.dart';
 import '../../services/getAPi/document_service.dart';
+import '../../services/getAPi/vessel_service.dart';
+import '../../services/realtime_update_service.dart';
 
 class VesselBBMScreen extends StatefulWidget {
   final Map<String, dynamic>? documentsData;
@@ -14,13 +17,47 @@ class VesselBBMScreen extends StatefulWidget {
 
 class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderStateMixin {
   final _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  Map<String, dynamic>? _documentsData;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _documentsData = widget.documentsData;
+    
+    // Register listener untuk auto-update
+    RealtimeUpdateService.addListener('vessel', () {
+      if (mounted) {
+        print('🔔 BBM data changed, auto-refreshing...');
+        _loadVesselDocuments();
+      }
+    });
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _checkValidations();
     });
+  }
+
+  @override
+  void dispose() {
+    RealtimeUpdateService.removeListener('vessel');
+    super.dispose();
+  }
+
+  Future<void> _loadVesselDocuments() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await VesselService().getVesselDocuments();
+      if (mounted) {
+        setState(() {
+          _documentsData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading vessel documents: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _checkValidations() async {
@@ -56,7 +93,7 @@ class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderSt
     }
     
     // 2. Cek apakah ada data BBM
-    final dataBahanBakar = widget.documentsData?['dataBahanBakar'] as List? ?? [];
+    final dataBahanBakar = _documentsData?['dataBahanBakar'] as List? ?? [];
     if (dataBahanBakar.isEmpty) {
       _showNoFuelDataDialog();
     }
@@ -269,6 +306,12 @@ class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderSt
                         shakeController.dispose();
                         Navigator.pop(context);
                         Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FuelManagementScreen(),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
@@ -289,8 +332,8 @@ class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final kapalInfo = widget.documentsData?['kapal'];
-    final dataBahanBakar = widget.documentsData?['dataBahanBakar'] as List? ?? [];
+    final kapalInfo = _documentsData?['kapal'];
+    final dataBahanBakar = _documentsData?['dataBahanBakar'] as List? ?? [];
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -312,22 +355,27 @@ class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderSt
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
-      body: Column(
-        children: [
-          if (kapalInfo != null) _buildKapalHeader(kapalInfo),
-          Expanded(
-            child: dataBahanBakar.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: dataBahanBakar.length,
-                    itemBuilder: (context, index) {
-                      return _buildBBMCard(dataBahanBakar[index]);
-                    },
-                  ),
-          ),
-        ],
-      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                if (kapalInfo != null) _buildKapalHeader(kapalInfo),
+                Expanded(
+                  child: dataBahanBakar.isEmpty
+                      ? _buildEmptyState()
+                      : RefreshIndicator(
+                          onRefresh: _loadVesselDocuments,
+                          child: ListView.builder(
+                            padding: EdgeInsets.all(16),
+                            itemCount: dataBahanBakar.length,
+                            itemBuilder: (context, index) {
+                              return _buildBBMCard(dataBahanBakar[index]);
+                            },
+                          ),
+                        ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -461,15 +509,13 @@ class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderSt
                   child: IconButton(
                     icon: Icon(Icons.edit_rounded, color: Colors.blue[700], size: 22),
                     onPressed: () async {
-                      final result = await Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => EditFuelScreen(fuelData: doc),
                         ),
                       );
-                      if (result == true && mounted) {
-                        setState(() {});
-                      }
+                      // Auto-refresh sudah ditangani oleh RealtimeUpdateService
                     },
                     tooltip: 'Edit Data',
                   ),

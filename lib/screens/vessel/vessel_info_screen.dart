@@ -180,6 +180,8 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
     final kapalInfo = _vesselData?['kapal'];
     final namaKapal = kapalInfo?['namaKapal'] ?? '-';
     final nomorRegistrasi = kapalInfo?['nomorRegistrasi'] ?? '-';
+    final nahkodaInfo = _vesselData?['nahkoda'];
+    final nahkodaNama = nahkodaInfo?['nama'] ?? '-';
 
     showDialog(
       context: context,
@@ -247,6 +249,22 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
                       nomorRegistrasi,
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
                     ),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.person, color: Colors.cyan, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'Nahkoda',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      nahkodaNama,
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
                   ],
                 ),
               ),
@@ -278,7 +296,6 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
       ),
     );
   }
-
 
   void _showNoVesselDialog() {
     showDialog(

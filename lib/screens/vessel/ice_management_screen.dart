@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/getAPi/vessel_service.dart';
 import '../../services/getAPi/document_service.dart';
+import '../../services/realtime_update_service.dart';
 
 class IceManagementScreen extends StatefulWidget {
   const IceManagementScreen({Key? key}) : super(key: key);
@@ -12,7 +13,7 @@ class IceManagementScreen extends StatefulWidget {
 
 class _IceManagementScreenState extends State<IceManagementScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  String _jenisEs = 'Balok';
+  String _jenisEs = 'Es Balok';
   final _jumlahController = TextEditingController();
   final _hargaPerUnitController = TextEditingController();
   final _totalHargaController = TextEditingController();
@@ -193,7 +194,7 @@ class _IceManagementScreenState extends State<IceManagementScreen> with TickerPr
     _totalHargaController.text = total.toStringAsFixed(0);
   }
 
-  String get _unitLabel => _jenisEs == 'Balok' ? 'Balok' : 'Kg';
+  String get _unitLabel => _jenisEs == 'Es Balok' ? 'Balok' : 'Kg';
 
   Future<void> _submitIceData() async {
     if (!_formKey.currentState!.validate()) return;
@@ -248,6 +249,9 @@ class _IceManagementScreenState extends State<IceManagementScreen> with TickerPr
       print('✅ Upload result: $result');
 
       if (mounted) {
+        // Trigger auto-refresh di parent screen
+        RealtimeUpdateService.notifyListeners('vessel');
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -262,7 +266,7 @@ class _IceManagementScreenState extends State<IceManagementScreen> with TickerPr
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       }
     } catch (e) {
       print('❌ Error uploading ice: $e');
@@ -426,7 +430,7 @@ class _IceManagementScreenState extends State<IceManagementScreen> with TickerPr
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
-              items: ['Balok', 'Curah', 'Tube']
+              items: ['Es Balok', 'Es Curah', 'Es Tube']
                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
               onChanged: (value) => setState(() {

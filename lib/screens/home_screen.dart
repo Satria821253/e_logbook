@@ -25,9 +25,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   bool _showDocumentAlert = false;
   bool _showPendingBanner = false;
   bool _showRejectedAlert = false;
-  int _pendingCount = 0;
   int _rejectedCount = 0;
-  int _totalCount = 8;
   bool _hasShownPopup = false;
   bool _hasLoggedInit = false;
 
@@ -248,9 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           
           if (mounted) {
             setState(() {
-              _pendingCount = 0;
               _rejectedCount = 0;
-              _totalCount = 8;
               _showDocumentAlert = true; // Tampilkan alert upload
               _showPendingBanner = false;
               _showRejectedAlert = false;
@@ -284,9 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         
         if (mounted) {
           setState(() {
-            _pendingCount = pending;
             _rejectedCount = rejected;
-            _totalCount = 8; // Total dokumen yang dibutuhkan
             
             // Prioritas: Rejected > Pending > Incomplete
             if (hasRejected) {

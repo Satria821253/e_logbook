@@ -73,7 +73,7 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
         VesselService().getVesselDocuments(),
       ]);
       
-      final vesselData = results[0] as Map<String, dynamic>?;
+      final vesselData = results[0];
       final data = results[1] as Map<String, dynamic>;
       
       print('📄 Documents data received:');
@@ -173,6 +173,21 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => VesselBBMScreen(documentsData: _documentsData),
+                                    ),
+                                  );
+                                },
+                              ),
+                              SizedBox(height: 12),
+                              _buildMenuCard(
+                                icon: Icons.ac_unit_rounded,
+                                title: 'Data Es',
+                                subtitle: 'Riwayat pembelian es',
+                                gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => VesselIceScreen(),
                                     ),
                                   );
                                 },

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:e_logbook/services/realtime_update_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -564,11 +565,13 @@ class VesselService {
 
       final kapalId = vesselData['kapal']['id'];
       print('🚢 Kapal ID: $kapalId');
+      print('📊 Data: $jenisEs, $jumlahKg kg, Rp $hargaPerKg/kg');
 
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/ice-data'),
-      );
+      // Try with /api prefix first
+      var url = '$baseUrl/api/mobile/vessel/$kapalId/ice-data';
+      print('🌐 [uploadIceData] Trying URL: $url');
+      
+      var request = http.MultipartRequest('POST', Uri.parse(url));
 
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['jenisEs'] = jenisEs;
@@ -604,21 +607,76 @@ class VesselService {
       }
 
       print('📤 Sending ice data...');
-      final streamedResponse = await request.send().timeout(
+      var streamedResponse = await request.send().timeout(
         const Duration(minutes: 2),
       );
-      final response = await http.Response.fromStream(streamedResponse);
+      var response = await http.Response.fromStream(streamedResponse);
 
       print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+      
+      // If 404, try without /api prefix
+      if (response.statusCode == 404) {
+        print('⚠️ First attempt failed (404), trying without /api prefix...');
+        url = '$baseUrl/mobile/vessel/$kapalId/ice-data';
+        print('🌐 [uploadIceData] Trying URL: $url');
+        
+        request = http.MultipartRequest('POST', Uri.parse(url));
+        request.headers['Authorization'] = 'Bearer $token';
+        request.fields['jenisEs'] = jenisEs;
+        request.fields['jumlahKg'] = jumlahKg.toString();
+        request.fields['hargaPerKg'] = hargaPerKg.toString();
+        request.fields['totalHarga'] = totalHarga.toString();
+        request.fields['tanggalPembelian'] = tanggalPembelian;
+
+        if (lokasiPembelian != null && lokasiPembelian.isNotEmpty) {
+          request.fields['lokasiPembelian'] = lokasiPembelian;
+        }
+
+        if (keterangan != null && keterangan.isNotEmpty) {
+          request.fields['keterangan'] = keterangan;
+        }
+
+        if (buktiFilePath != null && buktiFilePath.isNotEmpty) {
+          final file = File(buktiFilePath);
+          if (await file.exists()) {
+            String contentType = 'image/jpeg';
+            if (buktiFilePath.toLowerCase().endsWith('.png')) {
+              contentType = 'image/png';
+            }
+
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'bukti',
+                buktiFilePath,
+                contentType: http_parser.MediaType.parse(contentType),
+              ),
+            );
+          }
+        }
+        
+        streamedResponse = await request.send().timeout(
+          const Duration(minutes: 2),
+        );
+        response = await http.Response.fromStream(streamedResponse);
+        
+        print('📥 Second attempt status: ${response.statusCode}');
+        print('📥 Second attempt body: ${response.body}');
+      }
+      
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
         print('✅ Ice data uploaded successfully');
         print('========== UPLOAD ICE DATA END ==========\n');
+        
+        // Trigger realtime update untuk refresh UI
+        RealtimeUpdateService.notifyListeners('ice');
+        
         return result;
       } else {
         print('❌ Upload failed: ${response.body}');
         print('========== UPLOAD ICE DATA END ==========\n');
-        throw Exception('Gagal upload data es: ${response.statusCode}');
+        throw Exception('Gagal upload data es: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('❌ Exception: $e');
@@ -627,7 +685,7 @@ class VesselService {
     }
   }
 
-  Future<Map<String, dynamic>> getIceData() async {
+  Future<Map<String, dynamic>?> getIceData() async {
     try {
       print('\n========== GET ICE DATA START ==========');
       final prefs = await SharedPreferences.getInstance();
@@ -645,9 +703,13 @@ class VesselService {
       final kapalId = vesselData['kapal']['id'];
       print('🚢 Kapal ID: $kapalId');
 
+      // Use /api prefix (same as upload)
+      final url = '$baseUrl/api/mobile/vessel/$kapalId/ice-data';
+      print('🌐 [getIceData] URL: $url');
+      
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/ice-data'),
+            Uri.parse(url),
             headers: {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
@@ -656,6 +718,7 @@ class VesselService {
           .timeout(const Duration(seconds: 30));
 
       print('📥 Response status: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -663,14 +726,23 @@ class VesselService {
           print('========== GET ICE DATA END ==========\n');
           return responseData['data'];
         }
+      } else if (response.statusCode == 404) {
+        print('⚠️ Ice data endpoint not found or no data (404)');
+        print('========== GET ICE DATA END ==========\n');
+        return null;
+      } else if (response.statusCode == 500) {
+        print('⚠️ Server error (500)');
+        print('========== GET ICE DATA END ==========\n');
+        return null;
       }
+      
       print('❌ Failed to get ice data');
       print('========== GET ICE DATA END ==========\n');
-      throw Exception('Gagal mengambil data es: ${response.statusCode}');
+      return null;
     } catch (e) {
       print('❌ Exception: $e');
       print('========== GET ICE DATA END ==========\n');
-      throw Exception('Error: $e');
+      return null;
     }
   }
 
@@ -835,7 +907,7 @@ class VesselService {
       final response = await http
           .get(
             Uri.parse(
-              '$baseUrl/api/mobile/vessel/$kapalId/documents?t=$timestamp',
+              '$baseUrl/api/mobile/vessel/$kapalId/documents?t=$timestamp&_=${DateTime.now().microsecondsSinceEpoch}',
             ),
             headers: {
               'Authorization': 'Bearer $token',
@@ -851,9 +923,25 @@ class VesselService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+        print('📊 Full response: $responseData');
+        
         if (responseData['success'] == true) {
           print('✅ Fresh data received from database');
-          return responseData['data'];
+          final data = responseData['data'];
+          
+          // Debug log untuk sertifikat
+          if (data['sertifikatJalan'] != null) {
+            final sertifikat = data['sertifikatJalan'] as List;
+            print('📄 Documents data received:');
+            print('   Sertifikat Jalan: ${sertifikat.length} items');
+            if (sertifikat.isNotEmpty) {
+              print('   First sertifikat FULL: ${sertifikat[0]}');
+              print('   First sertifikat tanggalBerlaku: ${sertifikat[0]['tanggalBerlaku']}');
+              print('   First sertifikat tanggal_berlaku: ${sertifikat[0]['tanggal_berlaku']}');
+            }
+          }
+          
+          return data;
         }
         return {'sertifikatJalan': [], 'dataBahanBakar': []};
       } else {
@@ -1122,19 +1210,41 @@ class VesselService {
 
       if (token == null) return true;
 
-      final iceData = await getIceData();
-      if (iceData == null) return true;
+      final vesselData = await getVesselData();
+      if (vesselData == null) return true;
 
-      final iceDataList = iceData['iceData'] as List?;
+      final kapalId = vesselData['kapal']['id'];
       
-      // Jika ada data Es, berarti sudah terisi
-      if (iceDataList != null && iceDataList.isNotEmpty) {
-        print('⚠️ [canAddIce] Es sudah terisi: ${iceDataList.length} record(s)');
-        return false; // Tidak bisa tambah Es
+      // Gunakan endpoint documents yang sudah ada (sama seperti canAddFuel)
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/documents'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final documents = data['data'];
+          final iceData = documents['iceData'] as List?;
+          
+          // Jika ada data Es, berarti sudah terisi
+          if (iceData != null && iceData.isNotEmpty) {
+            print('⚠️ [canAddIce] Es sudah terisi: ${iceData.length} record(s)');
+            return false; // Tidak bisa tambah Es
+          }
+          
+          print('✅ [canAddIce] Es belum terisi, bisa input');
+          return true; // Bisa tambah Es
+        }
       }
       
-      print('✅ [canAddIce] Es belum terisi, bisa input');
-      return true; // Bisa tambah Es
+      // Default: bisa input jika ada error
+      return true;
     } catch (e) {
       print('⚠️ [canAddIce] Error: $e');
       return true; // Default: bisa input jika error

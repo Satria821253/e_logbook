@@ -280,6 +280,12 @@ class RealtimeUpdateService {
     }
   }
 
+  /// Public method to manually trigger listeners
+  static void notifyListeners(String key) {
+    print('📢 Manual trigger for: $key');
+    _notifyListeners([key]);
+  }
+
   /// Helper to check if list data changed
   static bool _hasListChanged(List oldList, List newList) {
     if (oldList.length != newList.length) return true;

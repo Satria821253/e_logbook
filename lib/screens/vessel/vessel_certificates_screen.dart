@@ -1,4 +1,5 @@
 import 'package:e_logbook/services/getAPi/document_service.dart';
+import 'package:e_logbook/services/realtime_update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -327,11 +328,7 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
             onPressed: () async {
               final result = await Navigator.pushNamed(context, '/certificate-upload');
               if (result == true && mounted) {
-                // Refresh data setelah upload
-                setState(() {
-                  widget.documentsData?['sertifikatJalan'] = null;
-                });
-                // Reload from parent or refetch
+                RealtimeUpdateService.notifyListeners('certificates');
                 Navigator.pop(context, true);
               }
             },
@@ -359,6 +356,8 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
   }
 
   Widget _buildKapalHeader(Map<String, dynamic> kapal) {
+    final nahkoda = widget.documentsData?['nahkoda'] as Map<String, dynamic>?;
+    
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -371,42 +370,72 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            padding: EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(Icons.directions_boat_rounded, color: Colors.white, size: 28),
               ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(Icons.directions_boat_rounded, color: Colors.white, size: 28),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  kapal['namaKapal'] ?? '-',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      kapal['namaKapal'] ?? '-',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      kapal['nomorRegistrasi'] ?? '-',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 4),
-                Text(
-                  kapal['nomorRegistrasi'] ?? '-',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
+          if (nahkoda != null) ...[
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Color(0xFF10B981).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Color(0xFF10B981).withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.person, size: 16, color: Color(0xFF10B981)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Nahkoda: ${nahkoda['nama'] ?? '-'}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF10B981),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -414,8 +443,15 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
 
   Widget _buildSertifikatCard(Map<String, dynamic> doc) {
     final dateFormat = DateFormat('dd MMM yyyy');
-    final uploadedAt = doc['uploadedAt'] != null ? DateTime.parse(doc['uploadedAt']) : null;
-    final tanggalBerlaku = doc['tanggalBerlaku'] != null ? DateTime.parse(doc['tanggalBerlaku']) : null;
+    final uploadedAt = doc['uploadedAt'] != null ? DateTime.tryParse(doc['uploadedAt']) : null;
+    final tanggalBerlaku = doc['tanggalBerlaku'] != null ? DateTime.tryParse(doc['tanggalBerlaku']) : null;
+
+    // Debug log
+    print('📅 Certificate data:');
+    print('   tanggalBerlaku raw: ${doc['tanggalBerlaku']}');
+    print('   tanggalBerlaku parsed: $tanggalBerlaku');
+    print('   uploadedAt raw: ${doc['uploadedAt']}');
+    print('   uploadedAt parsed: $uploadedAt');
 
     return Container(
       margin: EdgeInsets.only(bottom: 16),
@@ -489,8 +525,10 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
                 _buildDetailRow(
                   icon: Icons.calendar_today_rounded,
                   label: 'Berlaku Hingga',
-                  value: tanggalBerlaku != null ? dateFormat.format(tanggalBerlaku) : '-',
-                  color: Colors.orange,
+                  value: tanggalBerlaku != null 
+                      ? dateFormat.format(tanggalBerlaku) 
+                      : 'Belum diisi admin',
+                  color: tanggalBerlaku != null ? Colors.orange : Colors.grey,
                 ),
                 SizedBox(height: 12),
                 _buildDetailRow(
