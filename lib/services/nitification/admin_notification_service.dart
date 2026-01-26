@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/document_requirement_model.dart';
+import '../../models/document_requirement_model.dart';
 
 class AdminNotificationService {
   static const String _documentRequirementsKey = 'document_requirements';

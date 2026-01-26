@@ -1,6 +1,6 @@
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
-import '../services/offline_sync_service.dart';
+import '../services/local/offline_sync_service.dart';
 
 class CatchSyncStatusWidget extends StatefulWidget {
   final String catchId;

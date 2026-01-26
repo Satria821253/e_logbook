@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../../services/getAPi/sos_service.dart';
+import '../services/api/sos_service.dart';
 
 class SosAlertDialog extends StatefulWidget {
   const SosAlertDialog({Key? key}) : super(key: key);

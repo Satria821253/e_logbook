@@ -1,7 +1,7 @@
 import 'package:e_logbook/screens/notification_detail_screen.dart';
 import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
-import 'package:e_logbook/services/notification_service.dart';
-import 'package:e_logbook/services/admin_notification_service.dart';
+import 'package:e_logbook/services/nitification/notification_service.dart';
+import 'package:e_logbook/services/nitification/admin_notification_service.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';

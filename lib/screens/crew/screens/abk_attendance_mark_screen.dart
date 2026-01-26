@@ -1,6 +1,6 @@
 import 'package:e_logbook/models/attendance_model.dart';
 import 'package:e_logbook/provider/user_provider.dart';
-import 'package:e_logbook/services/attendance_service.dart';
+import 'package:e_logbook/services/local/attendance_service.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

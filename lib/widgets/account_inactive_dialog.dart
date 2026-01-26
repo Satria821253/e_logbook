@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/local_storage/user_activity_service.dart';
+import '../services/local/user_activity_service.dart';
 import '../screens/Login/welcome_screen.dart';
 
 class AccountInactiveDialog {

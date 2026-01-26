@@ -1,4 +1,4 @@
-import 'package:e_logbook/services/location_tracking_service.dart';
+import 'package:e_logbook/services/device/location_tracking_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';

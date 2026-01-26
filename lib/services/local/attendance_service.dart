@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/attendance_model.dart';
+import '../../models/attendance_model.dart';
 
 class AttendanceService {
   static const String _attendanceKey = 'attendance_records';

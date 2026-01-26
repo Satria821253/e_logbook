@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:e_logbook/services/realtime_update_service.dart';
+import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:shared_preferences/shared_preferences.dart';

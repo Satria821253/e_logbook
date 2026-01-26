@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:e_logbook/services/weather_service.dart';
+import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:e_logbook/screens/notification_screen.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:flutter/material.dart';

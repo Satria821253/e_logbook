@@ -1,5 +1,5 @@
-import 'package:e_logbook/services/getAPi/document_service.dart';
-import 'package:e_logbook/services/realtime_update_service.dart';
+import 'package:e_logbook/services/api/document_service.dart';
+import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/file_picker_widget.dart';
-import '../../../services/getAPi/document_service.dart';
+import '../../../services/api/document_service.dart';
 
 class Step8SKCK extends StatefulWidget {
   final VoidCallback onNext;

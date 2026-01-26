@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import '../../services/getAPi/vessel_service.dart';
-import '../../services/getAPi/document_service.dart';
-import '../../services/realtime_update_service.dart';
+import '../../services/api/vessel_service.dart';
+import '../../services/api/document_service.dart';
+import '../../services/realtime/realtime_update_service.dart';
 
 class CertificateUploadScreen extends StatefulWidget {
   const CertificateUploadScreen({Key? key}) : super(key: key);

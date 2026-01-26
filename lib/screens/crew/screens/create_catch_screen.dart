@@ -3,24 +3,17 @@ import 'dart:io';
 import 'package:e_logbook/models/catch_model.dart';
 import 'package:e_logbook/provider/catch_provider.dart';
 import 'package:e_logbook/provider/user_provider.dart';
-import 'package:e_logbook/screens/map_piker_screen.dart';
-import 'package:e_logbook/services/catch_submission_service.dart';
-import 'package:e_logbook/services/gemini_fish_detection_service.dart';
-import 'package:e_logbook/services/harbor_service.dart';
-import 'package:e_logbook/services/weather_service.dart';
+import 'package:e_logbook/services/local/catch_submission_service.dart';
+import 'package:e_logbook/services/ai/gemini_fish_detection_service.dart';
 import 'package:e_logbook/widgets/ai_detection_loading_widget.dart';
 import 'package:e_logbook/widgets/ai_detection_result_widget.dart';
 import 'package:e_logbook/widgets/image_picker.dart';
-import 'package:e_logbook/widgets/location_picker.dart';
 import 'package:e_logbook/widgets/section_title.dart';
 import 'package:e_logbook/widgets/vessel_info_display.dart';
 import 'package:e_logbook/widgets/sync_status_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class CreateCatchScreen extends StatefulWidget {
@@ -39,7 +32,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   final _weightController = TextEditingController();
   final _priceController = TextEditingController();
   final _quantityController = TextEditingController();
-  final _locationController = TextEditingController();
+
   final _waterDepthController = TextEditingController();
   final _fuelCostController = TextEditingController();
   final _operationalCostController = TextEditingController();
@@ -64,22 +57,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   String _selectedFishType = '';
   String _selectedWeatherCondition = 'Cerah';
 
-  double? _latitude;
-  double? _longitude;
-  bool _isLoadingLocation = false;
-
-  // Harbor search
-  String? _selectedHarborName;
-  Map<String, dynamic>? _selectedHarborCoords;
-  bool _isLoadingHarbors = false;
-  List<Map<String, dynamic>> _harborSuggestions = [];
-  Timer? _debounce;
-  Position? _currentPosition;
-
-  // Weather
-  WeatherData? _weatherData;
-  bool _isLoadingWeather = false;
-
   // AI Detection
   bool _isDetectingFish = false;
   FishDetectionResult? _detectionResult;
@@ -88,7 +65,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation();
   }
 
   @override
@@ -97,7 +73,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     _weightController.dispose();
     _priceController.dispose();
     _quantityController.dispose();
-    _locationController.dispose();
     _waterDepthController.dispose();
     _fuelCostController.dispose();
     _operationalCostController.dispose();
@@ -108,7 +83,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     _estimatedLengthController.dispose();
     _estimatedHeightController.dispose();
     _unitWeightController.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
@@ -117,279 +91,9 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     setState(fn);
   }
 
-  // ==================== HARBOR SEARCH ====================
-  Future<void> _searchHarbors(String query) async {
-    if (query.isEmpty || query.length < 3) {
-      safeSetState(() => _harborSuggestions = []);
-      return;
-    }
 
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () async {
-      if (!mounted) return;
-      safeSetState(() => _isLoadingHarbors = true);
-      await _performHarborSearch(query);
-    });
-  }
 
-  Future<void> _performHarborSearch(String query) async {
-    try {
-      final results = await HarborSearchService.searchHarbors(query);
 
-      if (!mounted) return;
-
-      // Tambahkan jarak jika ada posisi saat ini
-      if (_currentPosition != null) {
-        for (var harbor in results) {
-          harbor['distance'] = HarborSearchService.calculateDistance(
-            fromLat: _currentPosition!.latitude,
-            fromLng: _currentPosition!.longitude,
-            toLat: harbor['lat'],
-            toLng: harbor['lng'],
-          );
-        }
-
-        // Sort by distance
-        results.sort(
-          (a, b) =>
-              (a['distance'] as double).compareTo(b['distance'] as double),
-        );
-      }
-
-      safeSetState(() {
-        _harborSuggestions = results;
-        _isLoadingHarbors = false;
-      });
-    } catch (e) {
-      safeSetState(() => _isLoadingHarbors = false);
-      if (mounted) _showSnackBar('Gagal mencari pelabuhan: $e');
-    }
-  }
-
-  double _calculateDistanceFromCoords() {
-    if (_currentPosition == null || _selectedHarborCoords == null) return 0;
-    return HarborSearchService.calculateDistance(
-      fromLat: _currentPosition!.latitude,
-      fromLng: _currentPosition!.longitude,
-      toLat: _selectedHarborCoords!['lat'],
-      toLng: _selectedHarborCoords!['lng'],
-    );
-  }
-
-  // ==================== WEATHER ====================
-  Future<void> _updateWeather() async {
-    if (_latitude == null || _longitude == null) return;
-
-    safeSetState(() => _isLoadingWeather = true);
-
-    try {
-      final weather = await WeatherService.getWeatherByCoordinates(
-        lat: _latitude!,
-        lon: _longitude!,
-      );
-
-      if (weather != null) {
-        safeSetState(() {
-          _weatherData = weather;
-          _selectedWeatherCondition = _getWeatherConditionIndonesian(
-            weather.condition,
-          );
-          _isLoadingWeather = false;
-        });
-
-        // Cek keamanan cuaca
-        if (!WeatherService.isWeatherSafe(weather)) {
-          _showWeatherWarningDialog(weather);
-        }
-      } else {
-        safeSetState(() => _isLoadingWeather = false);
-        _showSnackBar('⚠️ Tidak dapat mengambil data cuaca');
-      }
-    } catch (e) {
-      safeSetState(() => _isLoadingWeather = false);
-      _showSnackBar('Gagal mengambil data cuaca: $e');
-    }
-  }
-
-  String _getWeatherConditionIndonesian(String condition) {
-    final lower = condition.toLowerCase();
-    if (lower.contains('clear') || lower.contains('cerah')) return 'Cerah';
-    if (lower.contains('cloud') || lower.contains('berawan')) return 'Berawan';
-    if (lower.contains('rain') || lower.contains('hujan')) {
-      if (lower.contains('light') || lower.contains('ringan'))
-        return 'Hujan Ringan';
-      if (lower.contains('heavy') || lower.contains('lebat'))
-        return 'Hujan Lebat';
-      return 'Hujan Ringan';
-    }
-    if (lower.contains('storm') || lower.contains('badai')) return 'Badai';
-    return 'Berawan';
-  }
-
-  void _showWeatherWarningDialog(WeatherData weather) {
-    final warningLevel = WeatherService.getWeatherWarningLevel(weather);
-    Color warningColor = Colors.orange;
-
-    if (warningLevel == 'BERBAHAYA') {
-      warningColor = Colors.red;
-    } else if (warningLevel == 'WASPADA') {
-      warningColor = Colors.orange;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.warning, color: warningColor),
-            SizedBox(width: 8),
-            Text('Peringatan Cuaca'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: warningColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: warningColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'LEVEL: $warningLevel',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: warningColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text('Kondisi: ${weather.condition}'),
-                  Text('Suhu: ${weather.temperature.toStringAsFixed(1)}°C'),
-                  Text(
-                    'Kecepatan Angin: ${weather.windSpeed.toStringAsFixed(1)} km/h',
-                  ),
-                  Text(
-                    'Tinggi Ombak: ${weather.waveHeight.toStringAsFixed(1)} m',
-                  ),
-                  Text('Kelembaban: ${weather.humidity}%'),
-                ],
-              ),
-            ),
-            SizedBox(height: 12),
-            if (warningLevel != 'AMAN')
-              Text(
-                '⚠️ Disarankan untuk menunda aktivitas melaut!',
-                style: TextStyle(
-                  color: warningColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Mengerti'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==================== LOCATION ====================
-  Future<void> _getCurrentLocation() async {
-    safeSetState(() => _isLoadingLocation = true);
-
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        throw Exception('Layanan lokasi tidak aktif. Silakan aktifkan GPS.');
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw Exception('Izin lokasi ditolak');
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        throw Exception(
-          'Izin lokasi ditolak permanen. Silakan aktifkan di pengaturan.',
-        );
-      }
-
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
-      );
-
-      _currentPosition = position;
-
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks.first;
-        safeSetState(() {
-          _latitude = position.latitude;
-          _longitude = position.longitude;
-          _locationController.text =
-              "${place.subLocality ?? place.locality ?? 'Tidak diketahui'}, ${place.administrativeArea ?? ''}";
-          _isLoadingLocation = false;
-        });
-
-        _showSnackBar('✅ Lokasi berhasil diambil!');
-
-        // AUTO UPDATE WEATHER
-        _updateWeather();
-      }
-    } catch (e) {
-      safeSetState(() => _isLoadingLocation = false);
-      _showSnackBar('Gagal mengambil lokasi: $e');
-    }
-  }
-
-  Future<void> _pickLocationFromMap() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            MapPickerScreen(initialLat: _latitude, initialLng: _longitude),
-      ),
-    );
-
-    if (result != null && result is Map<String, dynamic>) {
-      safeSetState(() {
-        _latitude = result['latitude'];
-        _longitude = result['longitude'];
-        _locationController.text = result['address'];
-      });
-      _showSnackBar('✅ Lokasi dipilih dari map!');
-
-      // AUTO UPDATE WEATHER
-      _updateWeather();
-    }
-  }
-
-  Future<void> _openInGoogleMaps() async {
-    if (_latitude == null || _longitude == null) return;
-
-    final url =
-        'https://www.google.com/maps/search/?api=1&query=$_latitude,$_longitude';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    }
-  }
 
   // ==================== TRIP CALCULATIONS ====================
   void _calculateTax() {
@@ -550,16 +254,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       return false;
     }
 
-    if (_selectedHarborName == null) {
-      _showSnackBar('⚠️ Silakan pilih pelabuhan pangkalan!');
-      return false;
-    }
-
-    if (_latitude == null || _longitude == null) {
-      _showSnackBar('⚠️ Silakan tentukan lokasi penangkapan!');
-      return false;
-    }
-
     if (_fishingGearController.text.trim().isEmpty) {
       _showSnackBar('⚠️ Alat tangkap harus diisi!');
       return false;
@@ -636,10 +330,10 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
         'arrivalTime': _arrivalTime.format(context),
         'tripDurationHours': _calculatedHours,
         'tripDurationMinutes': _calculatedMinutes,
-        'fishingZone': _selectedHarborName!,
-        'locationName': _locationController.text,
-        'latitude': _latitude!,
-        'longitude': _longitude!,
+        'fishingZone': 'N/A',
+        'locationName': 'N/A',
+        'latitude': 0.0,
+        'longitude': 0.0,
         'waterDepth': double.tryParse(_waterDepthController.text) ?? 0,
         'weatherCondition': _selectedWeatherCondition,
         'fuelCost': fuelCost,
@@ -693,10 +387,10 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           arrivalTime: _arrivalTime.format(context),
           tripDurationHours: _calculatedHours,
           tripDurationMinutes: _calculatedMinutes,
-          fishingZone: _selectedHarborName!,
-          locationName: _locationController.text,
-          latitude: _latitude!,
-          longitude: _longitude!,
+          fishingZone: 'N/A',
+          locationName: 'N/A',
+          latitude: 0.0,
+          longitude: 0.0,
           waterDepth: double.tryParse(_waterDepthController.text) ?? 0,
           weatherCondition: _selectedWeatherCondition,
           fuelCost: fuelCost,
@@ -785,7 +479,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                 icon: Icons.directions_boat,
               ),
               SizedBox(height: sp(12)),
-              VesselInfoDisplay(),
+              _buildVesselInfoCard(sp, fs),
 
               SizedBox(height: sp(24)),
 
@@ -797,38 +491,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               // SizedBox(height: sp(12)),
 
               // _buildDepartureArrivalSection(sp, fs),
-              SizedBox(height: sp(24)),
-
-              // PELABUHAN PANGKALAN
-              SectionTitle(title: 'Pelabuhan Pangkalan', icon: Icons.anchor),
-              SizedBox(height: sp(12)),
-
-              _buildHarborSearchField(sp, fs),
-
-              SizedBox(height: sp(24)),
-
-              // LOKASI PENANGKAPAN
-              SectionTitle(
-                title: 'Lokasi Penangkapan',
-                icon: Icons.location_on,
-              ),
-              SizedBox(height: sp(12)),
-
-              LocationPickerWidget(
-                locationController: _locationController,
-                latitude: _latitude,
-                longitude: _longitude,
-                isLoading: _isLoadingLocation,
-                onGetCurrentLocation: _getCurrentLocation,
-                onPickFromMap: _pickLocationFromMap,
-                onOpenInMaps: _openInGoogleMaps,
-              ),
-
-              SizedBox(height: sp(16)),
-
-              // WEATHER INFO (Auto)
-              if (_weatherData != null) _buildWeatherInfo(sp, fs),
-
               SizedBox(height: sp(24)),
 
               // INFORMASI HASIL TANGKAPAN (AI DETECTION)
@@ -995,338 +657,180 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
   // ==================== BUILD WIDGETS ====================
 
-  Widget _buildHarborSearchField(
+  Widget _buildVesselInfoCard(
     double Function(double) sp,
     double Function(double) fs,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: _harborController,
-          decoration: InputDecoration(
-            labelText: 'Cari Pelabuhan',
-            hintText: 'Ketik nama pelabuhan...',
-            prefixIcon: const Icon(Icons.search, color: Color(0xFF1B4F9C)),
-            suffixIcon: _isLoadingHarbors
-                ? Padding(
-                    padding: EdgeInsets.all(sp(12)),
-                    child: SizedBox(
-                      width: sp(20),
-                      height: sp(20),
-                      child: const CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(sp(12)),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(sp(12)),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(sp(12)),
-              borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
-            ),
-            filled: true,
-            fillColor: Colors.white,
-          ),
-          onChanged: (value) {
-            if (_debounce?.isActive ?? false) _debounce!.cancel();
-            _debounce = Timer(const Duration(milliseconds: 500), () {
-              _searchHarbors(value);
-            });
-          },
-        ),
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final user = userProvider.user;
 
-        // Selected Harbor
-        if (_selectedHarborName != null) ...[
-          SizedBox(height: sp(12)),
-          Container(
-            padding: EdgeInsets.all(sp(12)),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(sp(8)),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
+        // Jika data kapal belum ada, gunakan VesselInfoDisplay
+        if (user?.vesselName == null) {
+          return VesselInfoDisplay();
+        }
+
+        // Jika data kapal sudah ada, tampilkan card custom
+        return Container(
+          padding: EdgeInsets.all(sp(16)),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF1B4F9C).withOpacity(0.1),
+                Color(0xFF2563EB).withOpacity(0.05),
+              ],
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                SizedBox(width: sp(8)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _selectedHarborName!,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: fs(14),
-                        ),
-                      ),
-                      if (_selectedHarborCoords != null &&
-                          _currentPosition != null)
+            borderRadius: BorderRadius.circular(sp(12)),
+            border: Border.all(color: Color(0xFF1B4F9C).withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(sp(8)),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF1B4F9C),
+                      borderRadius: BorderRadius.circular(sp(8)),
+                    ),
+                    child: Icon(
+                      Icons.directions_boat,
+                      color: Colors.white,
+                      size: fs(20),
+                    ),
+                  ),
+                  SizedBox(width: sp(12)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          'Jarak: ${_calculateDistanceFromCoords().toStringAsFixed(2)} km',
+                          user!.vesselName!,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: fs(16),
+                            color: Color(0xFF1B4F9C),
+                          ),
+                        ),
+                        Text(
+                          'No. ${user.vesselNumber}',
                           style: TextStyle(
                             fontSize: fs(12),
                             color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () {
-                    setState(() {
-                      _selectedHarborName = null;
-                      _selectedHarborCoords = null;
-                      _harborController.clear();
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-
-        // Suggestions List
-        if (_harborSuggestions.isNotEmpty && _selectedHarborName == null) ...[
-          SizedBox(height: sp(8)),
-          Container(
-            constraints: BoxConstraints(maxHeight: sp(200)),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(sp(12)),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _harborSuggestions.length,
-              itemBuilder: (context, index) {
-                final harbor = _harborSuggestions[index];
-                final distance = harbor['distance'];
-                return ListTile(
-                  leading: const Icon(Icons.anchor, color: Color(0xFF1B4F9C)),
-                  title: Text(
-                    harbor['name'],
-                    style: TextStyle(fontSize: fs(14)),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (harbor['fullAddress'] != null)
-                        Text(
-                          harbor['fullAddress'],
-                          style: TextStyle(fontSize: fs(11)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: sp(8),
+                      vertical: sp(4),
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(sp(12)),
+                      border: Border.all(color: Colors.green.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.green[700],
+                          size: fs(14),
                         ),
-                      if (distance != null)
+                        SizedBox(width: sp(4)),
                         Text(
-                          '${distance.toStringAsFixed(2)} km dari lokasi Anda',
+                          'Aktif',
                           style: TextStyle(
-                            fontSize: fs(12),
-                            color: const Color(0xFF1B4F9C),
-                            fontWeight: FontWeight.w600,
+                            fontSize: fs(11),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green[700],
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                  onTap: () {
-                    setState(() {
-                      _selectedHarborName = harbor['name'];
-                      _selectedHarborCoords = {
-                        'lat': harbor['lat'],
-                        'lng': harbor['lng'],
-                      };
-                      _harborController.text = harbor['name'];
-                      _harborSuggestions = [];
-                    });
-                  },
-                );
-              },
-            ),
+                ],
+              ),
+              SizedBox(height: sp(16)),
+              Divider(height: 1, color: Colors.grey[300]),
+              SizedBox(height: sp(16)),
+
+              // Info Grid
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildInfoItem(
+                      icon: Icons.person_outline,
+                      label: 'Nahkoda',
+                      value: user.captainName!,
+                      sp: sp,
+                      fs: fs,
+                    ),
+                  ),
+                  SizedBox(width: sp(16)),
+                  Expanded(
+                    child: _buildInfoItem(
+                      icon: Icons.groups_outlined,
+                      label: 'Jumlah ABK',
+                      value: '${user.crewCount} orang',
+                      sp: sp,
+                      fs: fs,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildWeatherInfo(
-    double Function(double) sp,
-    double Function(double) fs,
-  ) {
-    final warningLevel = WeatherService.getWeatherWarningLevel(_weatherData!);
-    Color statusColor = Colors.green;
-
-    if (warningLevel == 'BERBAHAYA') {
-      statusColor = Colors.red;
-    } else if (warningLevel == 'WASPADA') {
-      statusColor = Colors.orange;
-    }
-
+  Widget _buildInfoItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required double Function(double) sp,
+    required double Function(double) fs,
+  }) {
     return Container(
-      padding: EdgeInsets.all(sp(16)),
-      decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(sp(12)),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Icon(Icons.wb_sunny, color: statusColor, size: fs(20)),
-              SizedBox(width: sp(8)),
-              Expanded(
-                child: Text(
-                  'Kondisi Cuaca',
-                  style: TextStyle(
-                    fontSize: fs(14),
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: sp(8),
-                  vertical: sp(4),
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  borderRadius: BorderRadius.circular(sp(12)),
-                ),
-                child: Text(
-                  warningLevel,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: fs(10),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: sp(16)),
-
-          // Weather Grid
-          Row(
-            children: [
-              Expanded(
-                child: _buildWeatherCard(
-                  '☁️',
-                  '',
-                  _weatherData!.condition,
-                  fs,
-                  sp,
-                ),
-              ),
-              SizedBox(width: sp(8)),
-              Expanded(
-                child: _buildWeatherCard(
-                  '🌡️',
-                  'Suhu',
-                  '${_weatherData!.temperature.toStringAsFixed(1)}°C',
-                  fs,
-                  sp,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: sp(8)),
-          Row(
-            children: [
-              Expanded(
-                child: _buildWeatherCard(
-                  '💨',
-                  'Angin',
-                  '${_weatherData!.windSpeed.toStringAsFixed(1)} km/h',
-                  fs,
-                  sp,
-                ),
-              ),
-              SizedBox(width: sp(8)),
-              Expanded(
-                child: _buildWeatherCard(
-                  '🌊',
-                  'Ombak',
-                  '${_weatherData!.waveHeight.toStringAsFixed(1)}m',
-                  fs,
-                  sp,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: sp(8)),
-          Row(
-            children: [
-              Expanded(
-                child: _buildWeatherCard(
-                  '💧',
-                  'Kelembaban',
-                  '${_weatherData!.humidity}%',
-                  fs,
-                  sp,
-                ),
-              ),
-              SizedBox(width: sp(8)),
-              Expanded(
-                child: Container(), // Empty space for alignment
-              ),
-            ],
-          ),
-
-          if (_isLoadingWeather) ...[
-            SizedBox(height: sp(12)),
-            LinearProgressIndicator(
-              color: statusColor,
-              backgroundColor: statusColor.withOpacity(0.2),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeatherCard(
-    String emoji,
-    String label,
-    String value,
-    double Function(double) fs,
-    double Function(double) sp,
-  ) {
-    return Container(
-      padding: EdgeInsets.all(sp(8)),
+      padding: EdgeInsets.all(sp(12)),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.7),
         borderRadius: BorderRadius.circular(sp(8)),
         border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(emoji, style: TextStyle(fontSize: fs(16))),
-          SizedBox(height: sp(4)),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: fs(10),
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
+          Row(
+            children: [
+              Icon(icon, size: fs(16), color: Color(0xFF1B4F9C)),
+              SizedBox(width: sp(6)),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: fs(11),
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: sp(2)),
+          SizedBox(height: sp(6)),
           Text(
             value,
-            style: TextStyle(fontSize: fs(11), fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: fs(13),
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

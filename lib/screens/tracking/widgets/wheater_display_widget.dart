@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import 'package:e_logbook/services/weather_service.dart';
+import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:intl/intl.dart';
 
 class WeatherDisplayWidget extends StatelessWidget {

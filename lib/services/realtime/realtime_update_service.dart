@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'getAPi/vessel_service.dart';
-import 'getAPi/document_service.dart';
+import '../api/vessel_service.dart';
+import '../api/document_service.dart';
 
 class RealtimeUpdateService {
   static Timer? _pollingTimer;

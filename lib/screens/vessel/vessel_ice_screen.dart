@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../provider/user_provider.dart';
-import '../../services/getAPi/vessel_service.dart';
-import '../../services/getAPi/document_service.dart';
+import '../../services/api/vessel_service.dart';
+import '../../services/api/document_service.dart';
 
 class VesselIceScreen extends StatefulWidget {
   const VesselIceScreen({Key? key}) : super(key: key);

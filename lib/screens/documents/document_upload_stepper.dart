@@ -10,8 +10,8 @@ import 'pages/step_5_sertifikat_nahkoda.dart';
 import 'pages/step_6_bst.dart';
 import 'pages/step_7_surat_sehat.dart';
 import 'pages/step_8_skck.dart';
-import '../../services/getAPi/document_service.dart';
-import '../../services/realtime_update_service.dart';
+import '../../services/api/document_service.dart';
+import '../../services/realtime/realtime_update_service.dart';
 
 class DocumentUploadStepper extends StatefulWidget {
   final int initialStep;

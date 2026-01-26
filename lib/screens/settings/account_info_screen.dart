@@ -1,7 +1,7 @@
+import 'package:e_logbook/services/api/profile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../provider/user_provider.dart';
-import '../../services/getAPi/profile_service.dart';
 
 class AccountInfoScreen extends StatefulWidget {
   const AccountInfoScreen({super.key});

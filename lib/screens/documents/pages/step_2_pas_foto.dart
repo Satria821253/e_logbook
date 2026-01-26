@@ -3,7 +3,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../widgets/file_picker_widget.dart';
-import '../../../services/getAPi/document_service.dart';
+import '../../../services/api/document_service.dart';
 
 class Step2PasFoto extends StatefulWidget {
   final VoidCallback onNext;

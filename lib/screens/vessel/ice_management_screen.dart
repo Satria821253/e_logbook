@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../services/getAPi/vessel_service.dart';
-import '../../services/getAPi/document_service.dart';
-import '../../services/realtime_update_service.dart';
+import '../../services/api/vessel_service.dart';
+import '../../services/api/document_service.dart';
+import '../../services/realtime/realtime_update_service.dart';
 
 class IceManagementScreen extends StatefulWidget {
   const IceManagementScreen({Key? key}) : super(key: key);

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../screens/nahkoda/screens/crew_attendance_screen.dart';
 import '../screens/nahkoda/screens/trip_info_screen.dart';
-import '../screens/crew/screens/data_raw_screen.dart';
+import '../screens/data_raw_screen.dart';
 import 'tracking_routes.dart';
 
 

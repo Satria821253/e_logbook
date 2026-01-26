@@ -3,7 +3,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../widgets/file_picker_widget.dart';
-import '../../../services/getAPi/document_service.dart';
+import '../../../services/api/document_service.dart';
+import '../../../services/ocr/ktp_ocr_service.dart';
+import '../../../widgets/ktp_ocr_result_widget.dart';
 
 class Step1KTP extends StatefulWidget {
   final VoidCallback onNext;
@@ -18,11 +20,51 @@ class _Step1KTPState extends State<Step1KTP> {
   File? _selectedFile;
   final TextEditingController _keteranganController = TextEditingController();
   bool _isUploading = false;
+  bool _isProcessingOCR = false;
+  KTPOCRResult? _ocrResult;
 
   @override
   void dispose() {
     _keteranganController.dispose();
+    KTPOCRService.dispose();
     super.dispose();
+  }
+
+  Future<void> _processOCR(File file) async {
+    setState(() {
+      _isProcessingOCR = true;
+      _ocrResult = null;
+    });
+
+    try {
+      final result = await KTPOCRService.extractKTPData(file.path);
+      
+      if (mounted) {
+        setState(() {
+          _ocrResult = result;
+          _isProcessingOCR = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Data KTP berhasil dideteksi!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessingOCR = false);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ Gagal mendeteksi data: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _uploadDocument() async {
@@ -208,9 +250,65 @@ class _Step1KTPState extends State<Step1KTP> {
             onFilePicked: (file) {
               setState(() {
                 _selectedFile = file;
+                _ocrResult = null;
               });
+              // Auto process OCR
+              _processOCR(file);
             },
           ),
+
+          const SizedBox(height: 24),
+
+          // OCR Processing Indicator
+          if (_isProcessingOCR)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.blue[700]),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Memproses OCR...',
+                    style: TextStyle(
+                      color: Colors.blue[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // OCR Result
+          if (_ocrResult != null && !_isProcessingOCR)
+            KTPOCRResultWidget(
+              result: _ocrResult!,
+              onEdit: () {
+                // TODO: Implement edit dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Fitur edit akan segera hadir'),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
+              },
+              onRetry: () {
+                if (_selectedFile != null) {
+                  _processOCR(_selectedFile!);
+                }
+              },
+            ),
 
           const SizedBox(height: 24),
 
@@ -258,7 +356,7 @@ class _Step1KTPState extends State<Step1KTP> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _isUploading ? null : _uploadDocument,
+              onPressed: (_isUploading || _isProcessingOCR) ? null : _uploadDocument,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
                 padding: const EdgeInsets.symmetric(vertical: 16),

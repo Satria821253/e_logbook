@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:e_logbook/services/zone_checker.dart';
+import 'package:e_logbook/services/device/zone_checker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 

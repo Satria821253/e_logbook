@@ -1,10 +1,10 @@
+import 'package:e_logbook/services/api/profile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../provider/user_provider.dart';
-import '../../services/getAPi/profile_service.dart';
 import 'edit_name_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {

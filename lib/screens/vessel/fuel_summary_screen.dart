@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../services/getAPi/vessel_service.dart';
-import '../../services/getAPi/document_service.dart';
+import '../../services/api/vessel_service.dart';
+import '../../services/api/document_service.dart';
 
 class FuelSummaryScreen extends StatefulWidget {
   const FuelSummaryScreen({Key? key}) : super(key: key);

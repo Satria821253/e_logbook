@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import '../config/api_config.dart';
+import '../../config/api_config.dart';
 
 class FishDetectionResult {
   final String fishName;

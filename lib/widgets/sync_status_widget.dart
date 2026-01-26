@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/offline_sync_service.dart';
-import '../services/catch_submission_service.dart';
+import '../services/local/offline_sync_service.dart';
+import '../services/local/catch_submission_service.dart';
 
 class SyncStatusWidget extends StatefulWidget {
   @override

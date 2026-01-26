@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:e_logbook/services/gemini_fish_detection_service.dart';
+import 'package:e_logbook/services/ai/gemini_fish_detection_service.dart';
 
 class AIDetectionResultWidget extends StatelessWidget {
   final FishDetectionResult result;

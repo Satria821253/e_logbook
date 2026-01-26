@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'edit_fuel_screen.dart';
 import 'fuel_management_screen.dart';
-import '../../services/getAPi/document_service.dart';
-import '../../services/getAPi/vessel_service.dart';
-import '../../services/realtime_update_service.dart';
+import '../../services/api/document_service.dart';
+import '../../services/api/vessel_service.dart';
+import '../../services/realtime/realtime_update_service.dart';
 
 class VesselBBMScreen extends StatefulWidget {
   final Map<String, dynamic>? documentsData;
