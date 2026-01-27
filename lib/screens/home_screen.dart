@@ -28,28 +28,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   int _rejectedCount = 0;
   bool _hasShownPopup = false;
   bool _hasLoggedInit = false;
+  
+  // Cache provider reference
+  UserProvider? _userProvider;
 
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void didChangeDependencies() {
+    print('🔄 [HOME] didChangeDependencies START, mounted=$mounted');
+    super.didChangeDependencies();
+    // Save provider reference safely
+    _userProvider = Provider.of<UserProvider>(context, listen: false);
+    print('🔄 [HOME] didChangeDependencies END, _userProvider=${_userProvider != null}');
+  }
+
+  @override
   void initState() {
     super.initState();
+    print('🚀 [HOME] initState START');
     WidgetsBinding.instance.addObserver(this);
-    print('🚀 HomeScreen: initState called');
+    print('🚀 [HOME] initState called, mounted=$mounted');
     
     // Register listener untuk auto-refresh documents (gunakan key unik)
     RealtimeUpdateService.addListener('documents-home', () {
       print('🔔 [HOME] Documents listener triggered! mounted=$mounted');
       if (mounted) {
         print('🔔 Documents changed, auto-refreshing home screen...');
-        // Force rebuild dengan memanggil setState dulu
-        setState(() {
-          // Trigger rebuild
-        });
-        // Kemudian refresh data
-        _checkDocumentCompletion().then((_) {
-          print('✅ [HOME] Banner refresh completed');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            print('🔔 [HOME] Calling _checkDocumentCompletion from listener');
+            _checkDocumentCompletion().then((_) {
+              print('✅ [HOME] Banner refresh completed');
+            });
+          }
         });
       } else {
         print('⚠️ [HOME] Widget not mounted, skipping refresh');
@@ -60,8 +73,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     RealtimeUpdateService.addListener('documents', () {
       print('🔔 [HOME] Documents (global) listener triggered!');
       if (mounted) {
-        setState(() {});
-        _checkDocumentCompletion();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            print('🔔 [HOME] Calling _checkDocumentCompletion from global listener');
+            _checkDocumentCompletion();
+          }
+        });
       }
     });
     
@@ -70,37 +87,73 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
       print('🔔 [HOME] Document-verified listener triggered! mounted=$mounted');
       if (mounted) {
         print('🔔 Document verified by admin, auto-refreshing banner...');
-        setState(() {});
-        _checkDocumentCompletion();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            print('🔔 [HOME] Calling _checkDocumentCompletion from verified listener');
+            _checkDocumentCompletion();
+          }
+        });
       }
     });
     
+    print('🚀 [HOME] Scheduling _loadAllData with addPostFrameCallback');
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('🚀 [HOME] addPostFrameCallback executing, mounted=$mounted');
       _loadAllData();
     });
+    print('🚀 [HOME] initState END');
   }
 
   Future<void> _loadAllData() async {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    await userProvider.loadUserFromStorage();
+    print('📥 [HOME] _loadAllData START, mounted=$mounted, _userProvider=${_userProvider != null}');
+    if (!mounted || _userProvider == null) {
+      print('❌ [HOME] _loadAllData ABORT: mounted=$mounted, _userProvider=${_userProvider != null}');
+      return;
+    }
+    
+    print('📥 [HOME] Loading user from storage...');
+    await _userProvider!.loadUserFromStorage();
+    print('✅ [HOME] User loaded, mounted=$mounted');
+    
+    if (!mounted) {
+      print('❌ [HOME] _loadAllData ABORT after loadUserFromStorage: mounted=$mounted');
+      return;
+    }
     
     // Tampilkan popup dulu jika perlu
-    if (!_hasShownPopup && mounted) {
+    if (!_hasShownPopup) {
+      print('📥 [HOME] Checking and showing popup...');
       await _checkAndShowPopup();
-      _hasShownPopup = true;
+      if (mounted) {
+        _hasShownPopup = true;
+        print('✅ [HOME] Popup check completed, _hasShownPopup=$_hasShownPopup');
+      }
+    } else {
+      print('⏭️ [HOME] Popup already shown, skipping');
+    }
+    
+    if (!mounted) {
+      print('❌ [HOME] _loadAllData ABORT after _checkAndShowPopup: mounted=$mounted');
+      return;
     }
     
     // Setelah popup, baru load dan tampilkan banner
+    print('📥 [HOME] Checking document completion...');
     await _checkDocumentCompletion();
+    print('✅ [HOME] Document completion checked');
     
-    if (!_hasLoggedInit) {
+    if (!_hasLoggedInit && mounted) {
       print('🔍 HomeScreen: _hasShownPopup = $_hasShownPopup');
       _hasLoggedInit = true;
     }
+    print('📥 [HOME] _loadAllData END');
   }
 
   Future<void> _checkAndShowPopup() async {
+    if (!mounted || _userProvider == null) return;
+    
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     
     // Check if popup already shown in this session
     final popupShownThisSession = prefs.getBool('popup_shown_this_session') ?? false;
@@ -112,14 +165,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     // Ambil data dokumen dari API untuk mendapatkan count yang akurat
     try {
       final response = await DocumentService.getDocuments();
+      if (!mounted) return;
+      
       if (response['success'] == true) {
         final docs = response['documents'] as List;
         final pending = docs.where((d) => d['status'] == 'pending').length;
         final approved = docs.where((d) => d['status'] == 'approved').length;
         final rejected = docs.where((d) => d['status'] == 'rejected').length;
         
-        final userProvider = Provider.of<UserProvider>(context, listen: false);
-        final userRole = userProvider.user?.role ?? 'Crew';
+        if (!mounted) return;
+        
+        final userRole = _userProvider!.user?.role ?? 'Crew';
         
         print('👤 HomeScreen: User role = $userRole');
         print('📋 HomeScreen: approved=$approved, pending=$pending, rejected=$rejected');
@@ -134,14 +190,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         if (rejected > 0 && mounted) {
           print('🔴 HomeScreen: Showing rejected popup with rejectedCount=$rejected');
           await prefs.setBool('popup_shown_this_session', true);
-          PendingPopupHelper.showPendingPopup(
-            context: context,
-            userRole: userRole,
-            pendingCount: pending,
-            approvedCount: approved,
-            rejectedCount: rejected,
-            totalCount: 8,
-          );
+          if (!mounted) return;
+          
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              PendingPopupHelper.showPendingPopup(
+                context: context,
+                userRole: userRole,
+                pendingCount: pending,
+                approvedCount: approved,
+                rejectedCount: rejected,
+                totalCount: 8,
+              );
+            }
+          });
           return;
         }
         
@@ -150,14 +212,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         if (pending > 0 && totalUploaded >= 8 && mounted) {
           print('🟠 HomeScreen: Showing pending popup with pendingCount=$pending');
           await prefs.setBool('popup_shown_this_session', true);
-          PendingPopupHelper.showPendingPopup(
-            context: context,
-            userRole: userRole,
-            pendingCount: pending,
-            approvedCount: approved,
-            rejectedCount: rejected,
-            totalCount: 8,
-          );
+          if (!mounted) return;
+          
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              PendingPopupHelper.showPendingPopup(
+                context: context,
+                userRole: userRole,
+                pendingCount: pending,
+                approvedCount: approved,
+                rejectedCount: rejected,
+                totalCount: 8,
+              );
+            }
+          });
           return;
         }
 
@@ -165,7 +233,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         if (totalUploaded < 8 && mounted) {
           print('🎯 HomeScreen: Showing document upload popup');
           await prefs.setBool('popup_shown_this_session', true);
-          DocumentPopupHelper.showDocumentPopup(context, userRole);
+          if (!mounted) return;
+          
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              DocumentPopupHelper.showDocumentPopup(context, userRole);
+            }
+          });
         }
       }
     } catch (e) {
@@ -196,7 +270,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           print('🔔 [HOME] Documents listener triggered!');
           if (mounted) {
             print('🔔 Documents changed, auto-refreshing home screen...');
-            _checkDocumentCompletion();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _checkDocumentCompletion();
+            });
           }
         });
       }
@@ -206,20 +282,37 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           print('🔔 [HOME] Document-verified listener triggered!');
           if (mounted) {
             print('🔔 Document verified by admin, auto-refreshing banner...');
-            _checkDocumentCompletion();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _checkDocumentCompletion();
+            });
           }
         });
       }
-      _checkDocumentCompletion();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _checkDocumentCompletion();
+      });
     }
   }
 
   Future<void> _checkDocumentCompletion() async {
-    print('🔍 [HOME] _checkDocumentCompletion called');
+    print('🔍 [HOME] _checkDocumentCompletion START, mounted=$mounted');
+    if (!mounted) {
+      print('❌ [HOME] _checkDocumentCompletion ABORT: not mounted');
+      return;
+    }
+    
+    print('🔍 [HOME] Getting SharedPreferences...');
     final prefs = await SharedPreferences.getInstance();
+    print('✅ [HOME] SharedPreferences obtained, mounted=$mounted');
+    
+    if (!mounted) {
+      print('❌ [HOME] _checkDocumentCompletion ABORT after prefs: not mounted');
+      return;
+    }
     
     // Get real document counts from API with error handling
     try {
+      print('🔍 [HOME] Fetching documents from API...');
       final response = await DocumentService.getDocuments().timeout(
         const Duration(seconds: 10),
         onTimeout: () {
@@ -227,6 +320,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           return {'success': false};
         },
       );
+      
+      print('✅ [HOME] API response received, mounted=$mounted');
+      if (!mounted) {
+        print('❌ [HOME] _checkDocumentCompletion ABORT after API: not mounted');
+        return;
+      }
       
       if (response['success'] == true) {
         final docs = response['documents'] as List;
@@ -239,6 +338,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         
         // Jika tidak ada dokumen sama sekali, reset semua status
         if (total == 0) {
+          print('🧹 [HOME] No documents, resetting status...');
           await prefs.setBool('documents_completed', false);
           await prefs.setBool('documents_pending', false);
           await prefs.setBool('has_rejected_documents', false);
@@ -247,11 +347,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           if (mounted) {
             setState(() {
               _rejectedCount = 0;
-              _showDocumentAlert = true; // Tampilkan alert upload
+              _showDocumentAlert = true;
               _showPendingBanner = false;
               _showRejectedAlert = false;
             });
+            print('✅ [HOME] State updated for empty docs');
           }
+          print('🔍 [HOME] _checkDocumentCompletion END (empty docs)');
           return;
         }
         
@@ -278,43 +380,51 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         print('✅ [Validation] Approved: $approved, Pending: $pending, Rejected: $rejected, Total: $totalUploaded/8, Show pending: $hasPending, Show rejected: $hasRejected');
         print('🎨 [UI UPDATE] Setting state - showRejected: $hasRejected, showPending: $hasPending, showAlert: ${!allDocsApproved && !hasPending && !hasRejected}');
         
-        if (mounted) {
+        if (!mounted) {
+          print('❌ [HOME] Not mounted before setState');
+          return;
+        }
+        
+        // Update state with setState after frame to avoid conflicts
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
           setState(() {
             _rejectedCount = rejected;
-            
-            // Prioritas: Rejected > Pending > Incomplete
             if (hasRejected) {
-              // Ada rejected, tampilkan rejected alert
               _showDocumentAlert = false;
               _showPendingBanner = false;
               _showRejectedAlert = true;
-              print('🔴 [UI] Showing REJECTED banner');
+              print('🔴 [UI] REJECTED banner showing');
             } else if (hasPending) {
-              // Ada pending (dan sudah 8 dokumen), tampilkan pending banner
               _showDocumentAlert = false;
               _showPendingBanner = true;
               _showRejectedAlert = false;
-              print('🟠 [UI] Showing PENDING banner');
+              print('🟠 [UI] PENDING banner showing');
             } else if (!allDocsApproved) {
-              // Belum lengkap 8 dokumen atau belum semua approved, tampilkan upload alert
               _showDocumentAlert = true;
               _showPendingBanner = false;
               _showRejectedAlert = false;
-              print('🟡 [UI] Showing UPLOAD alert');
+              print('🟡 [UI] UPLOAD alert showing');
             } else {
-              // Semua approved, tidak tampilkan apapun
               _showDocumentAlert = false;
               _showPendingBanner = false;
               _showRejectedAlert = false;
-              print('✅ [UI] Hiding all banners (all approved)');
+              print('✅ [UI] All banners hidden');
             }
           });
-          print('✅ [UI] setState completed');
-        }
+        });
+        
+        print('🔍 [HOME] _checkDocumentCompletion END (success)');
         return;
       }
     } catch (e) {
-      print('⚠️ Error fetching documents (offline mode): $e');
+      print('⚠️ [HOME] Error fetching documents (offline mode): $e');
+    }
+    
+    print('🔍 [HOME] Using fallback cached data, mounted=$mounted');
+    if (!mounted) {
+      print('❌ [HOME] _checkDocumentCompletion ABORT before fallback: not mounted');
+      return;
     }
     
     // Fallback if API fails - use cached data
@@ -322,19 +432,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     final documentsPending = prefs.getBool('documents_pending') ?? false;
     final hasRejected = prefs.getBool('has_rejected_documents') ?? false;
     
+    print('💾 [Cached] completed=$documentsCompleted, pending=$documentsPending, rejected=$hasRejected');
+    
     if (mounted) {
-      setState(() {
-        _showDocumentAlert = !documentsCompleted && !documentsPending && !hasRejected;
-        _showPendingBanner = documentsPending;
-        _showRejectedAlert = hasRejected && !documentsPending;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _showDocumentAlert = !documentsCompleted && !documentsPending && !hasRejected;
+          _showPendingBanner = documentsPending;
+          _showRejectedAlert = hasRejected && !documentsPending;
+        });
+        print('✅ [HOME] State updated for fallback');
       });
     }
+    print('🔍 [HOME] _checkDocumentCompletion END (fallback)');
   }
 
   @override
   Widget build(BuildContext context) {
+    print('🎨 [HOME] build START, mounted=$mounted');
     super.build(context); // Required for AutomaticKeepAliveClientMixin
     final isTablet = ResponsiveHelper.isTablet(context);
+    print('🎨 [HOME] build END, isTablet=$isTablet');
 
     if (isTablet) {
       // Tablet layout dengan SingleChildScrollView
@@ -386,26 +505,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                   ),
 
                   // Document Alert
-                  ValueListenableBuilder<bool>(
-                    valueListenable: DocumentPopupHelper.isPopupVisible,
-                    builder: (context, isPopupVisible, child) {
-                      if (_showDocumentAlert && !isPopupVisible) {
-                        return Column(
-                          children: [
-                            _buildDocumentAlert(),
-                            SizedBox(
-                              height: ResponsiveHelper.height(
-                                context,
-                                mobile: 16,
-                                tablet: 20,
+                  if (_showDocumentAlert)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: DocumentPopupHelper.isPopupVisible,
+                      builder: (context, isPopupVisible, child) {
+                        if (!isPopupVisible) {
+                          return Column(
+                            children: [
+                              _buildDocumentAlert(),
+                              SizedBox(
+                                height: ResponsiveHelper.height(
+                                  context,
+                                  mobile: 16,
+                                  tablet: 20,
+                                ),
                               ),
-                            ),
-                          ],
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
+                            ],
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
                   
                   // Pending Banner
                   if (_showPendingBanner) _buildPendingBanner(),

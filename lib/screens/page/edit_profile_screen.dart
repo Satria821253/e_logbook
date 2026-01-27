@@ -317,7 +317,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   builder: (context, userProvider, child) {
                     final user = userProvider.user;
                     final photoUrl = user?.profilePicture;
-                    final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+                    final hasValidPhoto = photoUrl != null && 
+                                          photoUrl.isNotEmpty && 
+                                          (photoUrl.startsWith('http') || photoUrl.startsWith('file://'));
 
                     return GestureDetector(
                       onTap: _isLoading ? null : _showImageSourcePicker,
@@ -326,14 +328,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           CircleAvatar(
                             radius: 60,
                             backgroundColor: Colors.grey[200],
-                            backgroundImage: hasPhoto
-                                ? (photoUrl.startsWith('file://')
-                                    ? FileImage(File(photoUrl.replaceFirst('file://', '')))
-                                    : NetworkImage(photoUrl)) as ImageProvider
-                                : null,
-                            child: !hasPhoto
-                                ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                                : null,
+                            child: hasValidPhoto
+                                ? ClipOval(
+                                    child: Image(
+                                      image: photoUrl.startsWith('file://')
+                                          ? FileImage(File(photoUrl.replaceFirst('file://', '')))
+                                          : NetworkImage(photoUrl) as ImageProvider,
+                                      fit: BoxFit.cover,
+                                      width: 120,
+                                      height: 120,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Icon(Icons.person, size: 60, color: Colors.grey);
+                                      },
+                                    ),
+                                  )
+                                : const Icon(Icons.person, size: 60, color: Colors.grey),
                           ),
                           Positioned(
                             bottom: 0,

@@ -53,19 +53,36 @@ class DocumentService {
         };
       }
 
-      // Build FormData - kirim empty string untuk field yang null
+      // Build FormData - hanya kirim field yang ada nilainya
       final formDataMap = <String, dynamic>{
         'jenisDokumen': jenisDokumen,
-        'dokumen': await MultipartFile.fromFile(
+        'file': await MultipartFile.fromFile(
           filePath,
           filename: filePath.split(RegExp(r'[\\\\/]')).last,
         ),
-        'nomorDokumen': nomorDokumen ?? '',
-        'tanggalBerlaku': tanggalBerlaku ?? '',
-        'keterangan': keterangan ?? '',
       };
+      
+      // Hanya tambahkan field jika ada nilainya
+      if (nomorDokumen != null && nomorDokumen.isNotEmpty) {
+        formDataMap['nomorDokumen'] = nomorDokumen;
+      }
+      if (tanggalBerlaku != null && tanggalBerlaku.isNotEmpty) {
+        formDataMap['tanggalBerlaku'] = tanggalBerlaku;
+      }
+      if (keterangan != null && keterangan.isNotEmpty) {
+        formDataMap['keterangan'] = keterangan;
+      }
 
       FormData formData = FormData.fromMap(formDataMap);
+      
+      // Debug: Print semua field yang akan dikirim
+      print('📋 FormData fields:');
+      for (var field in formData.fields) {
+        print('   - ${field.key}: ${field.value}');
+      }
+      for (var file in formData.files) {
+        print('   - ${file.key}: ${file.value.filename}');
+      }
 
       print('🚀 Starting upload...');
       final response = await _dio.post(

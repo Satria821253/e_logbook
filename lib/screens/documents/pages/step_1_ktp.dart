@@ -1,11 +1,14 @@
-// lib/screens/document_upload/pages/step_1_ktp.dart
-
 import 'dart:io';
+import 'package:e_logbook/screens/documents/models/ktp_ocr_result.dart';
+import 'package:e_logbook/screens/documents/widgets/ocr/edit_ktp_dialog.dart';
+import 'package:e_logbook/screens/documents/widgets/ocr/ktp_file_picker.dart';
+import 'package:e_logbook/screens/documents/widgets/ocr/ktp_ocr_result_widget.dart';
 import 'package:flutter/material.dart';
-import '../widgets/file_picker_widget.dart';
+
+import '../widgets/ocr/ktp_scanner_screen.dart';
 import '../../../services/api/document_service.dart';
 import '../../../services/ocr/ktp_ocr_service.dart';
-import '../../../widgets/ktp_ocr_result_widget.dart';
+
 
 class Step1KTP extends StatefulWidget {
   final VoidCallback onNext;
@@ -18,14 +21,12 @@ class Step1KTP extends StatefulWidget {
 
 class _Step1KTPState extends State<Step1KTP> {
   File? _selectedFile;
-  final TextEditingController _keteranganController = TextEditingController();
   bool _isUploading = false;
   bool _isProcessingOCR = false;
   KTPOCRResult? _ocrResult;
 
   @override
   void dispose() {
-    _keteranganController.dispose();
     KTPOCRService.dispose();
     super.dispose();
   }
@@ -45,13 +46,8 @@ class _Step1KTPState extends State<Step1KTP> {
           _isProcessingOCR = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Data KTP berhasil dideteksi!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        // Tampilkan dialog konfirmasi untuk cek data
+        _showConfirmationDialog(result);
       }
     } catch (e) {
       if (mounted) {
@@ -59,11 +55,137 @@ class _Step1KTPState extends State<Step1KTP> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('⚠️ Gagal mendeteksi data: $e'),
-            backgroundColor: Colors.orange,
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('❌ Gagal mendeteksi data: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
+    }
+  }
+
+  void _showConfirmationDialog(KTPOCRResult result) {
+    final isValid = result.isValid;
+    final missingFields = result.missingFields;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              isValid ? Icons.check_circle : Icons.warning_amber_rounded,
+              color: isValid ? Colors.green : Colors.orange,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                isValid ? 'Deteksi Selesai' : 'Data Belum Lengkap',
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isValid
+                  ? 'Data KTP berhasil terdeteksi. Silakan cek kembali data Anda sebelum melanjutkan.'
+                  : 'Beberapa data belum terdeteksi. Mohon lengkapi data berikut:',
+              style: const TextStyle(fontSize: 14),
+            ),
+            if (!isValid) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange[200]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: missingFields.map((field) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          Icon(Icons.circle, size: 6, color: Colors.orange[700]),
+                          const SizedBox(width: 8),
+                          Text(
+                            field,
+                            style: TextStyle(
+                              color: Colors.orange[900],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK, Saya Mengerti'),
+          ),
+          if (!isValid)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showEditDialog();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1B4F9C),
+              ),
+              child: const Text('Edit Sekarang'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showEditDialog() async {
+    if (_ocrResult == null) return;
+
+    final updatedResult = await showDialog<KTPOCRResult>(
+      context: context,
+      builder: (context) => EditKTPDialog(initialData: _ocrResult!),
+    );
+
+    if (updatedResult != null && mounted) {
+      setState(() {
+        _ocrResult = updatedResult;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('✅ Data berhasil diperbarui'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -71,8 +193,54 @@ class _Step1KTPState extends State<Step1KTP> {
     if (_selectedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Pilih file terlebih dahulu'),
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Pilih file terlebih dahulu'),
+            ],
+          ),
           backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validasi data wajib lengkap
+    if (_ocrResult == null || !_ocrResult!.isValid) {
+      final missingFields = _ocrResult?.missingFields ?? ['Semua data'];
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Data tidak lengkap!',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Field yang harus diisi: ${missingFields.join(", ")}',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange[700],
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Edit',
+            textColor: Colors.white,
+            onPressed: _showEditDialog,
+          ),
         ),
       );
       return;
@@ -85,27 +253,42 @@ class _Step1KTPState extends State<Step1KTP> {
     try {
       final result = await DocumentService.uploadDocument(
         jenisDokumen: 'KTP',
+        nomorDokumen: _ocrResult!.nik,
         filePath: _selectedFile!.path,
-        keterangan: _keteranganController.text.isNotEmpty ? _keteranganController.text : null,
       );
 
       if (mounted) {
         if (result['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('KTP berhasil diupload!'),
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('✅ KTP berhasil diupload!'),
+                ],
+              ),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
             ),
           );
 
           // Auto navigate to next step
           Future.delayed(const Duration(milliseconds: 500), () {
-            widget.onNext();
+            if (mounted) {
+              widget.onNext();
+            }
           });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Gagal upload'),
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(result['message'] ?? 'Gagal upload')),
+                ],
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -115,7 +298,13 @@ class _Step1KTPState extends State<Step1KTP> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal upload: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Gagal upload: $e')),
+              ],
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -174,7 +363,7 @@ class _Step1KTPState extends State<Step1KTP> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'KTP',
+                        'Upload KTP',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 24,
@@ -227,8 +416,10 @@ class _Step1KTPState extends State<Step1KTP> {
                       Text(
                         '• Pastikan foto KTP jelas dan tidak buram\n'
                         '• Semua data di KTP harus terbaca\n'
-                        '• Format: JPG, PNG, atau PDF\n'
-                        '• Ukuran maksimal 10MB',
+                        '• Hindari pantulan cahaya berlebih\n'
+                        '• Format: JPG atau PNG\n'
+                        '• Ukuran maksimal 10MB\n'
+                        '• Data akan otomatis dideteksi dengan OCR',
                         style: TextStyle(
                           color: Colors.blue[800],
                           fontSize: 13,
@@ -244,18 +435,33 @@ class _Step1KTPState extends State<Step1KTP> {
 
           const SizedBox(height: 24),
 
-          // File Picker
-          FilePickerWidget(
-            label: 'Upload KTP *',
-            onFilePicked: (file) {
-              setState(() {
-                _selectedFile = file;
-                _ocrResult = null;
-              });
-              // Auto process OCR
-              _processOCR(file);
-            },
-          ),
+          // File Picker - Hanya tampil jika belum ada result
+          if (_ocrResult == null)
+            KTPFilePickerWidget(
+              label: 'Upload KTP *',
+              onFilePicked: (file) {
+                setState(() {
+                  _selectedFile = file;
+                  _ocrResult = null;
+                });
+                _processOCR(file);
+              },
+              onCameraTap: () async {
+                final file = await Navigator.push<File>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const KTPScannerScreen(),
+                  ),
+                );
+                if (file != null) {
+                  setState(() {
+                    _selectedFile = file;
+                    _ocrResult = null;
+                  });
+                  _processOCR(file);
+                }
+              },
+            ),
 
           const SizedBox(height: 24),
 
@@ -264,26 +470,46 @@ class _Step1KTPState extends State<Step1KTP> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                gradient: LinearGradient(
+                  colors: [Colors.blue[50]!, Colors.blue[100]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.blue[200]!),
               ),
               child: Row(
                 children: [
                   SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 24,
+                    height: 24,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2,
+                      strokeWidth: 2.5,
                       valueColor: AlwaysStoppedAnimation(Colors.blue[700]),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    'Memproses OCR...',
-                    style: TextStyle(
-                      color: Colors.blue[700],
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Memproses OCR...',
+                          style: TextStyle(
+                            color: Colors.blue[900],
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Mendeteksi data KTP dari gambar',
+                          style: TextStyle(
+                            color: Colors.blue[700],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -294,71 +520,21 @@ class _Step1KTPState extends State<Step1KTP> {
           if (_ocrResult != null && !_isProcessingOCR)
             KTPOCRResultWidget(
               result: _ocrResult!,
-              onEdit: () {
-                // TODO: Implement edit dialog
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Fitur edit akan segera hadir'),
-                    backgroundColor: Colors.blue,
-                  ),
-                );
-              },
-              onRetry: () {
-                if (_selectedFile != null) {
-                  _processOCR(_selectedFile!);
-                }
-              },
+              onEdit: _showEditDialog,
             ),
 
           const SizedBox(height: 24),
-
-          // Keterangan Field
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Keterangan (Opsional)',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _keteranganController,
-                maxLines: 3,
-                maxLength: 200,
-                decoration: InputDecoration(
-                  hintText: 'Tambahkan catatan jika diperlukan...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 32),
 
           // Action Button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: (_isUploading || _isProcessingOCR) ? null : _uploadDocument,
+              onPressed: (_isUploading || _isProcessingOCR || _selectedFile == null) 
+                  ? null 
+                  : _uploadDocument,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
+                disabledBackgroundColor: Colors.grey[300],
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -374,14 +550,38 @@ class _Step1KTPState extends State<Step1KTP> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Text(
-                      'Upload & Lanjut',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.cloud_upload, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(
+                          _selectedFile == null 
+                              ? 'Pilih File Terlebih Dahulu'
+                              : 'Upload & Lanjut',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Help Text
+          Center(
+            child: Text(
+              'Data akan otomatis diverifikasi oleh sistem',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ],

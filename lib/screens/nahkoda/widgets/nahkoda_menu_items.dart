@@ -49,18 +49,18 @@ class NahkodaMenuItems extends StatelessWidget {
             ),
           ),
         ),
-        // Data Raw (paling atas)
+        // Persiapan Trip (paling atas)
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
           bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
           child: ScaleTransition(
             scale: animation,
             child: FloatingActionButtonWidget(
-              icon: Icons.analytics,
+              icon: Icons.sailing,
               color: Colors.green,
               onTap: () {
                 onMenuToggle();
-                NahkodaRoutes.navigateToDataRaw(context);
+                NahkodaRoutes.navigateToTripInfo(context);
               },
             ),
           ),

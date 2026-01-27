@@ -9,12 +9,14 @@ class FilePickerWidget extends StatefulWidget {
   final Function(File file) onFilePicked;
   final String label;
   final File? initialFile;
+  final VoidCallback? onCameraTap;
 
   const FilePickerWidget({
     Key? key,
     required this.onFilePicked,
     required this.label,
     this.initialFile,
+    this.onCameraTap,
   }) : super(key: key);
 
   @override
@@ -110,7 +112,11 @@ class _FilePickerWidgetState extends State<FilePickerWidget> {
                 title: const Text('Kamera'),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
+                  if (widget.onCameraTap != null) {
+                    widget.onCameraTap!();
+                  } else {
+                    _pickImage(ImageSource.camera);
+                  }
                 },
               ),
               ListTile(

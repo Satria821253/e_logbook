@@ -75,10 +75,14 @@ class _AIDetectionLoadingWidgetState extends State<AIDetectionLoadingWidget>
 
     Future.delayed(Duration(milliseconds: stepDuration), () {
       if (mounted && _currentStep < _steps.length - 1) {
-        setState(() {
-          _currentStep++;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _currentStep++;
+            });
+            _startStepAnimation();
+          }
         });
-        _startStepAnimation();
       }
     });
   }

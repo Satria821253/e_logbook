@@ -1,169 +1,241 @@
+import 'package:e_logbook/screens/documents/models/ktp_ocr_result.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
-/// Model untuk hasil OCR KTP
-class KTPOCRResult {
-  final String? nik;
-  final String? nama;
-  final String? tempatLahir;
-  final String? tanggalLahir;
-  final String? jenisKelamin;
-  final String? alamat;
-  final String? rtRw;
-  final String? kelDesa;
-  final String? kecamatan;
-  final String? agama;
-  final String? statusPerkawinan;
-  final String? pekerjaan;
-  final String? kewarganegaraan;
-  final String? berlakuHingga;
-  final String rawText;
-
-  KTPOCRResult({
-    this.nik,
-    this.nama,
-    this.tempatLahir,
-    this.tanggalLahir,
-    this.jenisKelamin,
-    this.alamat,
-    this.rtRw,
-    this.kelDesa,
-    this.kecamatan,
-    this.agama,
-    this.statusPerkawinan,
-    this.pekerjaan,
-    this.kewarganegaraan,
-    this.berlakuHingga,
-    required this.rawText,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'nik': nik,
-      'nama': nama,
-      'tempat_lahir': tempatLahir,
-      'tanggal_lahir': tanggalLahir,
-      'jenis_kelamin': jenisKelamin,
-      'alamat': alamat,
-      'rt_rw': rtRw,
-      'kel_desa': kelDesa,
-      'kecamatan': kecamatan,
-      'agama': agama,
-      'status_perkawinan': statusPerkawinan,
-      'pekerjaan': pekerjaan,
-      'kewarganegaraan': kewarganegaraan,
-      'berlaku_hingga': berlakuHingga,
-      'raw_text': rawText,
-    };
-  }
-}
-
-/// Service untuk OCR KTP menggunakan Google ML Kit
 class KTPOCRService {
   static final TextRecognizer _textRecognizer = TextRecognizer();
 
-  /// Melakukan OCR pada gambar KTP
+  // Dispose the recognizer when not needed
+  static void dispose() {
+    _textRecognizer.close();
+  }
+
+  /// Extract KTP data from image file
   static Future<KTPOCRResult> extractKTPData(String imagePath) async {
     try {
       final inputImage = InputImage.fromFilePath(imagePath);
       final recognizedText = await _textRecognizer.processImage(inputImage);
-      final rawText = recognizedText.text;
-      
-      return _parseKTPText(rawText);
+
+      return _parseKTPText(recognizedText.text);
     } catch (e) {
-      throw Exception('Gagal melakukan OCR: $e');
+      throw Exception('Gagal memproses gambar: $e');
     }
   }
 
-  /// Parse text hasil OCR menjadi data terstruktur
+  /// Parse recognized text to extract KTP fields
   static KTPOCRResult _parseKTPText(String text) {
     final lines = text.split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     
-    String? nik, nama, tempatLahir, tanggalLahir, jenisKelamin, alamat;
-    String? rtRw, kelDesa, kecamatan, agama, statusPerkawinan, pekerjaan;
-    String? kewarganegaraan, berlakuHingga;
+    // Debug: Print all recognized lines
+    print('🔍 OCR Recognized Lines:');
+    for (int i = 0; i < lines.length; i++) {
+      print('  [$i] ${lines[i]}');
+    }
+    
+    String? nik;
+    String? nama;
+    String? tempatLahir;
+    String? tanggalLahir;
+    String? jenisKelamin;
+    String? golonganDarah;
+    String? alamat;
+    String? rtRw;
+    String? kelDesa;
+    String? kecamatan;
+    String? agama;
+    String? statusPerkawinan;
+    String? pekerjaan;
+    String? kewarganegaraan;
+    String? berlakuHingga;
 
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i].toUpperCase();
       final originalLine = lines[i];
 
-      // NIK - 16 digit
-      if (nik == null && _isNIK(originalLine)) {
-        nik = _extractNumbers(originalLine);
-      }
-
-      // Nama
-      if (line.contains('NAMA') && i + 1 < lines.length && !line.contains('PROVINSI')) {
-        nama = lines[i + 1];
-      }
-
-      // Tempat/Tgl Lahir
-      if (line.contains('TEMPAT') && line.contains('LAHIR') && i + 1 < lines.length) {
-        final birthData = lines[i + 1];
-        final parts = birthData.split(',');
-        if (parts.length >= 2) {
-          tempatLahir = parts[0].trim();
-          tanggalLahir = parts[1].trim();
-        } else {
-          tempatLahir = birthData;
+      // NIK - format ":3171234567890123" (16 digit, bisa ada spasi)
+      if (nik == null && originalLine.startsWith(':')) {
+        final value = originalLine.substring(1).trim().replaceAll(' ', ''); // Hapus spasi
+        if (_isNIK(value)) {
+          nik = value;
+          print('  ✅ NIK found: $nik');
         }
       }
 
-      // Jenis Kelamin
-      if (line.contains('JENIS') && line.contains('KELAMIN') && i + 1 < lines.length) {
-        jenisKelamin = lines[i + 1];
-      }
-      if (line.contains('LAKI-LAKI')) jenisKelamin = 'LAKI-LAKI';
-      if (line.contains('PEREMPUAN')) jenisKelamin = 'PEREMPUAN';
-
-      // Alamat
-      if (line.contains('ALAMAT') && i + 1 < lines.length) {
-        alamat = lines[i + 1];
+      // Nama - format ":MIRA SETIAWAN" (setelah NIK, bukan NIK, tidak ada koma)
+      if (nama == null && nik != null && originalLine.startsWith(':')) {
+        final value = originalLine.substring(1).trim();
+        // Pastikan BUKAN NIK, bukan tempat lahir (tidak ada koma), bukan tanggal, minimal 3 karakter
+        if (!_isNIK(value) && !value.contains(',') && !_isDatePattern(value) && value.length > 3) {
+          nama = value;
+          print('  ✅ Nama found: $nama');
+        }
       }
 
-      // RT/RW
-      if (line.contains('RT') && line.contains('RW') && i + 1 < lines.length) {
-        rtRw = lines[i + 1];
+      // Tempat/Tgl Lahir - format ": JAKARTA, 18-02-1986"
+      if (tempatLahir == null && tanggalLahir == null && nama != null && originalLine.startsWith(':')) {
+        final value = originalLine.substring(1).trim();
+        if (value.contains(',')) {
+          final parts = value.split(',').map((e) => e.trim()).toList();
+          tempatLahir = parts[0];
+          if (parts.length > 1) tanggalLahir = parts[1];
+          print('  ✅ Tempat/Tanggal found: $tempatLahir, $tanggalLahir');
+        }
       }
 
-      // Kel/Desa
-      if (line.contains('KEL') && line.contains('DESA') && i + 1 < lines.length) {
-        kelDesa = lines[i + 1];
+      // Jenis Kelamin - format ": PEREMPUAN" atau "JENIS KELAMIN"
+      if (jenisKelamin == null && originalLine.startsWith(':')) {
+        final value = originalLine.substring(1).trim().toUpperCase();
+        if (value == 'PEREMPUAN' || value == 'LAKI-LAKI') {
+          jenisKelamin = value;
+          print('  ✅ Jenis Kelamin found: $jenisKelamin');
+        }
       }
 
-      // Kecamatan
-      if (line.contains('KECAMATAN') && i + 1 < lines.length) {
-        kecamatan = lines[i + 1];
+      // Alamat - format ":JL. PASTI CEPAT A7/66" (setelah jenis kelamin)
+      if (alamat == null && jenisKelamin != null && originalLine.startsWith(':')) {
+        final value = originalLine.substring(1).trim();
+        if (value.contains('JL') || value.contains('JALAN') || value.length > 15) {
+          alamat = value;
+          print('  ✅ Alamat found: $alamat');
+        }
       }
 
-      // Agama
-      if (line.contains('AGAMA') && i + 1 < lines.length) {
-        agama = lines[i + 1];
+      // RT/RW - format ": 007/008"
+      if (rtRw == null && originalLine.startsWith(':')) {
+        final value = originalLine.substring(1).trim();
+        if (value.contains('/') && value.length < 10) {
+          rtRw = value;
+          print('  ✅ RT/RW found: $rtRw');
+        }
+      }
+
+      // Kel/Desa - format ":PEGADUNGAN" (setelah RT/RW)
+      if (kelDesa == null && rtRw != null && originalLine.startsWith(':')) {
+        final value = originalLine.substring(1).trim();
+        if (!value.contains('/') && value.length < 30 && !value.contains(',')) {
+          kelDesa = value;
+          print('  ✅ Kel/Desa found: $kelDesa');
+        }
+      }
+
+      // Kecamatan - format ": KALIDERES" atau "KALIDERES" (setelah Kel/Desa, bisa tanpa ":")
+      if (kecamatan == null && kelDesa != null) {
+        if (originalLine.startsWith(':')) {
+          final value = originalLine.substring(1).trim();
+          if (value.length < 30 && !value.contains('PEGAWAI') && !value.contains('SWASTA') && !value.contains('PNS') && value != kelDesa) {
+            kecamatan = value;
+            print('  ✅ Kecamatan found: $kecamatan');
+          }
+        } else if (!originalLine.startsWith(':') && line.length < 30 && line.length > 2) {
+          if (!line.contains('PROVINSI') && !line.contains('STATUS') && !line.contains('PEKERJAAN') && !line.contains('GOL') && originalLine != kelDesa) {
+            kecamatan = originalLine;
+            print('  ✅ Kecamatan found: $kecamatan');
+          }
+        }
+      }
+
+      // Agama - format ":ISLAM" (setelah kecamatan)
+      if (agama == null && kecamatan != null && originalLine.startsWith(':')) {
+        final value = originalLine.substring(1).trim().toUpperCase();
+        if (value == 'ISLAM' || value == 'KRISTEN' || value == 'KATOLIK' || value == 'HINDU' || value == 'BUDDHA' || value == 'KONGHUCU') {
+          agama = value;
+          print('  ✅ Agama found: $agama');
+        }
+      }
+
+      // Pekerjaan - format ": PEGAWAI SWASTA"
+      if (pekerjaan == null && originalLine.startsWith(':')) {
+        final value = originalLine.substring(1).trim();
+        if (value.contains('PEGAWAI') || value.contains('WIRASWASTA') || value.contains('PNS')) {
+          pekerjaan = value;
+          print('  ✅ Pekerjaan found: $pekerjaan');
+        }
+      }
+
+      // Golongan Darah - format "Gol. Darah : B"
+      if (golonganDarah == null && line.contains('GOL') && line.contains('DARAH')) {
+        golonganDarah = _extractValue(line);
+        if (golonganDarah.isNotEmpty) {
+          print('  ✅ Gol. Darah found: $golonganDarah');
+        }
       }
 
       // Status Perkawinan
-      if (line.contains('STATUS') && line.contains('PERKAWINAN') && i + 1 < lines.length) {
-        statusPerkawinan = lines[i + 1];
-      }
-      if (line.contains('KAWIN') || line.contains('BELUM KAWIN')) {
-        statusPerkawinan = originalLine;
-      }
-
-      // Pekerjaan
-      if (line.contains('PEKERJAAN') && i + 1 < lines.length) {
-        pekerjaan = lines[i + 1];
+      if (line.contains('STATUS PERKAWINAN')) {
+        statusPerkawinan = _extractValue(line);
       }
 
       // Kewarganegaraan
-      if (line.contains('KEWARGANEGARAAN') && i + 1 < lines.length) {
-        kewarganegaraan = lines[i + 1];
+      if (line.contains('KEWARGANEGARAAN')) {
+        kewarganegaraan = _extractValue(line);
       }
-      if (line.contains('WNI')) kewarganegaraan = 'WNI';
 
       // Berlaku Hingga
-      if (line.contains('BERLAKU') && line.contains('HINGGA') && i + 1 < lines.length) {
-        berlakuHingga = lines[i + 1];
+      if (line.contains('BERLAKU HINGGA')) {
+        berlakuHingga = _extractValue(line);
       }
-      if (line.contains('SEUMUR HIDUP')) berlakuHingga = 'SEUMUR HIDUP';
+    }
+
+    // Calculate confidence based on how many fields were extracted
+    int fieldsFound = 0;
+    if (nik != null) fieldsFound++;
+    if (nama != null) fieldsFound++;
+    if (tanggalLahir != null) fieldsFound++;
+    if (alamat != null) fieldsFound++;
+    if (jenisKelamin != null) fieldsFound++;
+    
+    double confidence = fieldsFound / 5 * 100; // Based on 5 most important fields
+
+    // Debug: Print extracted data
+    print('🎯 Extracted Data:');
+    print('  NIK: $nik');
+    print('  Nama: $nama');
+    print('  Tempat Lahir: $tempatLahir');
+    print('  Tanggal Lahir: $tanggalLahir');
+    print('  Jenis Kelamin: $jenisKelamin');
+    print('  Confidence: ${confidence.toStringAsFixed(1)}%');
+
+    // Post-processing: Validasi dan bersihkan data dari label
+    print('🔍 Post-processing validation...');
+    
+    // Filter nama: tidak boleh mengandung kata kunci label
+    if (nama != null) {
+      final namaUpper = nama.toUpperCase();
+      if (namaUpper.contains('TEMPAT') || namaUpper.contains('LAHIR') || 
+          namaUpper.contains('TGL') || namaUpper == 'NAMA') {
+        print('⚠️ Warning: Nama mengandung label, di-reset');
+        nama = null;
+      }
+    }
+    
+    // Validasi nama tidak mengandung koma (kemungkinan tercampur dengan tempat lahir)
+    if (nama != null && nama.contains(',')) {
+      print('⚠️ Warning: Nama mengandung koma, kemungkinan tercampur dengan tempat lahir');
+      final parts = nama.split(',').map((e) => e.trim()).toList();
+      // Jika tempat lahir masih kosong, pindahkan ke tempat lahir
+      if (tempatLahir == null && parts.length >= 2) {
+        nama = parts[0]; // Ambil bagian pertama sebagai nama
+        tempatLahir = parts[1]; // Bagian kedua sebagai tempat
+        if (parts.length > 2 && tanggalLahir == null) {
+          tanggalLahir = parts[2]; // Bagian ketiga sebagai tanggal
+        }
+        print('  ✅ Fixed - Nama: $nama, Tempat: $tempatLahir, Tanggal: $tanggalLahir');
+      }
+    }
+    
+    // Filter tempat lahir: tidak boleh mengandung kata kunci label atau sama dengan nama
+    if (tempatLahir != null) {
+      final tempatUpper = tempatLahir.toUpperCase();
+      if (tempatUpper.contains('TEMPAT') || tempatUpper.contains('LAHIR') || 
+          tempatUpper.contains('TGL') || tempatLahir == nama) {
+        print('⚠️ Warning: Tempat lahir tidak valid (label atau sama dengan nama), di-reset');
+        tempatLahir = null;
+      }
+    }
+    
+    // Jika tempat lahir sama dengan nama, reset tempat lahir
+    if (tempatLahir != null && nama != null && tempatLahir.toUpperCase() == nama.toUpperCase()) {
+      print('⚠️ Warning: Tempat lahir sama dengan nama, di-reset');
+      tempatLahir = null;
     }
 
     return KTPOCRResult(
@@ -172,6 +244,7 @@ class KTPOCRService {
       tempatLahir: tempatLahir,
       tanggalLahir: tanggalLahir,
       jenisKelamin: jenisKelamin,
+      golonganDarah: golonganDarah,
       alamat: alamat,
       rtRw: rtRw,
       kelDesa: kelDesa,
@@ -181,20 +254,39 @@ class KTPOCRService {
       pekerjaan: pekerjaan,
       kewarganegaraan: kewarganegaraan,
       berlakuHingga: berlakuHingga,
-      rawText: text,
+      confidence: confidence,
     );
   }
 
-  static bool _isNIK(String text) {
-    final numbers = _extractNumbers(text);
-    return numbers.length == 16;
+  /// Check if line is a NIK (16 digits)
+  static bool _isNIK(String line) {
+    final nikPattern = RegExp(r'\b\d{16}\b');
+    return nikPattern.hasMatch(line);
   }
 
-  static String _extractNumbers(String text) {
-    return text.replaceAll(RegExp(r'[^0-9]'), '');
+  /// Extract value after colon (:)
+  static String _extractValue(String line) {
+    if (line.contains(':')) {
+      final parts = line.split(':');
+      if (parts.length > 1) {
+        return parts[1].trim();
+      }
+    }
+    return line.trim();
   }
 
-  static void dispose() {
-    _textRecognizer.close();
+  /// Check if string matches date pattern (DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY)
+  static bool _isDatePattern(String text) {
+    final datePatterns = [
+      RegExp(r'\d{1,2}[-/.]\d{1,2}[-/.]\d{4}'), // DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY
+      RegExp(r'\d{1,2}\s+[A-Z]+\s+\d{4}'), // DD MONTH YYYY (e.g., 01 JANUARI 1990)
+    ];
+    
+    for (final pattern in datePatterns) {
+      if (pattern.hasMatch(text.toUpperCase())) {
+        return true;
+      }
+    }
+    return false;
   }
 }

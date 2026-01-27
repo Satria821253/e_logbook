@@ -100,7 +100,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     final weight = double.tryParse(_weightController.text) ?? 0;
     final tax = weight * 1000; // Contoh: Rp 1000 per kg
 
-    setState(() {
+    safeSetState(() {
       _taxController.text = tax.toStringAsFixed(0);
     });
   }
@@ -198,7 +198,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
       debugPrint('📸 Image captured: ${fileSizeMB}MB');
 
-      setState(() => _catchImages.add(pickedFile));
+      safeSetState(() => _catchImages.add(pickedFile));
 
       _showSnackBar('📸 Foto HD berhasil diambil! Memulai AI detection...');
       await _detectFishFromImage(pickedFile);
@@ -206,7 +206,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   }
 
   void _removeImage(int index) {
-    setState(() => _catchImages.removeAt(index));
+    safeSetState(() => _catchImages.removeAt(index));
   }
 
   void _showSnackBar(String message) {

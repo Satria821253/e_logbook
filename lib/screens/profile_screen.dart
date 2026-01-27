@@ -226,7 +226,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     builder: (context, userProvider, child) {
                       final user = userProvider.user;
                       final photoUrl = user?.profilePicture;
-                      final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+                      final hasValidPhoto = photoUrl != null && 
+                                            photoUrl.isNotEmpty && 
+                                            (photoUrl.startsWith('http') || photoUrl.startsWith('file://'));
                       
                       return CircleAvatar(
                         radius: ResponsiveHelper.width(
@@ -235,13 +237,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           tablet: 60,
                         ),
                         backgroundColor: Colors.white,
-                        backgroundImage: hasPhoto
-                            ? (photoUrl.startsWith('file://')
-                                ? FileImage(File(photoUrl.replaceFirst('file://', '')))
-                                : NetworkImage(photoUrl)) as ImageProvider
-                            : null,
-                        child: !hasPhoto
-                            ? Icon(
+                        child: hasValidPhoto
+                            ? ClipOval(
+                                child: Image(
+                                  image: photoUrl.startsWith('file://')
+                                      ? FileImage(File(photoUrl.replaceFirst('file://', '')))
+                                      : NetworkImage(photoUrl) as ImageProvider,
+                                  fit: BoxFit.cover,
+                                  width: ResponsiveHelper.width(context, mobile: 100, tablet: 120),
+                                  height: ResponsiveHelper.width(context, mobile: 100, tablet: 120),
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.person_rounded,
+                                      size: ResponsiveHelper.width(
+                                        context,
+                                        mobile: 60,
+                                        tablet: 72,
+                                      ),
+                                      color: Colors.black87,
+                                    );
+                                  },
+                                ),
+                              )
+                            : Icon(
                                 Icons.person_rounded,
                                 size: ResponsiveHelper.width(
                                   context,
@@ -249,8 +267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   tablet: 72,
                                 ),
                                 color: Colors.black87,
-                              )
-                            : null,
+                              ),
                       );
                     },
                   ),

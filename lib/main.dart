@@ -9,7 +9,6 @@ import 'package:e_logbook/config/app_initializer.dart';
 import 'package:e_logbook/routes/route_generator.dart';
 import 'package:e_logbook/screens/splash_screen.dart';
 import 'package:e_logbook/widgets/initialization_error_screen.dart';
-import 'package:e_logbook/widgets/error_boundary.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +24,7 @@ void main() async {
               ChangeNotifierProvider(create: (_) => ZoneAlertProvider()),
               ChangeNotifierProvider(create: (_) => NavigationProvider()),
             ],
-            child: const ErrorBoundary(child: MyApp()),
+            child: const MyApp(),
           )
         : const InitializationErrorScreen(),
   );

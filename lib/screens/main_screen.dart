@@ -55,18 +55,22 @@ class _MainScreenState extends State<MainScreen> {
   
   Future<void> _getCurrentLocation() async {
     if (kIsWeb) {
-      setState(() {
-        _currentAddress = "Lokasi tidak ditemukan";
-      });
+      if (mounted) {
+        setState(() {
+          _currentAddress = "Lokasi tidak ditemukan";
+        });
+      }
       return;
     }
     
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setState(() {
-          _currentAddress = "Lokasi tidak aktif";
-        });
+        if (mounted) {
+          setState(() {
+            _currentAddress = "Lokasi tidak aktif";
+          });
+        }
         return;
       }
 
@@ -74,17 +78,21 @@ class _MainScreenState extends State<MainScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() {
-            _currentAddress = "Izin lokasi ditolak";
-          });
+          if (mounted) {
+            setState(() {
+              _currentAddress = "Izin lokasi ditolak";
+            });
+          }
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        setState(() {
-          _currentAddress = "Izin lokasi ditolak permanen";
-        });
+        if (mounted) {
+          setState(() {
+            _currentAddress = "Izin lokasi ditolak permanen";
+          });
+        }
         return;
       }
 
@@ -97,16 +105,18 @@ class _MainScreenState extends State<MainScreen> {
         position.longitude,
       );
       
-      if (placemarks.isNotEmpty) {
+      if (placemarks.isNotEmpty && mounted) {
         final p = placemarks.first;
         setState(() {
           _currentAddress = "${p.subLocality ?? p.locality ?? 'Tidak diketahui'}, ${p.administrativeArea ?? ''}";
         });
       }
     } catch (e) {
-      setState(() {
-        _currentAddress = "Gagal mendapatkan lokasi";
-      });
+      if (mounted) {
+        setState(() {
+          _currentAddress = "Gagal mendapatkan lokasi";
+        });
+      }
     }
   }
   @override

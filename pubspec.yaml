@@ -63,6 +63,7 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   crypto: ^3.0.3
   google_mlkit_text_recognition: ^0.13.0
+  camera: ^0.10.5+5
   
 
 dev_dependencies:
@@ -129,6 +130,7 @@ flutter:
      - assets/animations/AI.json
      - assets/animations/listfitur.json
      - assets/animations/wa.json
+     - assets/animations/Click.json
      - assets/icons/icon_ai.png
      - assets/icons/iot.png
      - assets/oipb.png

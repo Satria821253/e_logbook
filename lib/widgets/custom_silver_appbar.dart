@@ -46,7 +46,11 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
 
   void safeSetState(VoidCallback fn) {
     if (!mounted) return;
-    setState(fn);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(fn);
+      }
+    });
   }
 
   void _startWeatherUpdates() {
@@ -759,24 +763,38 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                         builder: (context, userProvider, child) {
                           final user = userProvider.user;
                           final photoUrl = user?.profilePicture;
-                          final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+                          // Validasi URL: harus ada, tidak kosong, dan dimulai dengan http/file
+                          final hasValidPhoto = photoUrl != null && 
+                                                photoUrl.isNotEmpty && 
+                                                (photoUrl.startsWith('http') || photoUrl.startsWith('file://'));
                           
                           return CircleAvatar(
-                            key: ValueKey(photoUrl ?? ''),
                             radius: avatarRadius,
                             backgroundColor: Colors.white,
-                            backgroundImage: hasPhoto
-                                ? (photoUrl.startsWith('http')
-                                    ? NetworkImage(photoUrl)
-                                    : FileImage(File(photoUrl.replaceFirst('file://', '')))) as ImageProvider
-                                : null,
-                            child: !hasPhoto
-                                ? const Icon(
+                            child: hasValidPhoto
+                                ? ClipOval(
+                                    child: Image(
+                                      image: photoUrl.startsWith('http')
+                                          ? NetworkImage(photoUrl)
+                                          : FileImage(File(photoUrl.replaceFirst('file://', ''))) as ImageProvider,
+                                      fit: BoxFit.cover,
+                                      width: avatarRadius * 2,
+                                      height: avatarRadius * 2,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        // Jika error (404), tampilkan icon default
+                                        return const Icon(
+                                          Icons.person,
+                                          size: 32,
+                                          color: Color(0xFF1B4F9C),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : const Icon(
                                     Icons.person,
                                     size: 32,
                                     color: Color(0xFF1B4F9C),
-                                  )
-                                : null,
+                                  ),
                           );
                         },
                       ),

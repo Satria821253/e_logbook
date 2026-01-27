@@ -29,10 +29,14 @@ class _CatchCarouselState extends State<CatchCarousel> {
     super.initState();
     _controller.addListener(() {
       if (mounted) {
-        setState(() {
-          _currentPageValue = _controller.page ?? 0.0;
-          // Update current page berdasarkan modulo
-          _currentPage = (_controller.page?.round() ?? 0) % dummyImages.length;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _currentPageValue = _controller.page ?? 0.0;
+              // Update current page berdasarkan modulo
+              _currentPage = (_controller.page?.round() ?? 0) % dummyImages.length;
+            });
+          }
         });
       }
     });
