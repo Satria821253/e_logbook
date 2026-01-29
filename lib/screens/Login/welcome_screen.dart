@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_logbook/screens/Login/login_screen.dart';
 import 'package:e_logbook/widgets/app_info.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -12,9 +13,9 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isTablet = size.shortestSide >= 600;
-    final isLandscape = size.width > size.height;
+    // Gunakan ResponsiveHelper
+    final isTablet = ResponsiveHelper.isTablet(context);
+    final isLandscape = ResponsiveHelper.isLandscape(context);
     
     return Theme(
       data: Theme.of(context).copyWith(
@@ -67,10 +68,27 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Widget _buildHorizontalLayout(bool isTablet, bool isLandscape) {
-    final imageFlex = isTablet ? 3 : 2;
-    final contentFlex = isTablet ? 2 : 3;
-    final maxWidth = isTablet ? 400.0 : 350.0;
-    final padding = isTablet ? 40.0 : 24.0;
+    final imageFlex = isTablet ? 6 : 3;
+    final contentFlex = isTablet ? 4 : 2;
+    final maxWidth = ResponsiveHelper.adaptiveValue(
+      context,
+      mobile: 350,
+      smallTablet: 380,
+      mediumTablet: 400,
+      largeTablet: 450,
+      mobileLandscape: 320,
+    );
+    final padding = ResponsiveHelper.value(
+      context,
+      mobile: 24,
+      tablet: 40,
+      mobileLandscape: 20,
+    );
+    final overlayOffset = ResponsiveHelper.width(
+      context,
+      mobile: 50,
+      tablet: 80,
+    );
     
     return Stack(
       children: [
@@ -112,13 +130,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           top: 0,
           bottom: 0,
           right: 0,
-          left: MediaQuery.of(context).size.width * (imageFlex / (imageFlex + contentFlex)) - 30,
+          left: MediaQuery.of(context).size.width * (imageFlex / (imageFlex + contentFlex)) - overlayOffset,
           child: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
+                topLeft: Radius.circular(ResponsiveHelper.width(context, mobile: 20, tablet: 24)),
+                bottomLeft: Radius.circular(ResponsiveHelper.width(context, mobile: 20, tablet: 24)),
               ),
             ),
             child: Center(
@@ -130,9 +148,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _buildTitle(isTablet, isLandscape),
-                      SizedBox(height: isTablet ? 40 : 24),
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 40)),
                       _buildLoginButton(isTablet, isLandscape),
-                      SizedBox(height: isTablet ? 60 : 32),
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 32, tablet: 60)),
                       _buildFooter(isTablet, isLandscape),
                     ],
                   ),
@@ -146,7 +164,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Widget _buildHeader(bool isTablet, bool isLandscape) {
-    final height = isLandscape ? 120.0 : 300.0;
+    final height = ResponsiveHelper.height(
+      context,
+      mobile: 300,
+      tablet: 350,
+      mobileLandscape: 120,
+    );
     
     return Container(
       height: height,
@@ -173,7 +196,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Widget _buildTitle(bool isTablet, bool isLandscape) {
-    final fontSize = isTablet ? 32.0 : (isLandscape ? 24.0 : 26.0);
+    final fontSize = ResponsiveHelper.font(
+      context,
+      mobile: 26,
+      tablet: 32,
+      mobileLandscape: 24,
+    );
     
     return Text(
       'Selamat Datang di\nE-Logbook',
@@ -188,10 +216,24 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Widget _buildLoginButton(bool isTablet, bool isLandscape) {
-    final height = isTablet ? 56.0 : (isLandscape ? 48.0 : 52.0);
-    final fontSize = isTablet ? 20.0 : (isLandscape ? 16.0 : 18.0);
-    final borderRadius = isTablet ? 16.0 : 14.0;
-    final buttonWidth = isTablet ? 280.0 : (isLandscape ? 240.0 : double.infinity);
+    final height = ResponsiveHelper.height(
+      context,
+      mobile: 52,
+      tablet: 56,
+      mobileLandscape: 48,
+    );
+    final fontSize = ResponsiveHelper.font(
+      context,
+      mobile: 18,
+      tablet: 20,
+      mobileLandscape: 16,
+    );
+    final borderRadius = ResponsiveHelper.width(
+      context,
+      mobile: 14,
+      tablet: 16,
+    );
+    final buttonWidth = ResponsiveHelper.buttonWidth(context);
     
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -234,7 +276,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Widget _buildFooter(bool isTablet, bool isLandscape) {
-    final bottomPadding = isTablet ? 0.0 : (isLandscape ? 8.0 : 16.0);
+    final bottomPadding = ResponsiveHelper.height(
+      context,
+      mobile: 16,
+      tablet: 0,
+      mobileLandscape: 8,
+    );
     
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),

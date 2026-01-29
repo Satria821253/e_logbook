@@ -1,4 +1,5 @@
 import 'package:e_logbook/services/api/profile_service.dart';
+import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../provider/user_provider.dart';
@@ -38,18 +39,32 @@ class _EditNameScreenState extends State<EditNameScreen> {
       return;
     }
 
+    print('📝 [EditName] Starting name update...');
+    print('📝 [EditName] New name: ${_nameController.text.trim()}');
+    
     setState(() => _isLoading = true);
 
+    print('📤 [EditName] Calling updateProfile API...');
     final result = await ProfileService.updateProfile(
       name: _nameController.text.trim(),
     );
+    print('📥 [EditName] API Response: $result');
 
     if (result['success'] == true) {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final currentUser = userProvider.user;
-      if (currentUser != null) {
-        userProvider.setUser(currentUser.copyWith(name: _nameController.text.trim()));
-      }
+      print('✅ [EditName] Update successful');
+      
+      // Wait for backend to commit changes
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Sync dari API untuk mendapatkan data terbaru
+      if (!mounted) return;
+      print('🔄 [EditName] Syncing profile from API...');
+      await Provider.of<UserProvider>(context, listen: false)
+          .syncProfileFromAPI();
+      print('✅ [EditName] Profile synced');
+      
+      // Trigger realtime update
+      RealtimeUpdateService.notifyListeners('profile');
       
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,6 +75,7 @@ class _EditNameScreenState extends State<EditNameScreen> {
       );
       Navigator.pop(context);
     } else {
+      print('❌ [EditName] Update failed: ${result['message']}');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

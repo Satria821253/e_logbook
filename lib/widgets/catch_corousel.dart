@@ -67,27 +67,31 @@ class _CatchCarouselState extends State<CatchCarousel> {
   @override
   Widget build(BuildContext context) {
     if (dummyImages.isEmpty) return const SizedBox.shrink();
+    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isTablet = screenWidth > 600;
+    final carouselHeight = isTablet ? screenHeight * 0.4 : screenHeight * 0.32;
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: ResponsiveHelper.height(context, mobile: 285, tablet: 500),
+          height: carouselHeight,
           child: PageView.builder(
             controller: _controller,
-            itemCount: null, // Infinite scroll
+            itemCount: null,
             onPageChanged: (i) {
               setState(() {
                 _currentPage = i % dummyImages.length;
               });
             },
             itemBuilder: (context, index) {
-              // Gunakan modulo untuk loop gambar
               final imageIndex = index % dummyImages.length;
               
-              // Perhitungan scale effect
               double scale = 1.0;
               if (_currentPageValue >= index - 1 && _currentPageValue <= index + 1) {
-                scale = 1.0 - ((_currentPageValue - index).abs() * 0.1);
+                scale = 1.0 - ((_currentPageValue - index).abs() * 0.03);
               }
 
               return Transform.scale(
@@ -97,43 +101,27 @@ class _CatchCarouselState extends State<CatchCarousel> {
                   duration: const Duration(milliseconds: 300),
                   child: Container(
                     margin: EdgeInsets.symmetric(
-                      horizontal: ResponsiveHelper.width(context, mobile: 6, tablet: 8),
-                      vertical: ResponsiveHelper.height(context, mobile: 12, tablet: 16),
+                      horizontal: screenWidth * 0.015,
+                      vertical: carouselHeight * 0.03,
                     ),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: ResponsiveHelper.width(context, mobile: 8, tablet: 12),
-                          offset: Offset(0, ResponsiveHelper.height(context, mobile: 2, tablet: 3)),
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 24, tablet: 28)),
-                      child: Stack(
-                        children: [
-                          Image.asset(
-                            dummyImages[imageIndex],
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          ),
-                          // Gradient overlay untuk efek depth
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.black.withOpacity(0.3),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        dummyImages[imageIndex],
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        alignment: Alignment.center,
                       ),
                     ),
                   ),
@@ -143,9 +131,8 @@ class _CatchCarouselState extends State<CatchCarousel> {
           ),
         ),
         
-        SizedBox(height: ResponsiveHelper.height(context, mobile: 12, tablet: 16)),
+        const SizedBox(height: 12),
         
-        // Dot indicators dengan animasi
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
@@ -155,16 +142,14 @@ class _CatchCarouselState extends State<CatchCarousel> {
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.width(context, mobile: 4, tablet: 6)),
-                height: ResponsiveHelper.height(context, mobile: 10, tablet: 12),
-                width: isActive 
-                    ? ResponsiveHelper.width(context, mobile: 28, tablet: 32)
-                    : ResponsiveHelper.width(context, mobile: 10, tablet: 12),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 8,
+                width: isActive ? 24 : 8,
                 decoration: BoxDecoration(
                   color: isActive 
                       ? Theme.of(context).primaryColor 
                       : Colors.white,
-                  borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 4, tablet: 5)),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               );
             },

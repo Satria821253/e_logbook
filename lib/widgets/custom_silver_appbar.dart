@@ -4,6 +4,7 @@ import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:e_logbook/screens/notification_screen.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
+import 'package:e_logbook/utils/profile_photo_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -22,6 +23,7 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
     with TickerProviderStateMixin {
   String _currentAddress = "Mendeteksi lokasi...";
   Position? _currentPosition;
+  String? _cachedPhotoPath;
 
   // Weather data
   WeatherData? _weatherData;
@@ -36,6 +38,16 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
     super.initState();
     _getCurrentLocation();
     _startWeatherUpdates();
+    _loadCachedPhoto();
+  }
+  
+  Future<void> _loadCachedPhoto() async {
+    final cachedPath = await ProfilePhotoCache.getCachedPhotoPath();
+    if (mounted && cachedPath != null) {
+      setState(() {
+        _cachedPhotoPath = cachedPath;
+      });
+    }
   }
 
   @override
@@ -758,44 +770,37 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                        border: Border.all(color: const Color(0xFF1B4F9C), width: 2),
                       ),
                       child: Consumer<UserProvider>(
                         builder: (context, userProvider, child) {
                           final user = userProvider.user;
                           final photoUrl = user?.profilePicture;
-                          // Validasi URL: harus ada, tidak kosong, dan dimulai dengan http/file
-                          final hasValidPhoto = photoUrl != null && 
-                                                photoUrl.isNotEmpty && 
-                                                (photoUrl.startsWith('http') || photoUrl.startsWith('file://'));
+                          final hasValidPhoto = photoUrl != null && photoUrl.isNotEmpty;
+                          
+                          ImageProvider? imageProvider;
+                          if (_cachedPhotoPath != null) {
+                            imageProvider = FileImage(File(_cachedPhotoPath!));
+                          } else if (hasValidPhoto) {
+                            if (photoUrl!.startsWith('file://') || photoUrl.startsWith('/')) {
+                              imageProvider = FileImage(File(photoUrl.replaceFirst('file://', '')));
+                            } else if (photoUrl.startsWith('http')) {
+                              imageProvider = NetworkImage(photoUrl);
+                            }
+                          }
                           
                           return CircleAvatar(
+                            key: ValueKey(_cachedPhotoPath ?? photoUrl ?? 'default'),
                             radius: avatarRadius,
-                            backgroundColor: Colors.white,
-                            child: hasValidPhoto
-                                ? ClipOval(
-                                    child: Image(
-                                      image: photoUrl.startsWith('http')
-                                          ? NetworkImage(photoUrl)
-                                          : FileImage(File(photoUrl.replaceFirst('file://', ''))) as ImageProvider,
-                                      fit: BoxFit.cover,
-                                      width: avatarRadius * 2,
-                                      height: avatarRadius * 2,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        // Jika error (404), tampilkan icon default
-                                        return const Icon(
-                                          Icons.person,
-                                          size: 32,
-                                          color: Color(0xFF1B4F9C),
-                                        );
-                                      },
-                                    ),
-                                  )
-                                : const Icon(
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage: imageProvider,
+                            child: !hasValidPhoto && _cachedPhotoPath == null
+                                ? Icon(
                                     Icons.person,
                                     size: 32,
-                                    color: Color(0xFF1B4F9C),
-                                  ),
+                                    color: const Color(0xFF1B4F9C),
+                                  )
+                                : null,
                           );
                         },
                       ),

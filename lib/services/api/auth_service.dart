@@ -11,7 +11,7 @@ import '../../utils/token_interceptor.dart';
 class AuthService {
   // VPS Production Server
   static const String baseUrl = 'http://210.79.191.17:5000/api';
-  
+
   static late Dio _dio;
 
   static void init() {
@@ -259,7 +259,8 @@ class AuthService {
 
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Hapus semua data termasuk token, user_data, vessel_data, dll
+    await prefs
+        .clear(); // Hapus semua data termasuk token, user_data, vessel_data, dll
     print('🚪 Logout: All data cleared');
   }
 }

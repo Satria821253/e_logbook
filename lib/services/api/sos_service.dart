@@ -8,17 +8,17 @@ class SosService {
   static const String baseUrl = 'http://210.79.191.17:5000';
 
   /// Send SOS alert to backend
-  /// 
+  ///
   /// Parameters:
   /// - note: Optional message (if empty, will use default message with location)
   static Future<Map<String, dynamic>> sendSosAlert({String? note}) async {
     try {
       print('🚨 [SOS] Starting SOS alert...');
-      
+
       // Get token
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      
+
       if (token == null) {
         throw Exception('Token tidak ditemukan. Silakan login kembali.');
       }
@@ -28,7 +28,7 @@ class SosService {
       if (vesselData == null) {
         throw Exception('Data kapal tidak ditemukan');
       }
-      
+
       final kapalId = vesselData['kapal']['id'];
       print('🚢 [SOS] Kapal ID: $kapalId');
 
@@ -37,7 +37,7 @@ class SosService {
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      
+
       print('📍 [SOS] Location: ${position.latitude}, ${position.longitude}');
 
       // Prepare default message if note is empty
@@ -45,11 +45,15 @@ class SosService {
           ? 'DARURAT! Kapal memerlukan bantuan segera. Lokasi: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}'
           : note!.trim();
 
+      final requestData = {
+        'kapalId': kapalId,
+        'location': {'lat': position.latitude, 'lng': position.longitude},
+        'note': message,
+      };
+
       print('🚨 SOS Alert Request:');
       print('   URL: $baseUrl/api/mobile/sos');
-      print('   Kapal ID: $kapalId');
-      print('   Location: ${position.latitude}, ${position.longitude}');
-      print('   Message: $message');
+      print('   Data: $requestData');
 
       // Send POST request
       final response = await _dio.post(
@@ -59,15 +63,9 @@ class SosService {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
           },
+          validateStatus: (status) => status! < 500, // Don't throw on 4xx
         ),
-        data: {
-          'kapalId': kapalId,
-          'location': {
-            'lat': position.latitude,
-            'lng': position.longitude,
-          },
-          'note': message,
-        },
+        data: requestData,
       );
 
       print('✅ SOS Response: ${response.data}');
@@ -78,10 +76,23 @@ class SosService {
         throw Exception('Failed to send SOS: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      print('❌ SOS Error: ${e.message}');
-      
+      print('❌ SOS DioException: ${e.message}');
+      print('❌ Response: ${e.response?.data}');
+      print('❌ Status: ${e.response?.statusCode}');
+
       if (e.response != null) {
-        final message = e.response!.data['message'] ?? 'Gagal mengirim sinyal darurat';
+        final statusCode = e.response!.statusCode;
+        final responseData = e.response!.data;
+
+        if (statusCode == 500) {
+          print('🔴 Server Error 500 - Backend issue');
+          print('🔴 Response data: $responseData');
+          throw Exception('Server error. Hubungi administrator.');
+        }
+
+        final message = responseData is Map
+            ? (responseData['message'] ?? 'Gagal mengirim sinyal darurat')
+            : 'Gagal mengirim sinyal darurat';
         throw Exception(message);
       } else if (e.type == DioExceptionType.connectionTimeout) {
         throw Exception('Koneksi timeout. Periksa koneksi internet Anda.');
@@ -101,18 +112,14 @@ class SosService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      
+
       if (token == null) {
         throw Exception('Token tidak ditemukan');
       }
 
       final response = await _dio.get(
         '$baseUrl/api/mobile/sos/history',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {

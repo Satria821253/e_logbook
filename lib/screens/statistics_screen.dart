@@ -12,7 +12,7 @@ class StatisticsScreen extends StatefulWidget {
 }
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
-  String _selectedPeriod = 'Mingguan';
+  String _selectedPeriod = 'Bulanan';
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +117,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildPeriodSelector() {
-    final periods = ['Harian', 'Mingguan', 'Bulanan', 'Tahunan'];
+    final periods = ['Bulanan', 'Tahunan'];
     return Container(
       padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 4, tablet: 6)),
       decoration: BoxDecoration(
@@ -196,11 +196,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(ResponsiveHelper.width(context, mobile: 16, tablet: 20)),
+        border: Border.all(color: Colors.grey.withOpacity(0.15), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: ResponsiveHelper.width(context, mobile: 8, tablet: 12),
-            offset: Offset(0, ResponsiveHelper.height(context, mobile: 2, tablet: 3)),
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: ResponsiveHelper.width(context, mobile: 10, tablet: 14),
+            offset: Offset(0, ResponsiveHelper.height(context, mobile: 3, tablet: 4)),
           ),
         ],
       ),
@@ -269,16 +270,51 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildWeightChart(CatchProvider provider) {
-    // Ambil data 7 hari terakhir
     final now = DateTime.now();
-    final weekData = List.generate(7, (index) {
-      final date = now.subtract(Duration(days: 6 - index));
-      final catches = provider.catches.where((c) =>
-          c.departureDate.year == date.year &&
-          c.departureDate.month == date.month &&
-          c.departureDate.day == date.day);
-      return catches.fold<double>(0, (sum, c) => sum + c.weight);
-    });
+    List<double> chartData;
+    List<String> labels;
+    String subtitle;
+
+    switch (_selectedPeriod) {
+      case 'Bulanan':
+        // Data 4 minggu terakhir
+        chartData = List.generate(4, (index) {
+          final weekStart = now.subtract(Duration(days: (3 - index) * 7 + now.weekday - 1));
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          final catches = provider.catches.where((c) =>
+              c.departureDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+              c.departureDate.isBefore(weekEnd.add(const Duration(days: 1))));
+          return catches.fold<double>(0, (sum, c) => sum + c.weight);
+        });
+        labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+        subtitle = '4 minggu terakhir';
+        break;
+
+      case 'Tahunan':
+        // Data 12 bulan terakhir
+        chartData = List.generate(12, (index) {
+          final month = now.month - 11 + index;
+          final year = now.year + (month <= 0 ? -1 : 0);
+          final adjustedMonth = month <= 0 ? month + 12 : month;
+          final catches = provider.catches.where((c) =>
+              c.departureDate.year == year &&
+              c.departureDate.month == adjustedMonth);
+          return catches.fold<double>(0, (sum, c) => sum + c.weight);
+        });
+        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        final startMonth = now.month - 11;
+        labels = List.generate(12, (i) {
+          final m = (startMonth + i - 1) % 12 + 1;
+          return ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][m - 1];
+        });
+        subtitle = '12 bulan terakhir';
+        break;
+
+      default:
+        chartData = [];
+        labels = [];
+        subtitle = '';
+    }
 
     return Container(
       padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
@@ -307,7 +343,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
               ),
               Text(
-                '7 hari terakhir',
+                subtitle,
                 style: TextStyle(
                   fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14), 
                   color: Colors.grey[600]
@@ -340,13 +376,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       showTitles: true,
                       interval: 1,
                       getTitlesWidget: (value, meta) {
-                        const days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-                        if (value.toInt() >= 0 && value.toInt() < days.length) {
+                        if (value.toInt() >= 0 && value.toInt() < labels.length) {
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
-                              days[value.toInt()],
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              labels[value.toInt()],
+                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                             ),
                           );
                         }
@@ -369,16 +404,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
                 borderData: FlBorderData(show: false),
                 minX: 0,
-                maxX: 6,
+                maxX: (chartData.length - 1).toDouble(),
                 minY: 0,
-                maxY: weekData.isEmpty
+                maxY: chartData.isEmpty
                     ? 50
-                    : (weekData.reduce((a, b) => a > b ? a : b) * 1.2),
+                    : (chartData.reduce((a, b) => a > b ? a : b) * 1.2),
                 lineBarsData: [
                   LineChartBarData(
                     spots: List.generate(
-                      7,
-                      (index) => FlSpot(index.toDouble(), weekData[index]),
+                      chartData.length,
+                      (index) => FlSpot(index.toDouble(), chartData[index]),
                     ),
                     isCurved: true,
                     color: const Color(0xFF1B4F9C),
@@ -410,16 +445,48 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildRevenueChart(CatchProvider provider) {
-    // Data pendapatan 7 hari terakhir
     final now = DateTime.now();
-    final weekRevenue = List.generate(7, (index) {
-      final date = now.subtract(Duration(days: 6 - index));
-      final catches = provider.catches.where((c) =>
-          c.departureDate.year == date.year &&
-          c.departureDate.month == date.month &&
-          c.departureDate.day == date.day);
-      return catches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
-    });
+    List<double> chartData;
+    List<String> labels;
+    String title;
+
+    switch (_selectedPeriod) {
+      case 'Bulanan':
+        chartData = List.generate(4, (index) {
+          final weekStart = now.subtract(Duration(days: (3 - index) * 7 + now.weekday - 1));
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          final catches = provider.catches.where((c) =>
+              c.departureDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+              c.departureDate.isBefore(weekEnd.add(const Duration(days: 1))));
+          return catches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
+        });
+        labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+        title = 'Pendapatan 4 Minggu Terakhir';
+        break;
+
+      case 'Tahunan':
+        chartData = List.generate(12, (index) {
+          final month = now.month - 11 + index;
+          final year = now.year + (month <= 0 ? -1 : 0);
+          final adjustedMonth = month <= 0 ? month + 12 : month;
+          final catches = provider.catches.where((c) =>
+              c.departureDate.year == year &&
+              c.departureDate.month == adjustedMonth);
+          return catches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
+        });
+        final startMonth = now.month - 11;
+        labels = List.generate(12, (i) {
+          final m = (startMonth + i - 1) % 12 + 1;
+          return ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][m - 1];
+        });
+        title = 'Pendapatan 12 Bulan Terakhir';
+        break;
+
+      default:
+        chartData = [];
+        labels = [];
+        title = 'Pendapatan';
+    }
 
     return Container(
       padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
@@ -438,7 +505,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Pendapatan 7 Hari Terakhir',
+            title,
             style: TextStyle(
               fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18), 
               fontWeight: FontWeight.bold
@@ -450,9 +517,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
-                maxY: weekRevenue.isEmpty
+                maxY: chartData.isEmpty
                     ? 3000000
-                    : (weekRevenue.reduce((a, b) => a > b ? a : b) * 1.2),
+                    : (chartData.reduce((a, b) => a > b ? a : b) * 1.2),
                 barTouchData: BarTouchData(enabled: false),
                 titlesData: FlTitlesData(
                   show: true,
@@ -466,13 +533,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        const days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-                        if (value.toInt() >= 0 && value.toInt() < days.length) {
+                        if (value.toInt() >= 0 && value.toInt() < labels.length) {
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
-                              days[value.toInt()],
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              labels[value.toInt()],
+                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                             ),
                           );
                         }
@@ -502,13 +568,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
                 borderData: FlBorderData(show: false),
                 barGroups: List.generate(
-                  7,
+                  chartData.length,
                   (index) => BarChartGroupData(
                     x: index,
                     barRods: [
                       BarChartRodData(
-                        toY: weekRevenue[index],
-                        color: weekRevenue[index] > 0 ? Colors.green : Colors.grey[300],
+                        toY: chartData[index],
+                        color: chartData[index] > 0 ? Colors.green : Colors.grey[300],
                         width: 16,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(6),

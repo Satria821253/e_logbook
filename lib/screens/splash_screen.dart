@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:e_logbook/screens/Login/welcome_screen.dart';
 import 'package:e_logbook/screens/main_screen.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -76,20 +77,42 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Gunakan ResponsiveHelper untuk konsistensi
+    final isTablet = ResponsiveHelper.isTablet(context);
+    final isLandscape = ResponsiveHelper.isLandscape(context);
     final size = MediaQuery.of(context).size;
-    final isTablet = size.shortestSide >= 600;
-    final isLandscape = size.width > size.height;
+    final tabletSize = ResponsiveHelper.tabletSize(context);
+    
+    // DEBUG: Print detail screen
+    print('📱 ========== SPLASH SCREEN DEBUG ==========');
+    print('📱 Screen Width: ${size.width}');
+    print('📱 Screen Height: ${size.height}');
+    print('📱 Shortest Side: ${size.shortestSide}');
+    print('📱 isTablet: $isTablet (ResponsiveHelper)');
+    print('📱 isLandscape: $isLandscape');
+    print('📱 Tablet Size: $tabletSize');
+    print('📱 ==========================================');
     
     return Scaffold(
-      body: _buildLayout(isTablet, isLandscape),
+      body: _buildLayout(isTablet, isLandscape, tabletSize),
     );
   }
 
-  Widget _buildLayout(bool isTablet, bool isLandscape) {
+  Widget _buildLayout(bool isTablet, bool isLandscape, String tabletSize) {
+    print('\n🏛️ ========== LAYOUT DEBUG ==========');
+    print('🏛️ isTablet: $isTablet');
+    print('🏛️ isLandscape: $isLandscape');
+    print('🏛️ tabletSize: $tabletSize');
+    print('🏛️ Kondisi: !isTablet && !isLandscape = ${!isTablet && !isLandscape}');
+    
     if (!isTablet && !isLandscape) {
+      print('🏛️ Layout: Mobile Portrait');
+      print('🏛️ ==================================\n');
       return _buildMobilePortraitLayout();
     } else {
-      return _buildHorizontalLayout(isTablet, isLandscape);
+      print('🏛️ Layout: Horizontal (Tablet/Mobile Landscape)');
+      print('🏛️ ==================================\n');
+      return _buildHorizontalLayout(isTablet, isLandscape, tabletSize);
     }
   }
 
@@ -130,7 +153,30 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildHorizontalLayout(bool isTablet, bool isLandscape) {
+  Widget _buildHorizontalLayout(bool isTablet, bool isLandscape, String tabletSize) {
+    print('\n📏 ========== HORIZONTAL LAYOUT DEBUG ==========');
+    print('📏 isTablet: $isTablet');
+    print('📏 isLandscape: $isLandscape');
+    print('📏 tabletSize: $tabletSize');
+    
+    // Gunakan ResponsiveHelper untuk maxWidth
+    final maxWidth = ResponsiveHelper.adaptiveValue(
+      context,
+      mobile: 300,
+      smallTablet: 400,
+      mediumTablet: 450,
+      largeTablet: 500,
+    );
+    
+    print('📏 maxWidth: $maxWidth (from ResponsiveHelper)');
+    
+    final spacing1 = ResponsiveHelper.spacing(context, mobile: 20, tablet: 28);
+    final spacing2 = ResponsiveHelper.spacing(context, mobile: 8, tablet: 12);
+    final spacing3 = ResponsiveHelper.spacing(context, mobile: 24, tablet: 32);
+    
+    print('📏 Spacing: $spacing1, $spacing2, $spacing3');
+    print('📏 ============================================\n');
+    
     return Container(
       width: double.infinity,
       height: double.infinity,
@@ -147,24 +193,24 @@ class _SplashScreenState extends State<SplashScreen>
           child: ScaleTransition(
             scale: _scaleAnimation,
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: isTablet ? 400 : 300,
-              ),
+              constraints: BoxConstraints(maxWidth: maxWidth),
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isTablet ? 40 : 24,
+                padding: ResponsiveHelper.paddingHorizontal(
+                  context,
+                  mobile: 24,
+                  tablet: 40,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildLogo(isTablet, isLandscape),
-                    SizedBox(height: isTablet ? 20 : 12),
-                    _buildTitle(isTablet, isLandscape),
-                    SizedBox(height: isTablet ? 8 : 4),
-                    _buildVersion(isTablet, isLandscape),
-                    SizedBox(height: isTablet ? 24 : 16),
-                    _buildLoadingIndicator(isTablet, isLandscape),
+                    _buildLogo(isTablet, isLandscape, tabletSize),
+                    SizedBox(height: spacing1),
+                    _buildTitle(isTablet, isLandscape, tabletSize),
+                    SizedBox(height: spacing2),
+                    _buildVersion(isTablet, isLandscape, tabletSize),
+                    SizedBox(height: spacing3),
+                    _buildLoadingIndicator(isTablet, isLandscape, tabletSize),
                   ],
                 ),
               ),
@@ -175,8 +221,24 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildLogo(bool isTablet, bool isLandscape) {
-    final logoSize = isTablet ? 300.0 : (isLandscape ? 120.0 : 250.0);
+  Widget _buildLogo(bool isTablet, bool isLandscape, [String tabletSize = 'mobile']) {
+    print('\n🖼️ ========== LOGO DEBUG ==========');
+    print('🖼️ isTablet: $isTablet');
+    print('🖼️ isLandscape: $isLandscape');
+    print('🖼️ tabletSize: $tabletSize');
+    
+    // Gunakan ResponsiveHelper untuk ukuran otomatis
+    final logoSize = ResponsiveHelper.adaptiveValue(
+      context,
+      mobile: 200,           // Mobile portrait - lebih kecil
+      smallTablet: 220,      // Small tablet landscape - sedang
+      mediumTablet: 250,     // Medium tablet landscape - besar
+      largeTablet: 280,      // Large tablet landscape - sangat besar
+      mobileLandscape: 100,  // Mobile landscape - kecil
+    );
+    
+    print('🖼️ FINAL Logo Size: $logoSize (from ResponsiveHelper)');
+    print('🖼️ ==================================\n');
     
     return Image.asset(
       'assets/OIP.png',
@@ -201,8 +263,12 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildTitle(bool isTablet, bool isLandscape) {
-    final fontSize = isTablet ? 28.0 : (isLandscape ? 22.0 : 24.0);
+  Widget _buildTitle(bool isTablet, bool isLandscape, [String tabletSize = 'mobile']) {
+    final fontSize = ResponsiveHelper.font(
+      context,
+      mobile: 24,
+      tablet: 32,
+    );
     
     return Text(
       'e-Logbook',
@@ -215,9 +281,18 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildVersion(bool isTablet, bool isLandscape) {
-    final fontSize = isTablet ? 14.0 : (isLandscape ? 11.0 : 12.0);
-    final padding = isTablet ? 12.0 : (isLandscape ? 8.0 : 10.0);
+  Widget _buildVersion(bool isTablet, bool isLandscape, [String tabletSize = 'mobile']) {
+    final fontSize = ResponsiveHelper.font(
+      context,
+      mobile: 12,
+      tablet: 14,
+    );
+    
+    final padding = ResponsiveHelper.width(
+      context,
+      mobile: 10,
+      tablet: 12,
+    );
     
     return Container(
       padding: EdgeInsets.symmetric(
@@ -239,8 +314,12 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildLoadingIndicator(bool isTablet, bool isLandscape) {
-    final size = isTablet ? 28.0 : (isLandscape ? 20.0 : 24.0);
+  Widget _buildLoadingIndicator(bool isTablet, bool isLandscape, [String tabletSize = 'mobile']) {
+    final size = ResponsiveHelper.width(
+      context,
+      mobile: 24,
+      tablet: 28,
+    );
     
     return SizedBox(
       width: size,

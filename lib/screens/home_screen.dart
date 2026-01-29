@@ -450,19 +450,132 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
 
   @override
   Widget build(BuildContext context) {
-    print('🎨 [HOME] build START, mounted=$mounted');
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    super.build(context);
+    
+    final size = MediaQuery.of(context).size;
     final isTablet = ResponsiveHelper.isTablet(context);
-    print('🎨 [HOME] build END, isTablet=$isTablet');
-
+    
+    // Jika tablet, render tanpa CustomSliverAppBar karena sudah ada header di MainScreen
     if (isTablet) {
-      // Tablet layout dengan SingleChildScrollView
-      return SingleChildScrollView(
-        child: Container(
-          color: Colors.grey[100],
+      return RefreshIndicator(
+        onRefresh: _checkDocumentCompletion,
+        child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: _buildTabletLayout(),
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Carousel - Proportional for tablet
+                CatchCarousel(),
+                const SizedBox(height: 12),
+
+                // Document Alert
+                if (_showDocumentAlert)
+                  ValueListenableBuilder<bool>(
+                    valueListenable: DocumentPopupHelper.isPopupVisible,
+                    builder: (context, isPopupVisible, child) {
+                      if (!isPopupVisible) {
+                        return Column(
+                          children: [
+                            _buildDocumentAlert(),
+                            const SizedBox(height: 12),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                
+                // Pending Banner
+                if (_showPendingBanner) _buildPendingBanner(),
+                if (_showPendingBanner) const SizedBox(height: 12),
+
+                // Rejected Alert
+                if (_showRejectedAlert) _buildRejectedAlert(),
+                if (_showRejectedAlert) const SizedBox(height: 12),
+
+                // Statistics Container - Compact for tablet
+                Container(
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 12,
+                    bottom: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Statistik Hari Ini',
+                        style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.width < 800 ? 14 : 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      SizedBox(height: MediaQuery.of(context).size.width < 800 ? 10 : 12),
+                      _buildTabletStatisticsCards(),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Weekly Activity Chart - Compact
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: _buildCompactWeeklyActivity(),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Recent Catches Container - Compact
+                Container(
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 5,
+                    bottom: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: _buildRecentCatches(),
+                ),
+
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       );
@@ -858,8 +971,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   Widget _buildWeeklyActivity() {
     final provider = Provider.of<CatchProvider>(context);
 
-    // Generate data untuk 7 hari terakhir
-    List<Map<String, dynamic>> weeklyData = _getWeeklyData(provider);
+    // Generate data untuk 30 hari terakhir
+    List<Map<String, dynamic>> monthlyData = _getMonthlyData(provider);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -881,7 +994,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Aktivitas Mingguan',
+                'Aktivitas Bulanan',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -898,7 +1011,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
-                  '7 Hari Terakhir',
+                  '30 Hari Terakhir',
                   style: TextStyle(
                     fontSize: 11,
                     color: Color(0xFF4A90E2),
@@ -938,14 +1051,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 30,
-                      interval: 1,
+                      interval: 5,
                       getTitlesWidget: (value, meta) {
                         if (value.toInt() >= 0 &&
-                            value.toInt() < weeklyData.length) {
+                            value.toInt() < monthlyData.length &&
+                            value.toInt() % 5 == 0) {
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
-                              weeklyData[value.toInt()]['day'],
+                              monthlyData[value.toInt()]['day'],
                               style: TextStyle(
                                 color: Colors.grey[600],
                                 fontSize: 11,
@@ -977,12 +1091,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                 ),
                 borderData: FlBorderData(show: false),
                 minX: 0,
-                maxX: (weeklyData.length - 1).toDouble(),
+                maxX: (monthlyData.length - 1).toDouble(),
                 minY: 0,
-                maxY: _getMaxY(weeklyData),
+                maxY: _getMaxY(monthlyData),
                 lineBarsData: [
                   LineChartBarData(
-                    spots: weeklyData.asMap().entries.map((entry) {
+                    spots: monthlyData.asMap().entries.map((entry) {
                       return FlSpot(
                         entry.key.toDouble(),
                         entry.value['weight'],
@@ -993,15 +1107,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                     barWidth: 3,
                     isStrokeCapRound: true,
                     dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 4,
-                          color: Colors.white,
-                          strokeWidth: 2,
-                          strokeColor: const Color(0xFF4A90E2),
-                        );
-                      },
+                      show: false,
                     ),
                     belowBarData: BarAreaData(
                       show: true,
@@ -1024,15 +1130,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     );
   }
 
-  List<Map<String, dynamic>> _getWeeklyData(CatchProvider provider) {
+  List<Map<String, dynamic>> _getMonthlyData(CatchProvider provider) {
     final now = DateTime.now();
-    final weekDays = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-
     List<Map<String, dynamic>> data = [];
 
-    for (int i = 6; i >= 0; i--) {
+    for (int i = 29; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
-      final dayName = weekDays[date.weekday % 7];
+      final dayLabel = '${date.day}';
 
       // Hitung total berat tangkapan untuk hari ini
       final dayWeight = provider.catches
@@ -1044,7 +1148,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           })
           .fold<double>(0, (sum, catch_) => sum + catch_.weight);
 
-      data.add({'day': dayName, 'weight': dayWeight});
+      data.add({'day': dayLabel, 'weight': dayWeight});
     }
 
     return data;
@@ -1067,6 +1171,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   Widget _buildRecentCatches() {
     final provider = Provider.of<CatchProvider>(context);
     final recentCatches = provider.catches.take(3).toList();
+    final isTablet = ResponsiveHelper.isTablet(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final titleSize = isTablet ? (screenWidth < 800 ? 14.0 : 16.0) : 18.0;
+    final buttonSize = isTablet ? (screenWidth < 800 ? 11.0 : 12.0) : 14.0;
+    final iconSize = isTablet ? (screenWidth < 800 ? 44.0 : 50.0) : 56.0;
+    final fishNameSize = isTablet ? (screenWidth < 800 ? 13.0 : 14.0) : 15.0;
+    final weightSize = isTablet ? (screenWidth < 800 ? 11.0 : 12.0) : 13.0;
+    final emptyIconSize = isTablet ? (screenWidth < 800 ? 50.0 : 56.0) : 60.0;
+    final emptyTextSize = isTablet ? (screenWidth < 800 ? 12.0 : 13.0) : 14.0;
+    final cardPadding = isTablet ? (screenWidth < 800 ? 12.0 : 14.0) : 16.0;
+    final cardMargin = isTablet ? (screenWidth < 800 ? 8.0 : 10.0) : 12.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1074,10 +1189,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Tangkapan Terbaru',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: titleSize,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1A1A1A),
               ),
@@ -1086,9 +1201,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
               onPressed: () {
                 // Navigate to history
               },
-              child: const Text(
+              child: Text(
                 'Lihat Semua',
                 style: TextStyle(
+                  fontSize: buttonSize,
                   color: Color(0xFF4A90E2),
                   fontWeight: FontWeight.w600,
                 ),
@@ -1096,18 +1212,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isTablet ? 8 : 12),
         if (recentCatches.isEmpty)
           Center(
             child: Padding(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(isTablet ? 24 : 32),
               child: Column(
                 children: [
-                  Icon(Icons.inbox_outlined, size: 60, color: Colors.grey[400]),
+                  Icon(Icons.inbox_outlined, size: emptyIconSize, color: Colors.grey[400]),
                   const SizedBox(height: 12),
                   Text(
                     'Belum ada tangkapan',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    style: TextStyle(color: Colors.grey[600], fontSize: emptyTextSize),
                   ),
                 ],
               ),
@@ -1116,11 +1232,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         else
           ...recentCatches.map(
             (catch_) => Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
+              margin: EdgeInsets.only(bottom: cardMargin),
+              padding: EdgeInsets.all(cardPadding),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isTablet ? 12 : 16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -1132,8 +1248,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
               child: Row(
                 children: [
                   Container(
-                    width: 56,
-                    height: 56,
+                    width: iconSize,
+                    height: iconSize,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -1141,23 +1257,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                           Color(0xFF4A90E2).withOpacity(0.1),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(isTablet ? 10 : 12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.phishing_rounded,
                       color: Color(0xFF4A90E2),
-                      size: 28,
+                      size: iconSize * 0.5,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: isTablet ? 12 : 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           catch_.fishName,
-                          style: const TextStyle(
-                            fontSize: 15,
+                          style: TextStyle(
+                            fontSize: fishNameSize,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A1A),
                           ),
@@ -1166,14 +1282,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                         Text(
                           '${catch_.weight} kg',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: weightSize,
                             color: Colors.grey[600],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+                  Icon(Icons.chevron_right_rounded, color: Colors.grey[400], size: isTablet ? 20 : 24),
                 ],
               ),
             ),
@@ -1571,22 +1687,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   Widget _buildTabletStatisticsCards() {
     final provider = Provider.of<CatchProvider>(context);
     final todayCatches = provider.todayCatches;
-    final totalWeight = todayCatches.fold<double>(
-      0,
-      (sum, catch_) => sum + catch_.weight,
-    );
-    final totalRevenue = todayCatches.fold<double>(
-      0,
-      (sum, catch_) => sum + catch_.totalRevenue,
-    );
-    final averageWeight = todayCatches.isEmpty
-        ? 0.0
-        : totalWeight / todayCatches.length;
+    final totalWeight = todayCatches.fold<double>(0, (sum, c) => sum + c.weight);
+    final totalRevenue = todayCatches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
+    final averageWeight = todayCatches.isEmpty ? 0.0 : totalWeight / todayCatches.length;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardSpacing = screenWidth < 800 ? 10.0 : 12.0;
 
     return Row(
       children: [
         Expanded(
-          child: _buildModernStatCard(
+          child: _buildCompactLottieCard(
             lottieAsset: 'assets/animations/fish.json',
             label: 'Tangkapan',
             value: '${todayCatches.length}',
@@ -1594,19 +1704,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             gradientColors: [Color(0xFF4A90E2), Color(0xFF357ABD)],
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: cardSpacing),
         Expanded(
-          child: _buildModernStatCard(
+          child: _buildCompactLottieCard(
             lottieAsset: 'assets/animations/Weighing.json',
-            label: 'Total Berat',
+            label: 'Berat',
             value: totalWeight.toStringAsFixed(1),
             subtitle: 'kg',
             gradientColors: [Color(0xFF5CB85C), Color(0xFF449D44)],
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: cardSpacing),
         Expanded(
-          child: _buildModernStatCard(
+          child: _buildCompactLottieCard(
             lottieAsset: 'assets/animations/money.json',
             label: 'Pendapatan',
             value: '${(totalRevenue / 1000).toStringAsFixed(0)}k',
@@ -1614,14 +1724,286 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             gradientColors: [Color(0xFFF0AD4E), Color(0xFFEC971F)],
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: cardSpacing),
         Expanded(
-          child: _buildModernStatCard(
+          child: _buildCompactLottieCard(
             lottieAsset: 'assets/animations/chart.json',
             label: 'Rata-rata',
             value: averageWeight.toStringAsFixed(1),
             subtitle: 'kg/ikan',
             gradientColors: [Color(0xFF9B59B6), Color(0xFF8E44AD)],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactLottieCard({
+    required String lottieAsset,
+    required String label,
+    required String value,
+    required String subtitle,
+    required List<Color> gradientColors,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardPadding = screenWidth < 800 ? 12.0 : 14.0;
+    final iconSize = screenWidth < 800 ? 36.0 : 40.0;
+    final lottieSize = screenWidth < 800 ? 28.0 : 32.0;
+    final labelSize = screenWidth < 800 ? 11.0 : 12.0;
+    final valueSize = screenWidth < 800 ? 18.0 : 20.0;
+    final subtitleSize = screenWidth < 800 ? 10.0 : 11.0;
+    final iconRadius = screenWidth < 800 ? 9.0 : 10.0;
+    final cardRadius = screenWidth < 800 ? 12.0 : 14.0;
+    
+    return Container(
+      padding: EdgeInsets.all(cardPadding),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(cardRadius),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: iconSize,
+            height: iconSize,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(iconRadius),
+            ),
+            child: Center(
+              child: Lottie.asset(
+                lottieAsset,
+                width: lottieSize,
+                height: lottieSize,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(Icons.analytics, color: Colors.white, size: lottieSize * 0.6);
+                },
+              ),
+            ),
+          ),
+          SizedBox(height: screenWidth < 800 ? 8 : 10),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: labelSize,
+              color: Colors.white.withOpacity(0.9),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: valueSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: subtitleSize,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactStatCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactWeeklyActivity() {
+    final provider = Provider.of<CatchProvider>(context);
+    List<Map<String, dynamic>> monthlyData = _getMonthlyData(provider);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final titleSize = screenWidth < 800 ? 14.0 : 16.0;
+    final badgeSize = screenWidth < 800 ? 10.0 : 11.0;
+    final subtitleSize = screenWidth < 800 ? 11.0 : 12.0;
+    final chartHeight = screenWidth < 800 ? 140.0 : 160.0;
+    final axisLabelSize = screenWidth < 800 ? 10.0 : 11.0;
+    final reservedSizeBottom = screenWidth < 800 ? 22.0 : 24.0;
+    final reservedSizeLeft = screenWidth < 800 ? 32.0 : 35.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Aktivitas Bulanan',
+              style: TextStyle(
+                fontSize: titleSize,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                '30 Hari Terakhir',
+                style: TextStyle(
+                  fontSize: badgeSize,
+                  color: Color(0xFF4A90E2),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Berat total tangkapan (kg)',
+          style: TextStyle(fontSize: subtitleSize, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: chartHeight,
+          child: LineChart(
+            LineChartData(
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: 20,
+                getDrawingHorizontalLine: (value) {
+                  return FlLine(color: Colors.grey[200]!, strokeWidth: 1);
+                },
+              ),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: reservedSizeBottom,
+                    interval: 5,
+                    getTitlesWidget: (value, meta) {
+                      if (value.toInt() >= 0 && value.toInt() < monthlyData.length && value.toInt() % 5 == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            monthlyData[value.toInt()]['day'],
+                            style: TextStyle(color: Colors.grey[600], fontSize: axisLabelSize, fontWeight: FontWeight.w500),
+                          ),
+                        );
+                      }
+                      return const Text('');
+                    },
+                  ),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: reservedSizeLeft,
+                    interval: 20,
+                    getTitlesWidget: (value, meta) {
+                      return Text(
+                        value.toInt().toString(),
+                        style: TextStyle(color: Colors.grey[600], fontSize: axisLabelSize),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              minX: 0,
+              maxX: (monthlyData.length - 1).toDouble(),
+              minY: 0,
+              maxY: _getMaxY(monthlyData),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: monthlyData.asMap().entries.map((entry) {
+                    return FlSpot(entry.key.toDouble(), entry.value['weight']);
+                  }).toList(),
+                  isCurved: true,
+                  color: const Color(0xFF4A90E2),
+                  barWidth: 3,
+                  isStrokeCapRound: true,
+                  dotData: FlDotData(
+                    show: false,
+                  ),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF4A90E2).withOpacity(0.3),
+                        const Color(0xFF4A90E2).withOpacity(0.05),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

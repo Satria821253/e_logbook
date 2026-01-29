@@ -5,15 +5,14 @@ import 'package:e_logbook/screens/help_screen.dart';
 import 'package:e_logbook/screens/nahkoda/screens/crew_attendance_screen.dart';
 import 'package:e_logbook/screens/vessel/vessel_info_screen.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
-import 'package:e_logbook/services/api/profile_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
+import 'package:e_logbook/utils/profile_photo_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 class ProfileScreen extends StatefulWidget {
@@ -25,11 +24,20 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen>
     with WidgetsBindingObserver {
+  String? _cachedPhotoPath;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadProfile();
+    
+    // Load cached photo dulu (instant)
+    _loadCachedPhoto();
+    
+    // Baru load profile dari API di background
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfile();
+    });
 
     // Register listener untuk auto-update profile
     RealtimeUpdateService.addListener('profile', () {
@@ -63,36 +71,57 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  /// Load cached photo first (instant)
+  Future<void> _loadCachedPhoto() async {
+    final cachedPath = await ProfilePhotoCache.getCachedPhotoPath();
+    if (mounted && cachedPath != null) {
+      setState(() {
+        _cachedPhotoPath = cachedPath;
+      });
+      print('✅ Loaded cached photo: $cachedPath');
+    }
+  }
+
   Future<void> _loadProfile() async {
     try {
       print('🔄 Loading profile from API...');
 
-      // Clear local data first
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('user_data');
-      print('🗑️ Local user data cleared');
+      if (mounted) {
+        final userProvider = Provider.of<UserProvider>(
+          context,
+          listen: false,
+        );
 
-      final result = await ProfileService.getProfile();
-      print('📥 Profile result: $result');
+        // Sync from API to get fresh data
+        await userProvider.syncProfileFromAPI();
+        print('✅ Profile synced from API');
 
-      if (result['success'] == true && result['user'] != null) {
-        if (mounted) {
-          final userProvider = Provider.of<UserProvider>(
-            context,
-            listen: false,
-          );
-          // Clear image cache before syncing
-          imageCache.clear();
-          imageCache.clearLiveImages();
-          print('🧽 Cache cleared');
-
-          // Sync from API to get fresh photo
-          await userProvider.syncProfileFromAPI();
-          print('✅ Profile synced from API');
-
-          // Force rebuild
-          if (mounted) setState(() {});
+        // Cache photo jika ada dan berbeda dari yang sekarang
+        final photoUrl = userProvider.user?.profilePicture;
+        if (photoUrl != null && photoUrl.startsWith('http')) {
+          // Extract filename tanpa timestamp untuk comparison
+          final newFileName = photoUrl.split('/').last.split('?').first; // e.g., "10-1769597437577.png"
+          final cachedUrl = await ProfilePhotoCache.getCachedPhotoUrl();
+          final cachedFileName = cachedUrl?.split('/').last.split('?').first;
+          
+          // Hanya download jika filename berbeda (foto benar-benar baru)
+          if (cachedFileName != newFileName) {
+            print('📥 New photo detected: $newFileName (old: $cachedFileName)');
+            ProfilePhotoCache.cacheProfilePhoto(photoUrl).then((path) {
+              if (mounted && path != null && path != _cachedPhotoPath) {
+                setState(() {
+                  _cachedPhotoPath = path;
+                });
+                print('✅ Photo updated: $path');
+              }
+            });
+          } else {
+            print('⏭️ Same photo ($newFileName), skipping download');
+          }
         }
+
+        // Force rebuild
+        if (mounted) setState(() {});
       }
     } catch (e) {
       print('❌ Error loading profile: $e');
@@ -173,15 +202,15 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildTabletLayout() {
     return SingleChildScrollView(
       child: Container(
-        color: Colors.grey[100],
+        color: const Color(0xFFF5F5F5),
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -193,7 +222,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: Column(
                 children: [
                   _buildProfileHeader(),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
                   _buildStatsCard(),
                 ],
               ),
@@ -216,17 +245,21 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Column(
         children: [
           GestureDetector(
-            onTap: () {},
+            onTap: () {
+              final userProvider = Provider.of<UserProvider>(context, listen: false);
+              final photoUrl = userProvider.user?.profilePicture;
+              if (photoUrl != null && photoUrl.isNotEmpty) {
+                _showPhotoPreview(photoUrl);
+              }
+            },
             child: Stack(
               children: [
                 Container(
-                  padding: EdgeInsets.all(
-                    ResponsiveHelper.width(context, mobile: 4, tablet: 6),
-                  ),
+                  padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.black87,
+                      color: const Color(0xFF1B4F9C),
                       width: ResponsiveHelper.width(
                         context,
                         mobile: 2,
@@ -246,90 +279,42 @@ class _ProfileScreenState extends State<ProfileScreen>
                           (photoUrl.startsWith('http') ||
                               photoUrl.startsWith('file://'));
 
+                      final radius = ResponsiveHelper.width(
+                        context,
+                        mobile: 50,
+                        tablet: 50,
+                      );
+
+                      // Prioritas: cached photo > URL dari API
+                      ImageProvider? imageProvider;
+                      
+                      if (_cachedPhotoPath != null) {
+                        // Gunakan cached photo (instant)
+                        imageProvider = FileImage(File(_cachedPhotoPath!));
+                      } else if (hasValidPhoto) {
+                        // Fallback ke URL jika cache belum ada
+                        if (photoUrl!.startsWith('file://')) {
+                          imageProvider = FileImage(
+                            File(photoUrl.replaceFirst('file://', '')),
+                          );
+                        } else {
+                          // Sementara gunakan NetworkImage sambil menunggu cache
+                          imageProvider = NetworkImage(photoUrl);
+                        }
+                      }
+
                       return CircleAvatar(
-                        key: ValueKey(photoUrl ?? 'default'),
-                        radius: ResponsiveHelper.width(
-                          context,
-                          mobile: 50,
-                          tablet: 60,
-                        ),
-                        backgroundColor: Colors.white,
-                        child: hasValidPhoto
-                            ? ClipOval(
-                                child: photoUrl.startsWith('file://')
-                                    ? Image.file(
-                                        File(
-                                          photoUrl.replaceFirst('file://', ''),
-                                        ),
-                                        key: ValueKey(photoUrl),
-                                        fit: BoxFit.cover,
-                                        width: ResponsiveHelper.width(
-                                          context,
-                                          mobile: 100,
-                                          tablet: 120,
-                                        ),
-                                        height: ResponsiveHelper.width(
-                                          context,
-                                          mobile: 100,
-                                          tablet: 120,
-                                        ),
-                                      )
-                                    : Image.network(
-                                        photoUrl,
-                                        key: ValueKey(photoUrl),
-                                        fit: BoxFit.cover,
-                                        headers: {'Cache-Control': 'no-cache'},
-                                        width: ResponsiveHelper.width(
-                                          context,
-                                          mobile: 100,
-                                          tablet: 120,
-                                        ),
-                                        height: ResponsiveHelper.width(
-                                          context,
-                                          mobile: 100,
-                                          tablet: 120,
-                                        ),
-                                        loadingBuilder: (context, child, loadingProgress) {
-                                          if (loadingProgress == null)
-                                            return child;
-                                          return Center(
-                                            child: CircularProgressIndicator(
-                                              value:
-                                                  loadingProgress
-                                                          .expectedTotalBytes !=
-                                                      null
-                                                  ? loadingProgress
-                                                            .cumulativeBytesLoaded /
-                                                        loadingProgress
-                                                            .expectedTotalBytes!
-                                                  : null,
-                                            ),
-                                          );
-                                        },
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                          print('❌ [UI] Image error: $error');
-                                          return Icon(
-                                            Icons.person_rounded,
-                                            size: ResponsiveHelper.width(
-                                              context,
-                                              mobile: 60,
-                                              tablet: 72,
-                                            ),
-                                            color: Colors.black87,
-                                          );
-                                        },
-                                      ),
-                              )
-                            : Icon(
+                        key: ValueKey(_cachedPhotoPath ?? photoUrl ?? 'default'),
+                        radius: radius,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: imageProvider,
+                        child: !hasValidPhoto
+                            ? Icon(
                                 Icons.person_rounded,
-                                size: ResponsiveHelper.width(
-                                  context,
-                                  mobile: 60,
-                                  tablet: 72,
-                                ),
-                                color: Colors.black87,
-                              ),
+                                size: radius * 1.2,
+                                color: const Color(0xFF1B4F9C),
+                              )
+                            : null,
                       );
                     },
                   ),
@@ -338,126 +323,135 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           ),
           SizedBox(
-            height: ResponsiveHelper.height(context, mobile: 16, tablet: 20),
+            height: ResponsiveHelper.height(context, mobile: 16, tablet: 14),
           ),
           Consumer<UserProvider>(
             builder: (context, userProvider, child) {
               final user = userProvider.user;
-              return Column(
+              print('📝 [UI-Name] Consumer rebuild - Name: ${user?.name}');
+              return Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  Text(
-                    user?.name ?? 'Nama Pengguna',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: ResponsiveHelper.font(
-                        context,
-                        mobile: 24,
-                        tablet: 28,
-                      ),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () async {
-                      await NavigationHelper.pushNoTransition(
-                        context,
-                        const EditProfileScreen(),
-                      );
-                    },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: ResponsiveHelper.width(
-                          context,
-                          mobile: 12,
-                          tablet: 16,
-                        ),
-                        vertical: ResponsiveHelper.height(
-                          context,
-                          mobile: 6,
-                          tablet: 8,
-                        ),
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(
-                          ResponsiveHelper.width(
+                  Column(
+                    children: [
+                      Text(
+                        user?.name ?? 'Nama Pengguna',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: ResponsiveHelper.font(
                             context,
-                            mobile: 16,
-                            tablet: 20,
+                            mobile: 24,
+                            tablet: 22,
+                          ),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(
+                        height: ResponsiveHelper.height(
+                          context,
+                          mobile: 4,
+                          tablet: 6,
+                        ),
+                      ),
+                      Text(
+                        '@${user?.username ?? 'username'}',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: ResponsiveHelper.font(
+                            context,
+                            mobile: 14,
+                            tablet: 14,
                           ),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.edit,
-                            size: ResponsiveHelper.width(
-                              context,
-                              mobile: 14,
-                              tablet: 16,
-                            ),
-                            color: Colors.black,
+                      SizedBox(
+                        height: ResponsiveHelper.height(
+                          context,
+                          mobile: 4,
+                          tablet: 6,
+                        ),
+                      ),
+                      Text(
+                        user?.role ?? 'Nahkoda',
+                        style: TextStyle(
+                          color: const Color(0xFF1B4F9C),
+                          fontSize: ResponsiveHelper.font(
+                            context,
+                            mobile: 14,
+                            tablet: 14,
                           ),
-                          SizedBox(
-                            width: ResponsiveHelper.width(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Positioned(
+                    right: -80,
+                    top: 1,
+                    child: GestureDetector(
+                      onTap: () async {
+                        await NavigationHelper.pushNoTransition(
+                          context,
+                          const EditProfileScreen(),
+                        );
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: ResponsiveHelper.width(
+                            context,
+                            mobile: 10,
+                            tablet: 12,
+                          ),
+                          vertical: ResponsiveHelper.height(
+                            context,
+                            mobile: 6,
+                            tablet: 7,
+                          ),
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(
+                            ResponsiveHelper.width(
                               context,
-                              mobile: 6,
-                              tablet: 8,
+                              mobile: 12,
+                              tablet: 14,
                             ),
                           ),
-                          Text(
-                            'Edit Profil',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: ResponsiveHelper.font(
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.edit,
+                              size: ResponsiveHelper.width(
                                 context,
-                                mobile: 13,
+                                mobile: 14,
                                 tablet: 15,
                               ),
-                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
                             ),
-                          ),
-                        ],
+                            SizedBox(
+                              width: ResponsiveHelper.width(
+                                context,
+                                mobile: 4,
+                                tablet: 5,
+                              ),
+                            ),
+                            Text(
+                              'Edit',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: ResponsiveHelper.font(
+                                  context,
+                                  mobile: 12,
+                                  tablet: 13,
+                                ),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: ResponsiveHelper.height(
-                      context,
-                      mobile: 4,
-                      tablet: 6,
-                    ),
-                  ),
-                  Text(
-                    '@${user?.username ?? 'username'}',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: ResponsiveHelper.font(
-                        context,
-                        mobile: 14,
-                        tablet: 16,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: ResponsiveHelper.height(
-                      context,
-                      mobile: 4,
-                      tablet: 6,
-                    ),
-                  ),
-                  Text(
-                    user?.role ?? 'Nahkoda',
-                    style: TextStyle(
-                      color: const Color(0xFF1B4F9C),
-                      fontSize: ResponsiveHelper.font(
-                        context,
-                        mobile: 14,
-                        tablet: 16,
-                      ),
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -477,7 +471,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ? EdgeInsets.zero
           : ResponsiveHelper.paddingHorizontal(context, mobile: 16, tablet: 32),
       child: Container(
-        padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 28),
+        padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 20),
         decoration: BoxDecoration(
           color: isTablet ? Colors.grey[50] : Colors.white,
           borderRadius: BorderRadius.circular(
@@ -528,26 +522,26 @@ class _ProfileScreenState extends State<ProfileScreen>
         Icon(
           icon,
           color: const Color(0xFF1B4F9C),
-          size: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          size: ResponsiveHelper.width(context, mobile: 28, tablet: 26),
         ),
         SizedBox(
-          height: ResponsiveHelper.height(context, mobile: 8, tablet: 12),
+          height: ResponsiveHelper.height(context, mobile: 8, tablet: 8),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
+            fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 16),
             fontWeight: FontWeight.bold,
             color: Color(0xFF1B4F9C),
           ),
         ),
         SizedBox(
-          height: ResponsiveHelper.height(context, mobile: 4, tablet: 6),
+          height: ResponsiveHelper.height(context, mobile: 4, tablet: 4),
         ),
         Text(
           label,
           style: TextStyle(
-            fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 13),
+            fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 11),
             color: Colors.grey[600],
           ),
           textAlign: TextAlign.center,
@@ -561,15 +555,18 @@ class _ProfileScreenState extends State<ProfileScreen>
     final isTablet = screenWidth >= 600;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: isTablet ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Menu',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: screenWidth < 800 ? 16 : 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: screenWidth < 800 ? 8 : 10),
           isTablet ? _buildTabletMenuGrid() : _buildMobileMenuList(),
         ],
       ),
@@ -687,24 +684,19 @@ class _ProfileScreenState extends State<ProfileScreen>
             subtitle: 'Versi 1.0',
             onTap: () {},
           ),
-          _buildMenuItem(
-            icon: Icons.logout_rounded,
-            title: 'Keluar',
-            subtitle: 'Keluar dari aplikasi',
-            isLogout: true,
-            onTap: () => _handleLogout(),
-          ),
         ]);
 
         final isLandscape = ResponsiveHelper.isLandscape(context);
+        final screenWidth = MediaQuery.of(context).size.width;
         return GridView.builder(
+          padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: isLandscape ? 4.5 : 3.5,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            childAspectRatio: isLandscape ? 4.5 : (screenWidth < 800 ? 3.2 : 3.5),
+            crossAxisSpacing: screenWidth < 800 ? 10 : 12,
+            mainAxisSpacing: screenWidth < 800 ? 6 : 8,
           ),
           itemCount: menuItems.length,
           itemBuilder: (context, i) => menuItems[i],
@@ -751,6 +743,43 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  void _showPhotoPreview(String photoUrl) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: photoUrl.startsWith('file://')
+                    ? Image.file(
+                        File(photoUrl.replaceFirst('file://', '')),
+                        fit: BoxFit.contain,
+                      )
+                    : Image.network(
+                        photoUrl,
+                        fit: BoxFit.contain,
+                        headers: {'Cache-Control': 'no-cache'},
+                      ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMenuItem({
     required IconData icon,
     required String title,
@@ -758,8 +787,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     required VoidCallback onTap,
     bool isLogout = false,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallTablet = screenWidth < 800;
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -771,38 +802,73 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ],
       ),
-      child: ListTile(
+      child: InkWell(
         onTap: onTap,
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: isLogout
-                ? Colors.red.withOpacity(0.1)
-                : const Color(0xFF1B4F9C).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallTablet ? 12 : 16,
+            vertical: isSmallTablet ? 10 : 12,
           ),
-          child: Icon(
-            icon,
-            color: isLogout ? Colors.red : const Color(0xFF1B4F9C),
-            size: 24,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: isSmallTablet ? 44 : 48,
+                height: isSmallTablet ? 44 : 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isLogout
+                      ? Colors.red.withOpacity(0.1)
+                      : const Color(0xFF1B4F9C).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  color: isLogout ? Colors.red : const Color(0xFF1B4F9C),
+                  size: isSmallTablet ? 22 : 24,
+                ),
+              ),
+              SizedBox(width: isSmallTablet ? 12 : 16),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 1),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: isSmallTablet ? 14 : 16,
+                          fontWeight: FontWeight.w600,
+                          color: isLogout ? Colors.red : Colors.black87,
+                          height: 1.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: isSmallTablet ? 11 : 13,
+                          color: Colors.grey[600],
+                          height: 1.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: isSmallTablet ? 14 : 16,
+                color: Colors.grey[400],
+              ),
+            ],
           ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: isLogout ? Colors.red : Colors.black87,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-        ),
-        trailing: Icon(
-          Icons.arrow_forward_ios_rounded,
-          size: 16,
-          color: Colors.grey[400],
         ),
       ),
     );

@@ -61,7 +61,7 @@ class DocumentService {
           filename: filePath.split(RegExp(r'[\\\\/]')).last,
         ),
       };
-      
+
       // Hanya tambahkan field jika ada nilainya
       if (nomorDokumen != null && nomorDokumen.isNotEmpty) {
         formDataMap['nomorDokumen'] = nomorDokumen;
@@ -74,7 +74,7 @@ class DocumentService {
       }
 
       FormData formData = FormData.fromMap(formDataMap);
-      
+
       // Debug: Print semua field yang akan dikirim
       print('📋 FormData fields:');
       for (var field in formData.fields) {
@@ -167,20 +167,22 @@ class DocumentService {
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         dynamic documentsData = response.data['data'];
-        
+
         // Extract dokumen array from nested structure
         if (documentsData is Map && documentsData.containsKey('dokumen')) {
           documentsData = documentsData['dokumen'];
         }
-        
+
         if (documentsData is! List) {
           documentsData = documentsData != null ? [documentsData] : [];
         }
-        
+
         // Filter untuk hanya ambil dokumen terbaru per jenis
         final filteredDocs = _filterLatestDocuments(documentsData);
-        print('📋 Filtered ${documentsData.length} docs to ${filteredDocs.length} unique docs');
-        
+        print(
+          '📋 Filtered ${documentsData.length} docs to ${filteredDocs.length} unique docs',
+        );
+
         return {'success': true, 'documents': filteredDocs};
       }
 
@@ -207,33 +209,38 @@ class DocumentService {
   // Filter untuk mengambil hanya dokumen terbaru per jenis
   static List<dynamic> _filterLatestDocuments(List<dynamic> documents) {
     final Map<String, dynamic> latestDocs = {};
-    
+
     for (var doc in documents) {
       final jenis = doc['jenisDokumen'];
       if (jenis == null) continue;
-      
+
       final docId = doc['id'];
       final uploadedAt = doc['uploadedAt'] ?? doc['createdAt'] ?? '';
-      
+
       // Jika belum ada dokumen jenis ini, atau dokumen ini lebih baru
       if (!latestDocs.containsKey(jenis)) {
         latestDocs[jenis] = doc;
       } else {
-        final existingUploadedAt = latestDocs[jenis]['uploadedAt'] ?? 
-                                   latestDocs[jenis]['createdAt'] ?? '';
+        final existingUploadedAt =
+            latestDocs[jenis]['uploadedAt'] ??
+            latestDocs[jenis]['createdAt'] ??
+            '';
         final existingId = latestDocs[jenis]['id'];
-        
+
         // Bandingkan timestamp, atau jika sama bandingkan ID (yang lebih besar = lebih baru)
-        if (uploadedAt.compareTo(existingUploadedAt) > 0 || 
-            (uploadedAt == existingUploadedAt && docId != null && existingId != null && 
-             int.tryParse(docId.toString()) != null && 
-             int.tryParse(existingId.toString()) != null &&
-             int.parse(docId.toString()) > int.parse(existingId.toString()))) {
+        if (uploadedAt.compareTo(existingUploadedAt) > 0 ||
+            (uploadedAt == existingUploadedAt &&
+                docId != null &&
+                existingId != null &&
+                int.tryParse(docId.toString()) != null &&
+                int.tryParse(existingId.toString()) != null &&
+                int.parse(docId.toString()) >
+                    int.parse(existingId.toString()))) {
           latestDocs[jenis] = doc;
         }
       }
     }
-    
+
     return latestDocs.values.toList();
   }
 }

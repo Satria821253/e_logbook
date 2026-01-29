@@ -6,6 +6,8 @@ import 'package:e_logbook/services/api/auth_service.dart';
 import 'package:e_logbook/services/local/user_activity_service.dart';
 import 'package:e_logbook/models/user_model.dart';
 import 'package:e_logbook/provider/user_provider.dart';
+import 'package:e_logbook/utils/vessel_cache_helper.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,9 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isTablet = size.shortestSide >= 600;
-    final isLandscape = size.width > size.height;
+    final isTablet = ResponsiveHelper.isTablet(context);
+    final isLandscape = ResponsiveHelper.isLandscape(context);
     
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -74,15 +75,15 @@ class _LoginScreenState extends State<LoginScreen> {
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            padding: ResponsiveHelper.padding(context, mobile: 20),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: _buildLoginCard(
-                logoSize: 180,
-                padding: 24,
-                fontSize: 13,
-                inputFontSize: 14,
-                buttonHeight: 48,
+                logoSize: ResponsiveHelper.loginLogoSize(context, mobile: 150),
+                padding: ResponsiveHelper.value(context, mobile: 20),
+                fontSize: ResponsiveHelper.font(context, mobile: 12),
+                inputFontSize: ResponsiveHelper.font(context, mobile: 11),
+                buttonHeight: ResponsiveHelper.height(context, mobile: 38),
               ),
             ),
           ),
@@ -95,8 +96,8 @@ class _LoginScreenState extends State<LoginScreen> {
   // SPLIT LAYOUT (Landscape Mobile & Tablet)
   // ==========================================
   Widget _buildSplitLayout(bool isTablet, bool isLandscape) {
-    final imageFlex = isTablet ? 5 : 3;
-    final contentFlex = isTablet ? 5 : 7;
+    final imageFlex = isTablet ? 6 : 3;
+    final contentFlex = isTablet ? 4 : 2;
     
     return Stack(
       children: [
@@ -116,19 +117,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: SafeArea(
                   child: Center(
                     child: Padding(
-                      padding: EdgeInsets.all(isTablet ? 12 : 9),
+                      padding: ResponsiveHelper.padding(context, mobile: 9, tablet: 12),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           // Logo IPB dengan background putih lebih kecil
                           Container(
-                            width: isTablet ? 180 : 120,
-                            height: isTablet ? 180 : 120,
+                            width: ResponsiveHelper.loginLogoSize(context, mobile: 80, tablet: 140),
+                            height: ResponsiveHelper.loginLogoSize(context, mobile: 80, tablet: 140),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: Colors.white,
-                                width: isTablet ? 4 : 3,
+                                width: ResponsiveHelper.width(context, mobile: 3, tablet: 4),
                               ),
                               boxShadow: [
                                 BoxShadow(
@@ -143,38 +144,38 @@ class _LoginScreenState extends State<LoginScreen> {
                                 DateTime.now().hour >= 18 || DateTime.now().hour < 6
                                     ? 'assets/animations/tripmalam.json'
                                     : 'assets/animations/tripsiang.json',
-                                width: isTablet ? 180 : 120,
-                                height: isTablet ? 180 : 120,
+                                width: ResponsiveHelper.loginLogoSize(context, mobile: 80, tablet: 140),
+                                height: ResponsiveHelper.loginLogoSize(context, mobile: 80, tablet: 140),
                                 fit: BoxFit.cover,
                               ),
                             ),
                           ),
                           
-                          SizedBox(height: isTablet ? 24 : 16),
+                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 16, tablet: 24)),
                           
                           // Title
                           Text(
                             'E-Logbook',
                             style: TextStyle(
-                              fontSize: isTablet ? 32 : 22,
+                              fontSize: ResponsiveHelper.font(context, mobile: 22, tablet: 32),
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 1.0,
                             ),
                           ),
                           
-                          SizedBox(height: isTablet ? 8 : 6),
+                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 6, tablet: 8)),
                           
                           // Subtitle
                           Container(
                             constraints: BoxConstraints(
-                              maxWidth: isTablet ? 280 : 200,
+                              maxWidth: ResponsiveHelper.width(context, mobile: 200, tablet: 280),
                             ),
                             child: Text(
                               'Sistem Manajemen Logbook Digital untuk Pelayaran Modern',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: isTablet ? 14 : 11,
+                                fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 14),
                                 color: Colors.white.withOpacity(0.9),
                                 height: 1.4,
                               ),
@@ -201,32 +202,36 @@ class _LoginScreenState extends State<LoginScreen> {
           top: 0,
           bottom: 0,
           right: 0,
-          left: MediaQuery.of(context).size.width * (imageFlex / (imageFlex + contentFlex)) - 25,
+          left: MediaQuery.of(context).size.width * (imageFlex / (imageFlex + contentFlex)) - ResponsiveHelper.width(context, mobile: 50, tablet: 80),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(ResponsiveHelper.width(context, mobile: 20, tablet: 24)),
+                bottomLeft: Radius.circular(ResponsiveHelper.width(context, mobile: 20, tablet: 24)),
               ),
             ),
             child: SafeArea(
               child: Center(
                 child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isTablet ? 32 : 20,
-                    vertical: isTablet ? 40 : 20,
-                  ),
+                  padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 40),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxWidth: isTablet ? 480 : 380,
+                      maxWidth: ResponsiveHelper.adaptiveValue(
+                        context,
+                        mobile: 380,
+                        smallTablet: 420,
+                        mediumTablet: 460,
+                        largeTablet: 480,
+                        mobileLandscape: 350,
+                      ),
                     ),
                     child: _buildLoginCard(
-                      logoSize: isTablet ? 220 : 90,
-                      padding: isTablet ? 40 : 24,
-                      fontSize: isTablet ? 14 : 12,
-                      inputFontSize: isTablet ? 15 : 13,
-                      buttonHeight: isTablet ? 54 : 46,
+                      logoSize: ResponsiveHelper.loginLogoSize(context, mobile: 90, tablet: 150),
+                      padding: ResponsiveHelper.value(context, mobile: 20, tablet: 32),
+                      fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 13),
+                      inputFontSize: ResponsiveHelper.font(context, mobile: 10, tablet: 12),
+                      buttonHeight: ResponsiveHelper.height(context, mobile: 36, tablet: 42),
                     ),
                   ),
                 ),
@@ -249,6 +254,10 @@ class _LoginScreenState extends State<LoginScreen> {
     required double inputFontSize,
     required double buttonHeight,
   }) {
+    print('🎨 [LOGIN CARD] logoSize: $logoSize, padding: $padding');
+    print('🎨 [LOGIN CARD] fontSize: $fontSize, inputFontSize: $inputFontSize');
+    print('🎨 [LOGIN CARD] buttonHeight: $buttonHeight');
+    
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(padding, 0, padding, padding),
@@ -377,9 +386,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   hintText: value == ButtonRadio.email
                       ? "contoh@email.com"
                       : "08123456789",
+                  hintStyle: TextStyle(fontSize: inputFontSize),
                   prefixIcon: Icon(
                     value == ButtonRadio.email ? Icons.email_outlined : Icons.phone_outlined,
-                    size: 20,
+                    size: 18,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -395,7 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
               );
             },
@@ -422,11 +432,12 @@ class _LoginScreenState extends State<LoginScreen> {
             style: TextStyle(fontSize: inputFontSize),
             decoration: InputDecoration(
               hintText: "Masukkan password",
-              prefixIcon: const Icon(Icons.lock_outline, size: 20),
+              hintStyle: TextStyle(fontSize: inputFontSize),
+              prefixIcon: const Icon(Icons.lock_outline, size: 18),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  size: 20,
+                  size: 18,
                 ),
                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
               ),
@@ -444,7 +455,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               filled: true,
               fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
           ),
           
@@ -457,8 +468,8 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 children: [
                   SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     child: Checkbox(
                       value: _rememberMe,
                       activeColor: const Color(0xFF1B4F9C),
@@ -466,7 +477,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       onChanged: (val) => setState(() => _rememberMe = val ?? false),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Text("Ingat saya", style: TextStyle(fontSize: fontSize - 1)),
                 ],
               ),
@@ -539,6 +550,10 @@ class _LoginScreenState extends State<LoginScreen> {
         final user = result['user'] as UserModel;
         
         final prefs = await SharedPreferences.getInstance();
+        
+        // 🧹 CLEAR VESSEL CACHE untuk fresh data dari server baru
+        await VesselCacheHelper.clearVesselCache();
+        
         await prefs.setString('user_data', jsonEncode({
           'id': user.id,
           'name': user.name,

@@ -59,17 +59,21 @@ class ProfileService {
           final path = fotoUrl.toString();
           if (path.startsWith('http')) {
             photoUrl = path;
-          } else {
-            // BE should return full path like /uploads/profile-photos/10/file.jpg
+          } else if (path.startsWith('/')) {
             photoUrl = 'http://210.79.191.17:5000$path';
+          } else {
+            // Path relatif tanpa slash, tambahkan /uploads/profile-photos/
+            photoUrl = 'http://210.79.191.17:5000/uploads/profile-photos/$path';
           }
         } else if (foto != null && foto.toString().isNotEmpty) {
           final path = foto.toString();
           if (path.startsWith('http')) {
             photoUrl = path;
-          } else {
-            // BE should return full path like /uploads/profile-photos/10/file.jpg
+          } else if (path.startsWith('/')) {
             photoUrl = 'http://210.79.191.17:5000$path';
+          } else {
+            // Path relatif tanpa slash, tambahkan /uploads/profile-photos/
+            photoUrl = 'http://210.79.191.17:5000/uploads/profile-photos/$path';
           }
         }
 
@@ -208,7 +212,9 @@ class ProfileService {
               } else if (fotoPath.startsWith('/')) {
                 newPhotoUrl = 'http://210.79.191.17:5000$fotoPath';
               } else {
-                newPhotoUrl = 'http://210.79.191.17:5000/$fotoPath';
+                // Path relatif tanpa slash, tambahkan /uploads/profile-photos/
+                newPhotoUrl =
+                    'http://210.79.191.17:5000/uploads/profile-photos/$fotoPath';
               }
               print('📸 Final photo URL: $newPhotoUrl');
             }

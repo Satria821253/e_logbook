@@ -6,7 +6,11 @@ import 'package:e_logbook/screens/crew/widgets/crew_floating_menu.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
+import 'package:e_logbook/utils/profile_photo_cache.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
+import 'package:e_logbook/widgets/sos_alert_dialog.dart';
+import 'package:e_logbook/routes/crew_routes.dart';
+import 'package:e_logbook/routes/nahkoda_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
@@ -19,6 +23,7 @@ import 'home_screen.dart';
 import 'statistics_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
+import 'splash_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -36,14 +41,25 @@ class _MainScreenState extends State<MainScreen> {
   ];
   
   String _currentAddress = "Mendeteksi lokasi...";
+  String? _cachedPhotoPath;
   
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
     AuthService.addAccountStatusInterceptor(context);
-    AuthService.addTokenInterceptor(context); // Add token interceptor
+    AuthService.addTokenInterceptor(context);
     _loadUserData();
+    _loadCachedPhoto();
+  }
+  
+  Future<void> _loadCachedPhoto() async {
+    final cachedPath = await ProfilePhotoCache.getCachedPhotoPath();
+    if (mounted && cachedPath != null) {
+      setState(() {
+        _cachedPhotoPath = cachedPath;
+      });
+    }
   }
   
   Future<void> _loadUserData() async {
@@ -133,7 +149,7 @@ class _MainScreenState extends State<MainScreen> {
         final user = userProvider.user;
         final isABK = user?.isABK == true;
         final selectedIndex = navProvider.selectedIndex;
-        final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+        final isTablet = ResponsiveHelper.isTablet(context);
 
         if (isTablet) {
           return _buildTabletLayout(userProvider, navProvider, selectedIndex, isABK);
@@ -286,15 +302,21 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildTabletLayout(UserProvider userProvider, NavigationProvider navProvider, int selectedIndex, bool isABK) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final sidebarWidth = screenWidth < 800 ? 180.0 : 200.0;
+    final headerHeight = screenWidth < 800 ? 80.0 : 90.0;
+    final bodyTopOffset = headerHeight - 4;
+    
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      resizeToAvoidBottomInset: false,
+      backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(
         children: [
           Row(
             children: [
               // Sidebar Navigation
               Container(
-                width: 240,
+                width: sidebarWidth,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
@@ -309,53 +331,55 @@ class _MainScreenState extends State<MainScreen> {
                   children: [
                     // Header with logo
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.only(
+                        top: ResponsiveHelper.height(context, mobile: 21, tablet: 25),
+                        bottom: ResponsiveHelper.height(context, mobile: 14, tablet: 18),
+                        left: 8,
+                        right: 8,
+                      ),
                       decoration: const BoxDecoration(
                         color: Colors.white,
                       ),
-                      child: 
-                          Column(
-                            children: [
-                              SizedBox(height: 16),
-                              // Logo oipb
-                              Image.asset(
-                                'assets/oipb.png',
-                                height: 120,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.school,
-                                    size: 50,
-                                    color: Color(0xFF1B4F9C),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 8),
-                              
-                              // E-LogBook Title
-                              const Text(
-                                'E-LogBook',
-                                style: TextStyle(
-                                  color: Color(0xFF1B4F9C),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              
-                              // Version
-                              const Text(
-                                'v1.0.0',
-                                style: TextStyle(
-                                  color: Color(0xFF1B4F9C),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            ],
+                      child: Column(
+                        children: [
+                          // Logo oipb
+                          Image.asset(
+                            'assets/oipb.png',
+                            height: ResponsiveHelper.height(context, mobile: 50, tablet: 70),
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.school,
+                                size: 40,
+                                color: Color(0xFF1B4F9C),
+                              );
+                            },
                           ),
-
+                          const SizedBox(height: 6),
+                          
+                          // E-LogBook Title
+                          Text(
+                            'E-LogBook',
+                            style: TextStyle(
+                              color: const Color(0xFF1B4F9C),
+                              fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          SizedBox(height: ResponsiveHelper.height(context, mobile: 3, tablet: 4)),
+                          
+                          // Version
+                          Text(
+                            'v1.0.0',
+                            style: TextStyle(
+                              color: const Color(0xFF1B4F9C),
+                              fontSize: ResponsiveHelper.font(context, mobile: 8, tablet: 9),
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     
                     // Navigation Items
@@ -368,51 +392,104 @@ class _MainScreenState extends State<MainScreen> {
                           _buildSidebarItem(Icons.person_rounded, 'Profil', 3, selectedIndex, navProvider),
                           
                           if (isABK) ...[
-                            _buildActionItem(Icons.storage, 'Data Raw', () {}),
-                            _buildActionItem(Icons.check_circle, 'Daftar Hadir', () {}),
+                            _buildActionItem(Icons.storage, 'Data Raw', () {
+                              CrewRoutes.navigateToDataRaw(context);
+                            }),
+                            _buildActionItem(Icons.check_circle, 'Daftar Hadir', () {
+                              CrewRoutes.navigateToMarkAttendance(context);
+                            }),
+                            _buildActionItem(Icons.support_agent, 'WhatsApp CS', () {
+                              CrewRoutes.navigateToCustomerService(context);
+                            }),
                           ] else ...[
-                            _buildActionItem(Icons.assignment_ind, 'Kehadiran Crew', () {}),
-                            _buildActionItem(Icons.analytics, 'Data Raw', () {}),
-                            _buildActionItem(Icons.info_outline, 'Info Trip', () {}),
+                            _buildActionItem(Icons.sailing, 'Info Trip', () {
+                              NahkodaRoutes.navigateToTripInfo(context);
+                            }),
+                            _buildActionItem(Icons.assignment_ind, 'Kehadiran Crew', () {
+                              NahkodaRoutes.navigateToCrewAttendance(context);
+                            }),
+                            _buildActionItem(Icons.support_agent, 'WhatsApp CS', () {
+                              NahkodaRoutes.navigateToCustomerService(context);
+                            }),
                           ],
-                          
-                          _buildActionItem(Icons.emergency, 'Emergency', () {}, isEmergency: true),
                           
                           const Spacer(),
                           
                           // Logout Button
-                          Container(
-                            margin: const EdgeInsets.only(left: 20, right: 20, bottom: 16),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(11),
-                                onTap: () {
-                                  // Handle logout
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, right: 24, bottom: 12),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: 200 - 12 - 24,
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                                clipBehavior: Clip.hardEdge,
+                                child: Ink(
                                   decoration: BoxDecoration(
                                     color: Colors.red,
-                                    borderRadius: BorderRadius.circular(11),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.logout,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 14),
-                                      const Text(
-                                        'Logout',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                  child: InkWell(
+                                    onTap: () async {
+                                      print('🖱️ Logout button clicked');
+                                      final shouldLogout = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Konfirmasi Logout'),
+                                          content: const Text('Apakah Anda yakin ingin keluar?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, false),
+                                              child: const Text('Batal'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, true),
+                                              child: const Text('Keluar'),
+                                            ),
+                                          ],
                                         ),
+                                      );
+
+                                      if (shouldLogout == true && context.mounted) {
+                                        navProvider.resetToHome();
+                                        await AuthService.logout();
+                                        if (context.mounted) {
+                                          Navigator.pushAndRemoveUntil(
+                                            context,
+                                            PageRouteBuilder(
+                                              pageBuilder: (context, animation, secondaryAnimation) => const SplashScreen(),
+                                              transitionDuration: Duration.zero,
+                                              reverseTransitionDuration: Duration.zero,
+                                            ),
+                                            (route) => false,
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.logout,
+                                            color: Colors.white,
+                                            size: 14,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            'Logout',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -434,7 +511,7 @@ class _MainScreenState extends State<MainScreen> {
                       top: 0,
                       left: 0,
                       right: 0,
-                      child: _buildTabletHeader(userProvider),
+                      child: _buildTabletHeader(userProvider, headerHeight),
                     ),
                   ],
                 ),
@@ -443,29 +520,35 @@ class _MainScreenState extends State<MainScreen> {
           ),
           // Body content overlaying navbar
           Positioned(
-            top: 80,
-            left: 240,
+            top: bodyTopOffset,
+            left: sidebarWidth - 15,
             right: 0,
             bottom: 0,
             child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
                 ),
               ),
               child: ClipRRect(
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
+                  topLeft: Radius.circular(24),
                 ),
                 child: _screens[selectedIndex],
               ),
             ),
           ),
+          // Emergency FAB (untuk semua role)
+          Positioned(
+            right: ResponsiveHelper.width(context, mobile: 20, tablet: 30),
+            bottom: ResponsiveHelper.height(context, mobile: 100, tablet: 120),
+            child: _buildEmergencyFAB(),
+          ),
           // FAB floating kanan bawah dengan animasi
           if (isABK) Positioned(
-            right: 30,
-            bottom: 50,
+            right: ResponsiveHelper.width(context, mobile: 20, tablet: 30),
+            bottom: ResponsiveHelper.height(context, mobile: 35, tablet: 50),
             child: _buildAnimatedFAB(
               onTap: () => NavigationHelper.pushNoTransition(context, const CreateCatchScreen()),
               icon: Icons.add,
@@ -473,8 +556,8 @@ class _MainScreenState extends State<MainScreen> {
           ),
           // FAB untuk Nahkoda
           if (!isABK) Positioned(
-            right: 30,
-            bottom: 50,
+            right: ResponsiveHelper.width(context, mobile: 20, tablet: 30),
+            bottom: ResponsiveHelper.height(context, mobile: 35, tablet: 50),
             child: _buildAnimatedFAB(
               onTap: () => _handleTripPreparation(context),
               isLottie: true,
@@ -485,40 +568,50 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
   
-  Widget _buildTabletHeader(UserProvider userProvider) {
+  Widget _buildTabletHeader(UserProvider userProvider, double headerHeight) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final searchBarWidth = screenWidth < 800 ? 240.0 : 280.0;
+    final avatarRadius = screenWidth < 800 ? 16.0 : 18.0;
+    
     return Container(
-      height: 100,
+      height: headerHeight,
       decoration: const BoxDecoration(
         color: Colors.white,
       ),
-      padding: const EdgeInsets.only(left: 32, right: 32, bottom: 20),
+      padding: const EdgeInsets.only(left: 0, right: 12, top: 14, bottom: 0),
       child: Row(
         children: [
-          // Search Bar - Simple with blue border rectangle
-          Expanded(
-            flex: 2,
+          // Search Bar - Simple, full rounded, compact, fixed width
+          SizedBox(
+            width: searchBarWidth,
             child: Container(
-              height: 45,
+              height: ResponsiveHelper.height(context, mobile: 32, tablet: 36),
               decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color: const Color(0xFF1B4F9C),
-                  width: 2,
+                  width: 1.5,
                 ),
-                borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.search, color: Color(0xFF1B4F9C), size: 22),
-                  const SizedBox(width: 12),
+                  Icon(Icons.search, color: const Color(0xFF1B4F9C), size: ResponsiveHelper.width(context, mobile: 16, tablet: 18)),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Cari tangkapan...',
-                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                        hintText: 'Cari...',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 12),
+                        ),
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: EdgeInsets.zero,
+                        isDense: true,
                       ),
+                      style: TextStyle(fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 12)),
                       onSubmitted: (value) {
                         // Handle search
                       },
@@ -528,24 +621,25 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 24),
-          // Geolocation Display - Simple
+          const SizedBox(width: 5),
+          
+          // Geolocation - Compact
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.location_on,
-                size: 18,
+                size: ResponsiveHelper.width(context, mobile: 12, tablet: 14),
                 color: Colors.redAccent,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 200),
+                constraints: BoxConstraints(maxWidth: screenWidth < 800 ? 80 : 100),
                 child: Text(
                   _currentAddress,
                   style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
+                    fontSize: ResponsiveHelper.font(context, mobile: 9, tablet: 10),
+                    color: Colors.grey[600],
                     fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -553,60 +647,65 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ],
           ),
+          
           const Spacer(),
-          // User Info Section
+          
+          // User Info - Compact
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 'Halo, Selamat Datang',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: ResponsiveHelper.font(context, mobile: 8, tablet: 9),
                   color: Colors.grey[600],
                 ),
               ),
               const SizedBox(height: 1),
               Text(
                 userProvider.user?.name ?? 'User',
-                style: const TextStyle(
-                  fontSize: 16,
+                style: TextStyle(
+                  fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 12),
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1B4F9C),
+                  color: const Color(0xFF1B4F9C),
                 ),
               ),
               const SizedBox(height: 2),
-              // Points below name
+              // Points - Compact
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveHelper.width(context, mobile: 5, tablet: 6),
+                  vertical: 2,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(2),
+                      padding: const EdgeInsets.all(1.5),
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.star,
-                        size: 10,
-                        color: Color(0xFF1B4F9C),
+                        size: ResponsiveHelper.width(context, mobile: 7, tablet: 8),
+                        color: const Color(0xFF1B4F9C),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Total Point: 28',
+                    const SizedBox(width: 4),
+                    Text(
+                      'Point: 28',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: ResponsiveHelper.font(context, mobile: 8, tablet: 9),
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
@@ -616,27 +715,49 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ],
           ),
-          const SizedBox(width: 16),
-          // Avatar
+          const SizedBox(width: 12),
+          
+          // Avatar - Compact
           Container(
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF1B4F9C), width: 2),
+              border: Border.all(color: const Color(0xFF1B4F9C), width: 1.5),
             ),
-            child: CircleAvatar(
-              radius: 24,
-              backgroundColor: Colors.white,
-              backgroundImage: userProvider.user?.profilePicture != null
-                  ? FileImage(File(userProvider.user!.profilePicture!))
-                  : null,
-              child: userProvider.user?.profilePicture == null
-                  ? const Icon(
-                      Icons.person,
-                      color: Color(0xFF1B4F9C),
-                      size: 28,
-                    )
-                  : null,
+            child: Consumer<UserProvider>(
+              builder: (context, userProvider, child) {
+                final user = userProvider.user;
+                final photoUrl = user?.profilePicture;
+                
+                print('🖼️ [Header Avatar] photoUrl: $photoUrl');
+                
+                final hasValidPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
+                ImageProvider? imageProvider;
+                if (_cachedPhotoPath != null) {
+                  imageProvider = FileImage(File(_cachedPhotoPath!));
+                } else if (hasValidPhoto) {
+                  if (photoUrl!.startsWith('file://') || photoUrl.startsWith('/')) {
+                    imageProvider = FileImage(File(photoUrl.replaceFirst('file://', '')));
+                  } else if (photoUrl.startsWith('http')) {
+                    imageProvider = NetworkImage(photoUrl);
+                  }
+                }
+
+                return CircleAvatar(
+                  key: ValueKey(_cachedPhotoPath ?? photoUrl ?? 'default'),
+                  radius: avatarRadius,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: imageProvider,
+                  child: !hasValidPhoto && _cachedPhotoPath == null
+                      ? Icon(
+                          Icons.person_rounded,
+                          color: const Color(0xFF1B4F9C),
+                          size: avatarRadius * 1.2,
+                        )
+                      : null,
+                );
+              },
             ),
           ),
         ],
@@ -646,16 +767,29 @@ class _MainScreenState extends State<MainScreen> {
   
   Widget _buildSidebarItem(IconData icon, String label, int index, int selectedIndex, NavigationProvider navProvider) {
     final isSelected = selectedIndex == index;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final rightMargin = screenWidth < 800 ? 20.0 : 24.0;
+    final iconSize = screenWidth < 800 ? 13.0 : 14.0;
+    final fontSize = screenWidth < 800 ? 10.0 : 11.0;
     
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(11),
-          onTap: () => navProvider.setIndex(index),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    print('🔧 Building sidebar item: $label, selected: $isSelected, right margin: $rightMargin');
+    
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 12,
+        right: rightMargin,
+        top: 3,
+        bottom: 3,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 200 - 12 - rightMargin,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          clipBehavior: Clip.hardEdge,
+          child: Ink(
             decoration: BoxDecoration(
               gradient: isSelected
                   ? const LinearGradient(
@@ -664,25 +798,36 @@ class _MainScreenState extends State<MainScreen> {
                       end: Alignment.bottomRight,
                     )
                   : null,
-              borderRadius: BorderRadius.circular(11),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  color: isSelected ? Colors.white : const Color(0xFF1B4F9C),
-                  size: 16,
+            child: InkWell(
+              onTap: () {
+                print('🖱️ Sidebar item clicked: $label');
+                navProvider.setIndex(index);
+              },
+              splashColor: const Color(0xFF1B4F9C).withOpacity(0.1),
+              highlightColor: const Color(0xFF1B4F9C).withOpacity(0.05),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                child: Row(
+                  children: [
+                    Icon(
+                      icon,
+                      color: isSelected ? Colors.white : const Color(0xFF1B4F9C),
+                      size: iconSize,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : const Color(0xFF1B4F9C),
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontSize: fontSize,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF1B4F9C),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -692,37 +837,59 @@ class _MainScreenState extends State<MainScreen> {
   
   
   Widget _buildActionItem(IconData icon, String label, VoidCallback onTap, {bool isEmergency = false}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(11),
-          splashColor: isEmergency ? Colors.red.withOpacity(0.2) : const Color(0xFF1B4F9C).withOpacity(0.1),
-          highlightColor: isEmergency ? Colors.red.withOpacity(0.1) : const Color(0xFF1B4F9C).withOpacity(0.05),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    final screenWidth = MediaQuery.of(context).size.width;
+    final rightMargin = screenWidth < 800 ? 20.0 : 24.0;
+    final iconSize = screenWidth < 800 ? 13.0 : 14.0;
+    final fontSize = screenWidth < 800 ? 10.0 : 11.0;
+    
+    print('🔧 Building action item: $label with right margin: $rightMargin');
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 12,
+        right: rightMargin,
+        top: 3,
+        bottom: 3,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 200 - 12 - rightMargin,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          clipBehavior: Clip.hardEdge,
+          child: Ink(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(11),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  color: isEmergency ? Colors.red : const Color(0xFF1B4F9C),
-                  size: 16,
+            child: InkWell(
+              onTap: () {
+                print('🖱️ Action item clicked: $label');
+                onTap();
+              },
+              splashColor: isEmergency ? Colors.red.withOpacity(0.2) : const Color(0xFF1B4F9C).withOpacity(0.1),
+              highlightColor: isEmergency ? Colors.red.withOpacity(0.1) : const Color(0xFF1B4F9C).withOpacity(0.05),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                child: Row(
+                  children: [
+                    Icon(
+                      icon,
+                      color: isEmergency ? Colors.red : const Color(0xFF1B4F9C),
+                      size: iconSize,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: isEmergency ? Colors.red : const Color(0xFF1B4F9C),
+                        fontSize: fontSize,
+                        fontWeight: isEmergency ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isEmergency ? Colors.red : const Color(0xFF1B4F9C),
-                    fontSize: 12,
-                    fontWeight: isEmergency ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -793,9 +960,13 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildIconFAB(IconData icon) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final fabSize = screenWidth < 800 ? 48.0 : 54.0;
+    final iconSize = screenWidth < 800 ? 22.0 : 26.0;
+    
     return Ink(
-      width: 70,
-      height: 70,
+      width: fabSize,
+      height: fabSize,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
@@ -807,12 +978,16 @@ class _MainScreenState extends State<MainScreen> {
       child: Icon(
         icon,
         color: Colors.white,
-        size: 28,
+        size: iconSize,
       ),
     );
   }
 
   Widget _buildLottieFAB() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final fabSize = screenWidth < 800 ? 50.0 : 56.0;
+    final borderWidth = screenWidth < 800 ? 2.5 : 3.0;
+    
     final now = DateTime.now();
     final isNight = now.hour >= 18 || now.hour < 6;
     final lottieAsset = isNight 
@@ -820,12 +995,12 @@ class _MainScreenState extends State<MainScreen> {
         : 'assets/animations/tripsiang.json';
 
     return Container(
-      width: 80,
-      height: 80,
+      width: fabSize,
+      height: fabSize,
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFF1565C0), width: 4),
+        border: Border.all(color: const Color(0xFF1565C0), width: borderWidth),
       ),
       child: ClipOval(
         child: Lottie.asset(
@@ -842,6 +1017,70 @@ class _MainScreenState extends State<MainScreen> {
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildEmergencyFAB() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final fabSize = screenWidth < 800 ? 48.0 : 54.0;
+    
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.elasticOut,
+      builder: (context, scaleValue, child) {
+        return Transform.scale(
+          scale: scaleValue,
+          child: GestureDetector(
+            onTap: () async {
+              final success = await showSosAlertDialog(context);
+              if (success == true && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text('🚨 Sinyal Darurat Terkirim!'),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: Colors.green,
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+            child: Container(
+              width: fabSize,
+              height: fabSize,
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.red, width: 2.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 0),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Lottie.asset(
+                  'assets/animations/alert.json',
+                  fit: BoxFit.contain,
+                  repeat: true,
+                  animate: true,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

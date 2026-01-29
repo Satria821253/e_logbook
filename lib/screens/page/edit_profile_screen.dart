@@ -1,4 +1,5 @@
 import 'package:e_logbook/services/api/profile_service.dart';
+import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,6 +31,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
+      print('📸 [EditProfile] Starting image picker...');
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: source,
@@ -38,19 +40,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         maxHeight: 1024,
       );
 
-      if (image == null) return;
+      if (image == null) {
+        print('⚠️ [EditProfile] No image selected');
+        return;
+      }
+
+      print('✅ [EditProfile] Image selected: ${image.path}');
 
       if (!mounted) return;
       setState(() => _isLoading = true);
 
       try {
+        print('📤 [EditProfile] Calling updateProfile API...');
         final result = await ProfileService.updateProfile(photoPath: image.path);
+        print('📥 [EditProfile] API Response: $result');
         
         if (result['success'] == true) {
-          print('✅ Upload success, photoUrl: ${result['photoUrl']}');
+          print('✅ [EditProfile] Upload success, photoUrl: ${result['photoUrl']}');
+          
+          // Wait for backend to commit changes
+          await Future.delayed(const Duration(milliseconds: 500));
           
           // Force reload profile to get updated photo
+          print('🔄 [EditProfile] Reloading profile...');
           await _loadProfile();
+          print('✅ [EditProfile] Profile reloaded');
+          
+          // Trigger realtime update
+          RealtimeUpdateService.notifyListeners('profile');
           
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -60,6 +77,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           );
         } else {
+          print('❌ [EditProfile] Upload failed: ${result['message']}');
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -69,6 +87,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           );
         }
       } catch (e) {
+        print('❌ [EditProfile] Exception during upload: $e');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -80,6 +99,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       setState(() => _isLoading = false);
     } catch (e) {
+      print('❌ [EditProfile] Exception in _pickImage: $e');
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -94,15 +114,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _loadProfile() async {
     try {
       print('🔄 Loading profile...');
-      final result = await ProfileService.getProfile();
-      print('📝 Profile result: ${result['success']}, user: ${result['user']?.profilePicture}');
       
-      if (result['success'] == true && result['user'] != null) {
-        if (mounted) {
-          Provider.of<UserProvider>(context, listen: false)
-              .setUser(result['user']);
-          print('✅ Profile updated in provider: ${result['user'].profilePicture}');
-        }
+      // Clear image cache
+      imageCache.clear();
+      imageCache.clearLiveImages();
+      
+      if (mounted) {
+        await Provider.of<UserProvider>(context, listen: false)
+            .syncProfileFromAPI();
+        print('✅ Profile synced from API');
       }
     } catch (e) {
       print('❌ Error loading profile: $e');
