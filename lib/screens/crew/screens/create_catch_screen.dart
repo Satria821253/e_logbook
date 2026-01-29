@@ -30,13 +30,9 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   // Controllers
   final _fishNameController = TextEditingController();
   final _weightController = TextEditingController();
-  final _priceController = TextEditingController();
   final _quantityController = TextEditingController();
 
   final _waterDepthController = TextEditingController();
-  final _fuelCostController = TextEditingController();
-  final _operationalCostController = TextEditingController();
-  final _taxController = TextEditingController();
   final _fishingGearController = TextEditingController();
   final _notesController = TextEditingController();
   final _harborController = TextEditingController();
@@ -71,12 +67,8 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   void dispose() {
     _fishNameController.dispose();
     _weightController.dispose();
-    _priceController.dispose();
     _quantityController.dispose();
     _waterDepthController.dispose();
-    _fuelCostController.dispose();
-    _operationalCostController.dispose();
-    _taxController.dispose();
     _fishingGearController.dispose();
     _notesController.dispose();
     _harborController.dispose();
@@ -95,15 +87,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
 
 
-  // ==================== TRIP CALCULATIONS ====================
-  void _calculateTax() {
-    final weight = double.tryParse(_weightController.text) ?? 0;
-    final tax = weight * 1000; // Contoh: Rp 1000 per kg
 
-    safeSetState(() {
-      _taxController.text = tax.toStringAsFixed(0);
-    });
-  }
 
   // ==================== AI DETECTION ====================
   Future<void> _detectFishFromImage(XFile imageFile) async {
@@ -162,9 +146,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
       _showDetectionResult = false;
     });
-
-    // Auto calculate tax
-    _calculateTax();
 
     _showSnackBar('✅ Data AI berhasil diterapkan!');
   }
@@ -238,12 +219,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       return false;
     }
 
-    if (_priceController.text.trim().isEmpty ||
-        (double.tryParse(_priceController.text) ?? 0) <= 0) {
-      _showSnackBar('⚠️ Harga per kg harus diisi dan lebih dari 0!');
-      return false;
-    }
-
     if (_catchImages.isEmpty) {
       _showSnackBar('⚠️ Minimal upload 1 foto tangkapan ikan!');
       return false;
@@ -299,49 +274,37 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     );
 
     try {
-      // Hitung nilai
+      // Data mentah tangkapan (perhitungan di backend)
       final weight = double.tryParse(_weightController.text) ?? 0;
-      final totalRevenue = 0; // Tidak ada harga per kg lagi
-      final fuelCost = double.tryParse(_fuelCostController.text) ?? 0;
-      final operationalCost =
-          double.tryParse(_operationalCostController.text) ?? 0;
-      final tax = double.tryParse(_taxController.text) ?? 0;
-      final totalCost = fuelCost + operationalCost + tax;
-      final netProfit = totalRevenue - totalCost;
 
-      // Buat data catch untuk submission dengan ID unik
+      // Buat data catch untuk submission (data mentah, perhitungan di backend)
       final catchId = DateTime.now().millisecondsSinceEpoch.toString();
       final catchData = {
-        'id': catchId, // ID unik untuk tracking
-        'fishName': _fishNameController.text,
-        'fishType': _selectedFishType,
+        'id': catchId,
+        'fish_name': _fishNameController.text,
+        'fish_type': _selectedFishType,
         'weight': weight,
         'quantity': int.tryParse(_quantityController.text) ?? 0,
         'condition': _selectedCondition,
-        'vesselName': user!.vesselName!,
-        'vesselNumber': user.vesselNumber!,
-        'captainName': user.captainName!,
-        'crewCount': user.crewCount!,
-        'pricePerKg': 0,
-        'totalRevenue': 0,
-        'departureDate': _departureDate.toIso8601String(),
-        'departureTime': _departureTime.format(context),
-        'arrivalDate': _arrivalDate.toIso8601String(),
-        'arrivalTime': _arrivalTime.format(context),
-        'tripDurationHours': _calculatedHours,
-        'tripDurationMinutes': _calculatedMinutes,
-        'fishingZone': 'N/A',
-        'locationName': 'N/A',
-        'latitude': 0.0,
-        'longitude': 0.0,
-        'waterDepth': double.tryParse(_waterDepthController.text) ?? 0,
-        'weatherCondition': _selectedWeatherCondition,
-        'fuelCost': fuelCost,
-        'operationalCost': operationalCost,
-        'tax': tax,
-        'totalCost': totalCost,
-        'netProfit': netProfit,
+        'crew_count': user!.crewCount ?? 0,
+        'departure_date': _departureDate.toIso8601String().split('T')[0],
+        'departure_time': _departureTime.format(context),
+        'arrival_date': _arrivalDate.toIso8601String().split('T')[0],
+        'arrival_time': _arrivalTime.format(context),
+        'trip_duration_hours': _calculatedHours,
+        'trip_duration_minutes': _calculatedMinutes,
+        'fishing_zone': _harborController.text.isEmpty ? 'WPP-NRI' : _harborController.text,
+        'location_name': _fishingGearController.text.isEmpty ? 'Laut Jawa' : _fishingGearController.text,
+        'latitude': 0.0, // TODO: Implement GPS
+        'longitude': 0.0, // TODO: Implement GPS
+        'water_depth': double.tryParse(_waterDepthController.text) ?? 0,
+        'weather_condition': _selectedWeatherCondition,
         'notes': _notesController.text.isEmpty ? null : _notesController.text,
+        'kapalId': 1, // DUMMY: Backend vessel error, nanti auto-fill dari user
+        // Extra fields for local storage
+        'vesselName': user.vesselName ?? 'Unknown',
+        'vesselNumber': user.vesselNumber ?? 'Unknown',
+        'captainName': user.captainName ?? 'Unknown',
         'createdAt': DateTime.now().toIso8601String(),
       };
 
@@ -379,25 +342,25 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           vesselNumber: user.vesselNumber!,
           captainName: user.captainName!,
           crewCount: user.crewCount!,
-          pricePerKg: 0,
-          totalRevenue: 0,
+          pricePerKg: 0, // Dihitung di backend
+          totalRevenue: 0, // Dihitung di backend
           departureDate: _departureDate,
           departureTime: _departureTime.format(context),
           arrivalDate: _arrivalDate,
           arrivalTime: _arrivalTime.format(context),
           tripDurationHours: _calculatedHours,
           tripDurationMinutes: _calculatedMinutes,
-          fishingZone: 'N/A',
-          locationName: 'N/A',
+          fishingZone: _harborController.text.isEmpty ? 'WPP-NRI' : _harborController.text,
+          locationName: _fishingGearController.text.isEmpty ? 'Laut Jawa' : _fishingGearController.text,
           latitude: 0.0,
           longitude: 0.0,
           waterDepth: double.tryParse(_waterDepthController.text) ?? 0,
           weatherCondition: _selectedWeatherCondition,
-          fuelCost: fuelCost,
-          operationalCost: operationalCost,
-          tax: tax,
-          totalCost: totalCost,
-          netProfit: netProfit,
+          fuelCost: 0, // Dihitung di backend
+          operationalCost: 0, // Dihitung di backend
+          tax: 0, // Dihitung di backend
+          totalCost: 0, // Dihitung di backend
+          netProfit: 0, // Dihitung di backend
           notes: _notesController.text.isEmpty ? null : _notesController.text,
           syncStatus: result.isOffline ? 'pending' : 'synced',
           lastSyncAttempt: DateTime.now(),
@@ -483,14 +446,14 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
               SizedBox(height: sp(24)),
 
-              // WAKTU KEBERANGKATAN & KEDATANGAN (Removed as per request)
-              // SectionTitle(
-              //   title: 'Waktu Keberangkatan & Kedatangan',
-              //   icon: Icons.schedule,
-              // ),
-              // SizedBox(height: sp(12)),
+              // WAKTU KEBERANGKATAN & KEDATANGAN
+              SectionTitle(
+                title: 'Waktu Perjalanan',
+                icon: Icons.schedule,
+              ),
+              SizedBox(height: sp(12)),
+              _buildTripTimeSection(sp, fs),
 
-              // _buildDepartureArrivalSection(sp, fs),
               SizedBox(height: sp(24)),
 
               // INFORMASI HASIL TANGKAPAN (AI DETECTION)
@@ -620,8 +583,15 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
               SizedBox(height: sp(24)),
 
-              // _buildCostSection(sp, fs),
-              SizedBox(height: sp(32)),
+              // LOKASI & CUACA
+              SectionTitle(
+                title: 'Lokasi & Kondisi',
+                icon: Icons.location_on,
+              ),
+              SizedBox(height: sp(12)),
+              _buildLocationWeatherSection(sp, fs),
+
+              SizedBox(height: sp(24)),
 
               // TOMBOL KIRIM
               SizedBox(
@@ -984,7 +954,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               child: TextFormField(
                 controller: _weightController,
                 keyboardType: TextInputType.number,
-                onChanged: (_) => _calculateTax(),
                 decoration: InputDecoration(
                   labelText: 'Berat Total (kg)',
                   hintText: '0.0',
@@ -1105,5 +1074,277 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       default:
         return Colors.grey;
     }
+  }
+
+  Widget _buildTripTimeSection(
+    double Function(double) sp,
+    double Function(double) fs,
+  ) {
+    return Container(
+      padding: EdgeInsets.all(sp(16)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(sp(12)),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _departureDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                    );
+                    if (date != null) {
+                      setState(() => _departureDate = date);
+                      _calculateDuration();
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Tanggal Berangkat',
+                      prefixIcon: Icon(Icons.calendar_today, color: Color(0xFF1B4F9C)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(sp(12)),
+                      ),
+                    ),
+                    child: Text(
+                      '${_departureDate.day}/${_departureDate.month}/${_departureDate.year}',
+                      style: TextStyle(fontSize: fs(14)),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: sp(8)),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: _departureTime,
+                    );
+                    if (time != null) {
+                      setState(() => _departureTime = time);
+                      _calculateDuration();
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Jam Berangkat',
+                      prefixIcon: Icon(Icons.access_time, color: Color(0xFF1B4F9C)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(sp(12)),
+                      ),
+                    ),
+                    child: Text(
+                      _departureTime.format(context),
+                      style: TextStyle(fontSize: fs(14)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: sp(12)),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _arrivalDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                    );
+                    if (date != null) {
+                      setState(() => _arrivalDate = date);
+                      _calculateDuration();
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Tanggal Kembali',
+                      prefixIcon: Icon(Icons.calendar_today, color: Color(0xFF1B4F9C)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(sp(12)),
+                      ),
+                    ),
+                    child: Text(
+                      '${_arrivalDate.day}/${_arrivalDate.month}/${_arrivalDate.year}',
+                      style: TextStyle(fontSize: fs(14)),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: sp(8)),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: _arrivalTime,
+                    );
+                    if (time != null) {
+                      setState(() => _arrivalTime = time);
+                      _calculateDuration();
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Jam Kembali',
+                      prefixIcon: Icon(Icons.access_time, color: Color(0xFF1B4F9C)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(sp(12)),
+                      ),
+                    ),
+                    child: Text(
+                      _arrivalTime.format(context),
+                      style: TextStyle(fontSize: fs(14)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_calculatedHours > 0 || _calculatedMinutes > 0) ...[
+            SizedBox(height: sp(12)),
+            Container(
+              padding: EdgeInsets.all(sp(12)),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(sp(8)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.timer, color: Colors.blue[700], size: fs(18)),
+                  SizedBox(width: sp(8)),
+                  Text(
+                    'Durasi: $_calculatedHours jam $_calculatedMinutes menit',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[700],
+                      fontSize: fs(14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _calculateDuration() {
+    final departure = DateTime(
+      _departureDate.year,
+      _departureDate.month,
+      _departureDate.day,
+      _departureTime.hour,
+      _departureTime.minute,
+    );
+    final arrival = DateTime(
+      _arrivalDate.year,
+      _arrivalDate.month,
+      _arrivalDate.day,
+      _arrivalTime.hour,
+      _arrivalTime.minute,
+    );
+    final duration = arrival.difference(departure);
+    setState(() {
+      _calculatedHours = duration.inHours;
+      _calculatedMinutes = duration.inMinutes.remainder(60);
+    });
+  }
+
+  Widget _buildLocationWeatherSection(
+    double Function(double) sp,
+    double Function(double) fs,
+  ) {
+    return Container(
+      padding: EdgeInsets.all(sp(16)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(sp(12)),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        children: [
+          TextFormField(
+            controller: _harborController,
+            decoration: InputDecoration(
+              labelText: 'Zona Penangkapan',
+              hintText: 'Contoh: WPP 711',
+              prefixIcon: Icon(Icons.waves, color: Color(0xFF1B4F9C)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(sp(12)),
+              ),
+            ),
+          ),
+          SizedBox(height: sp(12)),
+          TextFormField(
+            controller: _fishingGearController,
+            decoration: InputDecoration(
+              labelText: 'Nama Lokasi',
+              hintText: 'Contoh: Laut Jawa',
+              prefixIcon: Icon(Icons.location_on, color: Color(0xFF1B4F9C)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(sp(12)),
+              ),
+            ),
+          ),
+          SizedBox(height: sp(12)),
+          TextFormField(
+            controller: _waterDepthController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Kedalaman Air (meter)',
+              hintText: '0.0',
+              prefixIcon: Icon(Icons.water, color: Color(0xFF1B4F9C)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(sp(12)),
+              ),
+            ),
+          ),
+          SizedBox(height: sp(12)),
+          DropdownButtonFormField<String>(
+            value: _selectedWeatherCondition,
+            decoration: InputDecoration(
+              labelText: 'Kondisi Cuaca',
+              prefixIcon: Icon(Icons.wb_sunny, color: Color(0xFF1B4F9C)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(sp(12)),
+              ),
+            ),
+            items: ['Cerah', 'Berawan', 'Hujan', 'Badai']
+                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                .toList(),
+            onChanged: (value) {
+              if (value != null) setState(() => _selectedWeatherCondition = value);
+            },
+          ),
+          SizedBox(height: sp(12)),
+          TextFormField(
+            controller: _notesController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: 'Catatan (Opsional)',
+              hintText: 'Tambahkan catatan...',
+              prefixIcon: Icon(Icons.note, color: Color(0xFF1B4F9C)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(sp(12)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

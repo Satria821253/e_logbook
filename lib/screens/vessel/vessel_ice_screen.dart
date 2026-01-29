@@ -222,6 +222,9 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
   }
 
   void _showNoIceDataDialog() {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final isNahkoda = userProvider.user?.isNahkoda == true;
+    
     late AnimationController shakeController;
     shakeController = AnimationController(
       vsync: this,
@@ -295,13 +298,17 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
                     ),
                     SizedBox(height: 12),
                     Text(
-                      'Crew belum melakukan pembelian es.',
+                      isNahkoda 
+                        ? 'Crew belum melakukan pembelian es.'
+                        : 'Anda belum melakukan pembelian es.',
                       style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Silakan tunggu crew untuk input data es terlebih dahulu.',
+                      isNahkoda
+                        ? 'Silakan tunggu crew untuk input data es terlebih dahulu.'
+                        : 'Silakan upload data es terlebih dahulu melalui menu Manajemen Es.',
                       style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       textAlign: TextAlign.center,
                     ),
@@ -311,13 +318,20 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
                         shakeController.dispose();
                         Navigator.pop(context);
                         Navigator.pop(context);
+                        if (!isNahkoda) {
+                          // Crew: redirect ke manajemen es
+                          Navigator.pushNamed(context, '/ice-management');
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: Text('OK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        isNahkoda ? 'OK' : 'Upload Data Es',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
@@ -369,7 +383,7 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
+              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -421,72 +435,52 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(Icons.directions_boat_rounded, color: Colors.white, size: 28),
+          Container(
+            padding: EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
               ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      kapal['namaKapal'] ?? '-',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      kapal['nomorRegistrasi'] ?? '-',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(Icons.directions_boat_rounded, color: Colors.white, size: 28),
           ),
-          if (!isNahkoda && nahkodaName != null) ...[
-            SizedBox(height: 12),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Color(0xFF10B981).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Color(0xFF10B981).withOpacity(0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.person, size: 16, color: Color(0xFF10B981)),
-                  SizedBox(width: 6),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  kapal['namaKapal'] ?? '-',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  kapal['nomorRegistrasi'] ?? '-',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                if (!isNahkoda && nahkodaName != null) ...[
+                  SizedBox(height: 4),
                   Text(
                     'Nahkoda: $nahkodaName',
                     style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF10B981),
-                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: Colors.grey[500],
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -497,180 +491,132 @@ class _VesselIceScreenState extends State<VesselIceScreen> with TickerProviderSt
     final tanggalPembelian = doc['tanggalPembelian'] != null ? DateTime.parse(doc['tanggalPembelian']) : null;
 
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 15,
-            offset: Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.cyan.withOpacity(0.1), Colors.cyan.withOpacity(0.05)],
-              ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.ac_unit_rounded, color: Colors.white, size: 24),
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.cyan[50],
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        doc['jenisEs'] ?? 'Es',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        tanggalPembelian != null ? dateFormat.format(tanggalPembelian) : '-',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Row(
+                child: Icon(Icons.ac_unit_rounded, color: Colors.cyan[700], size: 22),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _buildStatBox(
-                        icon: Icons.scale_rounded,
-                        label: 'Jumlah',
-                        value: '${doc['jumlahKg'] ?? 0} Kg',
-                        color: Colors.blue,
+                    Text(
+                      doc['jenisEs'] ?? 'Es',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
                     ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatBox(
-                        icon: Icons.payments_rounded,
-                        label: 'Total',
-                        value: _formatCurrency(doc['totalHarga'] ?? 0),
-                        color: Colors.green,
+                    SizedBox(height: 2),
+                    Text(
+                      tanggalPembelian != null ? dateFormat.format(tanggalPembelian) : '-',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
                       ),
                     ),
                   ],
                 ),
-                if (doc['lokasiPembelian'] != null && doc['lokasiPembelian'].toString().isNotEmpty) ...[ 
-                  SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on_rounded, size: 18, color: Colors.grey[600]),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          doc['lokasiPembelian'],
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[700],
-                          ),
-                        ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Divider(height: 1),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.scale_rounded, size: 16, color: Colors.grey[600]),
+                    SizedBox(width: 6),
+                    Text(
+                      '${doc['jumlahKg'] ?? 0} Kg',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
-                    ],
-                  ),
-                ],
-                if (doc['buktiFileUrl'] != null) ...[ 
-                  SizedBox(height: 12),
-                  Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.green[200]!),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.receipt, color: Colors.green[700], size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Bukti tersedia',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.green[700],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.payments_rounded, size: 16, color: Colors.grey[600]),
+                    SizedBox(width: 6),
+                    Text(
+                      _formatCurrency(doc['totalHarga'] ?? 0),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (doc['lokasiPembelian'] != null && doc['lokasiPembelian'].toString().isNotEmpty) ...[
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.location_on_rounded, size: 16, color: Colors.grey[600]),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    doc['lokasiPembelian'],
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[700],
                     ),
                   ),
-                ],
+                ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatBox({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 22),
-          SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[600],
+          ],
+          if (doc['buktiFileUrl'] != null) ...[
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.receipt, size: 16, color: Colors.green[600]),
+                SizedBox(width: 6),
+                Text(
+                  'Bukti tersedia',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.green[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          ],
         ],
       ),
     );

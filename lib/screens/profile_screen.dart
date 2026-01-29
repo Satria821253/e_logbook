@@ -10,11 +10,11 @@ import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,12 +23,14 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadProfile();
-    
+
     // Register listener untuk auto-update profile
     RealtimeUpdateService.addListener('profile', () {
       if (mounted) {
@@ -36,7 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _loadProfile();
       }
     });
-    
+
     RealtimeUpdateService.addListener('documents', () {
       if (mounted) {
         print('🔔 Documents changed, refreshing profile...');
@@ -44,37 +46,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     });
   }
-  
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     RealtimeUpdateService.removeListener('profile');
     RealtimeUpdateService.removeListener('documents');
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      print('🔄 App resumed, refreshing profile...');
+      _loadProfile();
+    }
+  }
+
   Future<void> _loadProfile() async {
     try {
+      print('🔄 Loading profile from API...');
+
+      // Clear local data first
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('user_data');
+      print('🗑️ Local user data cleared');
+
       final result = await ProfileService.getProfile();
+      print('📥 Profile result: $result');
+
       if (result['success'] == true && result['user'] != null) {
         if (mounted) {
-          Provider.of<UserProvider>(context, listen: false).setUser(result['user']);
+          final userProvider = Provider.of<UserProvider>(
+            context,
+            listen: false,
+          );
+          // Clear image cache before syncing
+          imageCache.clear();
+          imageCache.clearLiveImages();
+          print('🧽 Cache cleared');
+
+          // Sync from API to get fresh photo
+          await userProvider.syncProfileFromAPI();
+          print('✅ Profile synced from API');
+
+          // Force rebuild
+          if (mounted) setState(() {});
         }
       }
     } catch (e) {
-      // Clear corrupted cache if error occurs
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('user_data');
-      await prefs.remove('user_profile');
-      
-      // Try to reload profile again
-      try {
-        final result = await ProfileService.getProfile();
-        if (result['success'] == true && result['user'] != null && mounted) {
-          Provider.of<UserProvider>(context, listen: false).setUser(result['user']);
-        }
-      } catch (e) {
-        // Silent fail
-      }
+      print('❌ Error loading profile: $e');
     }
   }
 
@@ -113,12 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(),
-                ),
-              );
+              NavigationHelper.pushNoTransition(context, const SettingsScreen());
             },
           ),
         ],
@@ -192,14 +208,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileHeader() {
     final isTablet = ResponsiveHelper.isTablet(context);
-    
+
     return Container(
       width: double.infinity,
-      padding: ResponsiveHelper.padding(
-        context,
-        mobile: 24,
-        tablet: 0,
-      ),
+      padding: ResponsiveHelper.padding(context, mobile: 24, tablet: 0),
       color: isTablet ? Colors.transparent : Colors.transparent,
       child: Column(
         children: [
@@ -209,28 +221,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Container(
                   padding: EdgeInsets.all(
-                    ResponsiveHelper.width(
-                      context,
-                      mobile: 4,
-                      tablet: 6,
-                    ),
+                    ResponsiveHelper.width(context, mobile: 4, tablet: 6),
                   ),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: Colors.black87,
-                      width: ResponsiveHelper.width(context, mobile: 2, tablet: 3),
+                      width: ResponsiveHelper.width(
+                        context,
+                        mobile: 2,
+                        tablet: 3,
+                      ),
                     ),
                   ),
                   child: Consumer<UserProvider>(
                     builder: (context, userProvider, child) {
                       final user = userProvider.user;
                       final photoUrl = user?.profilePicture;
-                      final hasValidPhoto = photoUrl != null && 
-                                            photoUrl.isNotEmpty && 
-                                            (photoUrl.startsWith('http') || photoUrl.startsWith('file://'));
+                      print('🔍 [UI] Building CircleAvatar with photo: $photoUrl');
                       
+                      final hasValidPhoto =
+                          photoUrl != null &&
+                          photoUrl.isNotEmpty &&
+                          (photoUrl.startsWith('http') ||
+                              photoUrl.startsWith('file://'));
+
                       return CircleAvatar(
+                        key: ValueKey(photoUrl ?? 'default'),
                         radius: ResponsiveHelper.width(
                           context,
                           mobile: 50,
@@ -239,25 +256,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         backgroundColor: Colors.white,
                         child: hasValidPhoto
                             ? ClipOval(
-                                child: Image(
-                                  image: photoUrl.startsWith('file://')
-                                      ? FileImage(File(photoUrl.replaceFirst('file://', '')))
-                                      : NetworkImage(photoUrl) as ImageProvider,
-                                  fit: BoxFit.cover,
-                                  width: ResponsiveHelper.width(context, mobile: 100, tablet: 120),
-                                  height: ResponsiveHelper.width(context, mobile: 100, tablet: 120),
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Icon(
-                                      Icons.person_rounded,
-                                      size: ResponsiveHelper.width(
-                                        context,
-                                        mobile: 60,
-                                        tablet: 72,
+                                child: photoUrl!.startsWith('file://')
+                                    ? Image.file(
+                                        File(
+                                          photoUrl.replaceFirst('file://', ''),
+                                        ),
+                                        key: ValueKey(photoUrl),
+                                        fit: BoxFit.cover,
+                                        width: ResponsiveHelper.width(
+                                          context,
+                                          mobile: 100,
+                                          tablet: 120,
+                                        ),
+                                        height: ResponsiveHelper.width(
+                                          context,
+                                          mobile: 100,
+                                          tablet: 120,
+                                        ),
+                                      )
+                                    : Image.network(
+                                        photoUrl,
+                                        key: ValueKey(photoUrl),
+                                        fit: BoxFit.cover,
+                                        headers: {'Cache-Control': 'no-cache'},
+                                        width: ResponsiveHelper.width(
+                                          context,
+                                          mobile: 100,
+                                          tablet: 120,
+                                        ),
+                                        height: ResponsiveHelper.width(
+                                          context,
+                                          mobile: 100,
+                                          tablet: 120,
+                                        ),
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null)
+                                            return child;
+                                          return Center(
+                                            child: CircularProgressIndicator(
+                                              value:
+                                                  loadingProgress
+                                                          .expectedTotalBytes !=
+                                                      null
+                                                  ? loadingProgress
+                                                            .cumulativeBytesLoaded /
+                                                        loadingProgress
+                                                            .expectedTotalBytes!
+                                                  : null,
+                                            ),
+                                          );
+                                        },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          print('❌ [UI] Image error: $error');
+                                          return Icon(
+                                            Icons.person_rounded,
+                                            size: ResponsiveHelper.width(
+                                              context,
+                                              mobile: 60,
+                                              tablet: 72,
+                                            ),
+                                            color: Colors.black87,
+                                          );
+                                        },
                                       ),
-                                      color: Colors.black87,
-                                    );
-                                  },
-                                ),
                               )
                             : Icon(
                                 Icons.person_rounded,
@@ -276,11 +338,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           SizedBox(
-            height: ResponsiveHelper.height(
-              context,
-              mobile: 16,
-              tablet: 20,
-            ),
+            height: ResponsiveHelper.height(context, mobile: 16, tablet: 20),
           ),
           Consumer<UserProvider>(
             builder: (context, userProvider, child) {
@@ -301,23 +359,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 8),
                   GestureDetector(
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      await NavigationHelper.pushNoTransition(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditProfileScreen(),
-                        ),
-                      ).then((_) => _loadProfile());
+                        const EditProfileScreen(),
+                      );
                     },
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
-                        vertical: ResponsiveHelper.height(context, mobile: 6, tablet: 8),
+                        horizontal: ResponsiveHelper.width(
+                          context,
+                          mobile: 12,
+                          tablet: 16,
+                        ),
+                        vertical: ResponsiveHelper.height(
+                          context,
+                          mobile: 6,
+                          tablet: 8,
+                        ),
                       ),
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
                         borderRadius: BorderRadius.circular(
-                          ResponsiveHelper.width(context, mobile: 16, tablet: 20),
+                          ResponsiveHelper.width(
+                            context,
+                            mobile: 16,
+                            tablet: 20,
+                          ),
                         ),
                       ),
                       child: Row(
@@ -325,15 +393,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Icon(
                             Icons.edit,
-                            size: ResponsiveHelper.width(context, mobile: 14, tablet: 16),
+                            size: ResponsiveHelper.width(
+                              context,
+                              mobile: 14,
+                              tablet: 16,
+                            ),
                             color: Colors.black,
                           ),
-                          SizedBox(width: ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
+                          SizedBox(
+                            width: ResponsiveHelper.width(
+                              context,
+                              mobile: 6,
+                              tablet: 8,
+                            ),
+                          ),
                           Text(
                             'Edit Profil',
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 15),
+                              fontSize: ResponsiveHelper.font(
+                                context,
+                                mobile: 13,
+                                tablet: 15,
+                              ),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -389,44 +471,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatsCard() {
     final isTablet = ResponsiveHelper.isTablet(context);
-    
+
     return Padding(
-      padding: isTablet 
+      padding: isTablet
           ? EdgeInsets.zero
-          : ResponsiveHelper.paddingHorizontal(
-              context,
-              mobile: 16,
-              tablet: 32,
-            ),
+          : ResponsiveHelper.paddingHorizontal(context, mobile: 16, tablet: 32),
       child: Container(
-        padding: ResponsiveHelper.padding(
-          context,
-          mobile: 20,
-          tablet: 28,
-        ),
+        padding: ResponsiveHelper.padding(context, mobile: 20, tablet: 28),
         decoration: BoxDecoration(
           color: isTablet ? Colors.grey[50] : Colors.white,
           borderRadius: BorderRadius.circular(
             ResponsiveHelper.width(context, mobile: 16, tablet: 20),
           ),
-          boxShadow: isTablet ? [] : [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: ResponsiveHelper.width(
-                context,
-                mobile: 10,
-                tablet: 14,
-              ),
-              offset: Offset(
-                0,
-                ResponsiveHelper.height(
-                  context,
-                  mobile: 2,
-                  tablet: 3,
-                ),
-              ),
-            ),
-          ],
+          boxShadow: isTablet
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: ResponsiveHelper.width(
+                      context,
+                      mobile: 10,
+                      tablet: 14,
+                    ),
+                    offset: Offset(
+                      0,
+                      ResponsiveHelper.height(context, mobile: 2, tablet: 3),
+                    ),
+                  ),
+                ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -434,21 +506,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildStatItem('Total Trip', '145', Icons.directions_boat_rounded),
             Container(
               width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
-              height: ResponsiveHelper.height(
-                context,
-                mobile: 50,
-                tablet: 60,
-              ),
+              height: ResponsiveHelper.height(context, mobile: 50, tablet: 60),
               color: Colors.grey[300],
             ),
             _buildStatItem('Total Tangkapan', '1.2 Ton', Icons.scale_rounded),
             Container(
               width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
-              height: ResponsiveHelper.height(
-                context,
-                mobile: 50,
-                tablet: 60,
-              ),
+              height: ResponsiveHelper.height(context, mobile: 50, tablet: 60),
               color: Colors.grey[300],
             ),
             _buildStatItem('Pengalaman', '8 Tahun', Icons.star_rounded),
@@ -458,53 +522,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
         Icon(
           icon,
           color: const Color(0xFF1B4F9C),
-          size: ResponsiveHelper.width(
-            context,
-            mobile: 28,
-            tablet: 32,
-          ),
+          size: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
         ),
         SizedBox(
-          height: ResponsiveHelper.height(
-            context,
-            mobile: 8,
-            tablet: 12,
-          ),
+          height: ResponsiveHelper.height(context, mobile: 8, tablet: 12),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: ResponsiveHelper.font(
-              context,
-              mobile: 18,
-              tablet: 20,
-            ),
+            fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
             fontWeight: FontWeight.bold,
             color: Color(0xFF1B4F9C),
           ),
         ),
         SizedBox(
-          height: ResponsiveHelper.height(
-            context,
-            mobile: 4,
-            tablet: 6,
-          ),
+          height: ResponsiveHelper.height(context, mobile: 4, tablet: 6),
         ),
         Text(
           label,
           style: TextStyle(
-            fontSize: ResponsiveHelper.font(
-              context,
-              mobile: 11,
-              tablet: 13,
-            ),
+            fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 13),
             color: Colors.grey[600],
           ),
           textAlign: TextAlign.center,
@@ -516,7 +559,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildMenuSection() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -524,10 +567,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           const Text(
             'Menu',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           isTablet ? _buildTabletMenuGrid() : _buildMobileMenuList(),
@@ -543,14 +583,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           icon: Icons.directions_boat_rounded,
           title: 'Informasi Kapal',
           subtitle: 'Kelola persediaan dan sertifikat',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => VesselInfoScreen(),
-              ),
-            );
-          },
+          onTap: () => NavigationHelper.pushNoTransition(context, VesselInfoScreen()),
         ),
         Consumer<UserProvider>(
           builder: (context, userProvider, child) {
@@ -560,14 +593,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: Icons.people_outline_rounded,
                 title: 'Kehadiran Crew',
                 subtitle: 'Lihat kehadiran crew kapal',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CrewAttendanceScreen(),
-                    ),
-                  );
-                },
+                onTap: () => NavigationHelper.pushNoTransition(context, CrewAttendanceScreen()),
               );
             }
             return const SizedBox.shrink();
@@ -578,22 +604,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: 'Laporan',
           subtitle: 'Lihat laporan statistik lengkap',
           onTap: () {
-            Provider.of<NavigationProvider>(
-              context,
-              listen: false,
-            ).setIndex(1);
+            Provider.of<NavigationProvider>(context, listen: false).setIndex(1);
           },
         ),
         _buildMenuItem(
           icon: Icons.help_outline_rounded,
           title: 'Bantuan',
           subtitle: 'Pusat bantuan dan FAQ',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const HelpScreen()),
-            );
-          },
+          onTap: () => NavigationHelper.pushNoTransition(context, const HelpScreen()),
         ),
         _buildMenuItem(
           icon: Icons.info_outline_rounded,
@@ -624,14 +642,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.directions_boat_rounded,
             title: 'Informasi Kapal',
             subtitle: 'Kelola persediaan dan sertifikat',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => VesselInfoScreen(),
-                ),
-              );
-            },
+            onTap: () => NavigationHelper.pushNoTransition(context, VesselInfoScreen()),
           ),
         );
 
@@ -641,14 +652,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.people_outline_rounded,
               title: 'Kehadiran Crew',
               subtitle: 'Lihat kehadiran crew kapal',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CrewAttendanceScreen(),
-                  ),
-                );
-              },
+              onTap: () => NavigationHelper.pushNoTransition(context, CrewAttendanceScreen()),
             ),
           );
         }
@@ -658,14 +662,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.settings,
             title: 'Pengaturan',
             subtitle: 'Kelola pengaturan aplikasi',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(),
-                ),
-              );
-            },
+            onTap: () => NavigationHelper.pushNoTransition(context, const SettingsScreen()),
           ),
           _buildMenuItem(
             icon: Icons.assessment_outlined,
@@ -682,12 +679,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.help_outline_rounded,
             title: 'Bantuan',
             subtitle: 'Pusat bantuan dan FAQ',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const HelpScreen()),
-              );
-            },
+            onTap: () => NavigationHelper.pushNoTransition(context, const HelpScreen()),
           ),
           _buildMenuItem(
             icon: Icons.info_outline_rounded,
@@ -743,13 +735,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (shouldLogout == true) {
       // Reset navigation ke home screen
       Provider.of<NavigationProvider>(context, listen: false).resetToHome();
-      
+
       await AuthService.logout();
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(
-            builder: (context) => const SplashScreen(),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const SplashScreen(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
           ),
           (route) => false,
         );

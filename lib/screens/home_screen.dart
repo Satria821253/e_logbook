@@ -1,12 +1,12 @@
 import 'package:e_logbook/widgets/catch_corousel.dart';
 import 'package:e_logbook/widgets/custom_silver_appbar.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
-import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
 import 'package:e_logbook/screens/documents/document_popup_helper.dart';
 import 'package:e_logbook/screens/documents/pending_popup_helper.dart';
 import 'package:e_logbook/services/api/document_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -1250,12 +1250,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DocumentUploadStepper(),
-                  ),
-                );
+                final userProvider = Provider.of<UserProvider>(context, listen: false);
+                final userRole = userProvider.user?.role ?? 'Crew';
+                final route = (userRole.toLowerCase() == 'nahkoda' || userRole.toLowerCase() == 'captain')
+                    ? '/nahkoda-document-upload'
+                    : '/crew-document-upload';
+                await NavigationHelper.pushNamedNoTransition(context, route);
                 // Refresh status setelah kembali
                 if (mounted) await _checkDocumentCompletion();
               },
@@ -1346,7 +1346,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                await Navigator.pushNamed(context, '/document-status');
+                final userProvider = Provider.of<UserProvider>(context, listen: false);
+                final userRole = userProvider.user?.role ?? 'Crew';
+                final route = (userRole.toLowerCase() == 'nahkoda' || userRole.toLowerCase() == 'captain')
+                    ? '/nahkoda-document-status'
+                    : '/crew-document-status';
+                await NavigationHelper.pushNamedNoTransition(context, route);
                 // Refresh status setelah kembali
                 if (mounted) await _checkDocumentCompletion();
               },
@@ -1472,7 +1477,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () async {
-              await Navigator.pushNamed(context, '/document-status');
+              final userProvider = Provider.of<UserProvider>(context, listen: false);
+              final userRole = userProvider.user?.role ?? 'Crew';
+              final route = (userRole.toLowerCase() == 'nahkoda' || userRole.toLowerCase() == 'captain')
+                  ? '/nahkoda-document-status'
+                  : '/crew-document-status';
+              await NavigationHelper.pushNamedNoTransition(context, route);
               // Refresh status setelah kembali
               if (mounted) await _checkDocumentCompletion();
             },
@@ -1618,6 +1628,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     );
   }
 }
+
+
 
 
 

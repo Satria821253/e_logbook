@@ -386,12 +386,7 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).pop();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const DocumentUploadStepper(),
-            ),
-          );
+          Navigator.pushNamed(context, '/crew-document-upload');
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,

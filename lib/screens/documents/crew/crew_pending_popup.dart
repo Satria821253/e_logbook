@@ -557,7 +557,7 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).pop();
-          Navigator.pushNamed(context, '/document-status');
+          Navigator.pushNamed(context, '/crew-document-status');
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,

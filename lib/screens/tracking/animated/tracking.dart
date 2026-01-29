@@ -518,11 +518,9 @@ class _TrackingAnimationButtonState extends State<TrackingAnimationButton> {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(context);
-                        Navigator.push(
+                        NavigationHelper.pushNoTransition(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => const PreTripFormScreen(),
-                          ),
+                          const PreTripFormScreen(),
                         );
                       },
                       style: ElevatedButton.styleFrom(

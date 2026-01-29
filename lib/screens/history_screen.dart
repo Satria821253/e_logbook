@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:e_logbook/provider/catch_provider.dart';
-import 'package:e_logbook/screens/crew/screens/catch_detail_screen.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/catch_model.dart';
@@ -406,11 +406,10 @@ class HistoryScreen extends StatelessWidget {
     return Builder(
       builder: (context) {
         return InkWell(
-          onTap: () => Navigator.push(
+          onTap: () => NavigationHelper.pushNamedNoTransition(
             context,
-            MaterialPageRoute(
-              builder: (_) => CatchDetailScreen(catchData: data),
-            ),
+            '/catch-detail',
+            arguments: {'catchData': data},
           ),
           child: Container(
             margin: EdgeInsets.only(bottom: sp(12)),
@@ -601,3 +600,5 @@ class HistoryScreen extends StatelessWidget {
     return amount.toStringAsFixed(0);
   }
 }
+
+

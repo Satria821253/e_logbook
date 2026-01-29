@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:intl/intl.dart';
-import 'edit_fuel_screen.dart';
-import 'fuel_management_screen.dart';
 import '../../services/api/document_service.dart';
 import '../../services/api/vessel_service.dart';
 import '../../services/realtime/realtime_update_service.dart';
@@ -190,9 +189,9 @@ class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderSt
                         Navigator.pop(context);
                         Navigator.pop(context);
                         if (hasDocuments) {
-                          Navigator.pushNamed(context, '/document-status');
+                          NavigationHelper.pushNamedNoTransition(context, '/document-status');
                         } else {
-                          Navigator.pushNamed(
+                          NavigationHelper.pushNamedNoTransition(
                             context,
                             '/nahkoda-document-upload',
                             arguments: {'fromVesselDocs': true},
@@ -306,11 +305,9 @@ class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderSt
                         shakeController.dispose();
                         Navigator.pop(context);
                         Navigator.pop(context);
-                        Navigator.push(
+                        NavigationHelper.pushNamedNoTransition(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => FuelManagementScreen(),
-                          ),
+                          '/fuel-management',
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -509,11 +506,10 @@ class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderSt
                   child: IconButton(
                     icon: Icon(Icons.edit_rounded, color: Colors.blue[700], size: 22),
                     onPressed: () async {
-                      await Navigator.push(
+                      await NavigationHelper.pushNamedNoTransition(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => EditFuelScreen(fuelData: doc),
-                        ),
+                        '/edit-fuel',
+                        arguments: doc,
                       );
                       // Auto-refresh sudah ditangani oleh RealtimeUpdateService
                     },
@@ -714,3 +710,5 @@ class _VesselBBMScreenState extends State<VesselBBMScreen> with TickerProviderSt
     return _currencyFormat.format(number);
   }
 }
+
+

@@ -5,6 +5,7 @@ import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/widgets/custom_text_field.dart';
 import 'package:e_logbook/widgets/date_time_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
@@ -167,24 +168,22 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
     }
 
     // Navigate dengan data lengkap
-    Navigator.pushReplacement(
+    NavigationHelper.pushReplacementNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => PreTrackingScreen(
-          vesselName: _vesselNameController.text,
-          vesselNumber: _vesselNumberController.text,
-          captainName: _captainNameController.text,
-          crewCount: crewCount,
-          selectedHarbor: _departureHarbor!,
-          departureTime: DateTime.now(),
-          // Data tambahan
-          estimatedDuration: _estimatedDuration,
-          emergencyContact: _emergencyContactController.text,
-          fuelAmount: double.tryParse(_fuelController.text) ?? 0,
-          iceStorage: double.tryParse(_iceStorageController.text) ?? 0,
-          notes: _notesController.text.isEmpty ? null : _notesController.text,
-          harborCoordinates: null,
-        ),
+      PreTrackingScreen(
+        vesselName: _vesselNameController.text,
+        vesselNumber: _vesselNumberController.text,
+        captainName: _captainNameController.text,
+        crewCount: crewCount,
+        selectedHarbor: _departureHarbor!,
+        departureTime: DateTime.now(),
+        // Data tambahan
+        estimatedDuration: _estimatedDuration,
+        emergencyContact: _emergencyContactController.text,
+        fuelAmount: double.tryParse(_fuelController.text) ?? 0,
+        iceStorage: double.tryParse(_iceStorageController.text) ?? 0,
+        notes: _notesController.text.isEmpty ? null : _notesController.text,
+        harborCoordinates: null,
       ),
     );
   }
@@ -198,20 +197,18 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
       return;
     }
 
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => CrewEditScreen(
-          currentCrewCount: currentCount,
-          adminCrewCount: widget.tripData?['crewCount'] ?? 8,
-          existingCrewDetails: _crewDetails,
-          onCrewUpdated: (newCount, crewDetails) {
-            setState(() {
-              _crewCountController.text = newCount.toString();
-              _crewDetails = crewDetails;
-            });
-          },
-        ),
+      CrewEditScreen(
+        currentCrewCount: currentCount,
+        adminCrewCount: widget.tripData?['crewCount'] ?? 8,
+        existingCrewDetails: _crewDetails,
+        onCrewUpdated: (newCount, crewDetails) {
+          setState(() {
+            _crewCountController.text = newCount.toString();
+            _crewDetails = crewDetails;
+          });
+        },
       ),
     );
   }
@@ -1109,3 +1106,4 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
 
 
 }
+

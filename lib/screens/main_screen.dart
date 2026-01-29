@@ -5,6 +5,7 @@ import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_tracking_button.dart';
 import 'package:e_logbook/screens/crew/widgets/crew_floating_menu.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -276,12 +277,7 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
       child: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreateCatchScreen()),
-          );
-        },
+        onPressed: () => NavigationHelper.pushNoTransition(context, const CreateCatchScreen()),
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Icon(Icons.add, size: ResponsiveHelper.width(context, mobile: 36, tablet: 42), color: Colors.white),
@@ -471,12 +467,7 @@ class _MainScreenState extends State<MainScreen> {
             right: 30,
             bottom: 50,
             child: _buildAnimatedFAB(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CreateCatchScreen()),
-                );
-              },
+              onTap: () => NavigationHelper.pushNoTransition(context, const CreateCatchScreen()),
               icon: Icons.add,
             ),
           ),

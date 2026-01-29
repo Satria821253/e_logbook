@@ -29,7 +29,7 @@ class _Step5SertifikatNahkodaState extends State<Step5SertifikatNahkoda> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now().add(const Duration(days: 365)),
-      firstDate: DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 180)),
       lastDate: DateTime.now().add(const Duration(days: 3650)),
       builder: (context, child) {
         return Theme(
@@ -56,10 +56,17 @@ class _Step5SertifikatNahkodaState extends State<Step5SertifikatNahkoda> {
       _showError('Nomor sertifikat harus diisi');
       return;
     }
+    if (_nomorController.text.trim().length < 3) {
+      _showError('Nomor sertifikat minimal 3 karakter');
+      return;
+    }
     if (_tanggalBerlaku == null) {
       _showError('Tanggal berlaku harus dipilih');
       return;
     }
+
+    final confirmed = await _showConfirmationDialog();
+    if (!confirmed) return;
 
     setState(() => _isUploading = true);
 
@@ -67,9 +74,9 @@ class _Step5SertifikatNahkodaState extends State<Step5SertifikatNahkoda> {
       final result = await DocumentService.uploadDocument(
         jenisDokumen: 'Sertifikat Nahkoda',
         filePath: _selectedFile!.path,
-        nomorDokumen: _nomorController.text,
+        nomorDokumen: _nomorController.text.trim(),
         tanggalBerlaku: DateFormat('yyyy-MM-dd').format(_tanggalBerlaku!),
-        keterangan: _keteranganController.text.isNotEmpty ? _keteranganController.text : null,
+        keterangan: _keteranganController.text.trim().isNotEmpty ? _keteranganController.text.trim() : null,
       );
 
       if (mounted) {
@@ -92,6 +99,69 @@ class _Step5SertifikatNahkodaState extends State<Step5SertifikatNahkoda> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  Future<bool> _showConfirmationDialog() async {
+    final fileName = _selectedFile!.path.split(RegExp(r'[\\/]')).last;
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Color(0xFF2563EB)),
+            SizedBox(width: 12),
+            Text('Konfirmasi Upload', style: TextStyle(fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pastikan data sudah benar:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _buildInfoRow('File', fileName),
+            _buildInfoRow('Nomor', _nomorController.text.trim()),
+            _buildInfoRow('Tanggal Berlaku', DateFormat('dd MMMM yyyy').format(_tanggalBerlaku!)),
+            if (_keteranganController.text.trim().isNotEmpty)
+              _buildInfoRow('Keterangan', _keteranganController.text.trim()),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Upload'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+          ),
+          const Text(': ', style: TextStyle(fontSize: 13)),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          ),
+        ],
+      ),
     );
   }
 

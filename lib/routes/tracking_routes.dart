@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import '../screens/tracking/pre_tracking.dart';
 import '../screens/tracking/aktif_tracking.dart';
 import '../screens/tracking/pre_trip_fromscreen.dart';
@@ -6,11 +7,9 @@ import '../screens/tracking/pre_trip_fromscreen.dart';
 class TrackingRoutes {
   // Pre-trip and tracking screens
   static void navigateToPreTripForm(BuildContext context, {Map<String, dynamic>? tripData}) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => PreTripFormScreen(tripData: tripData),
-      ),
+      PreTripFormScreen(tripData: tripData),
     );
   }
 
@@ -27,22 +26,20 @@ class TrackingRoutes {
     required double iceStorage,
     required Map<String, dynamic> harborCoordinates,
   }) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => PreTrackingScreen(
-          vesselName: vesselName,
-          vesselNumber: vesselNumber,
-          captainName: captainName,
-          crewCount: crewCount,
-          selectedHarbor: selectedHarbor,
-          departureTime: departureTime,
-          estimatedDuration: estimatedDuration,
-          emergencyContact: emergencyContact,
-          fuelAmount: fuelAmount,
-          iceStorage: iceStorage,
-          harborCoordinates: harborCoordinates,
-        ),
+      PreTrackingScreen(
+        vesselName: vesselName,
+        vesselNumber: vesselNumber,
+        captainName: captainName,
+        crewCount: crewCount,
+        selectedHarbor: selectedHarbor,
+        departureTime: departureTime,
+        estimatedDuration: estimatedDuration,
+        emergencyContact: emergencyContact,
+        fuelAmount: fuelAmount,
+        iceStorage: iceStorage,
+        harborCoordinates: harborCoordinates,
       ),
     );
   }
@@ -62,24 +59,22 @@ class TrackingRoutes {
     Map<String, dynamic>? harborCoordinates,
     required double zoneRadius,
   }) {
-    Navigator.pushReplacement(
+    NavigationHelper.pushReplacementNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => ActiveTrackingScreen(
-          vesselName: vesselName,
-          vesselNumber: vesselNumber,
-          captainName: captainName,
-          crewCount: crewCount,
-          selectedHarbor: selectedHarbor,
-          departureTime: departureTime,
-          estimatedDuration: estimatedDuration,
-          emergencyContact: emergencyContact,
-          fuelAmount: fuelAmount,
-          iceStorage: iceStorage,
-          notes: notes,
-          harborCoordinates: harborCoordinates,
-          zoneRadius: zoneRadius,
-        ),
+      ActiveTrackingScreen(
+        vesselName: vesselName,
+        vesselNumber: vesselNumber,
+        captainName: captainName,
+        crewCount: crewCount,
+        selectedHarbor: selectedHarbor,
+        departureTime: departureTime,
+        estimatedDuration: estimatedDuration,
+        emergencyContact: emergencyContact,
+        fuelAmount: fuelAmount,
+        iceStorage: iceStorage,
+        notes: notes,
+        harborCoordinates: harborCoordinates,
+        zoneRadius: zoneRadius,
       ),
     );
   }

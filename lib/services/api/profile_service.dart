@@ -26,13 +26,17 @@ class ProfileService {
         return {'success': false, 'message': 'Token tidak ditemukan'};
       }
 
+      print('🔍 Fetching profile from API...');
       final response = await _dio.get(
         '/mobile/profile',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
+      print('📡 Profile API Response: ${response.data}');
+
       if (response.statusCode == 200 && response.data['success'] == true) {
         final data = response.data['data'];
+        print('📄 Profile data keys: ${data.keys.toList()}');
 
         String mappedRole = 'Nahkoda';
         if (data['role'] != null) {
@@ -48,23 +52,28 @@ class ProfileService {
         final fotoUrl = data['fotoUrl'];
         final foto = data['foto'];
 
+        print('📸 fotoUrl from API: $fotoUrl');
+        print('📸 foto from API: $foto');
+
         if (fotoUrl != null && fotoUrl.toString().isNotEmpty) {
           final path = fotoUrl.toString();
           if (path.startsWith('http')) {
             photoUrl = path;
-          } else if (path.startsWith('/')) {
-            photoUrl = 'http://210.79.191.17:5000$path';
           } else {
-            photoUrl = 'http://210.79.191.17:5000/$path';
+            // BE should return full path like /uploads/profile-photos/10/file.jpg
+            photoUrl = 'http://210.79.191.17:5000$path';
           }
         } else if (foto != null && foto.toString().isNotEmpty) {
           final path = foto.toString();
-          if (path.startsWith('/')) {
-            photoUrl = '$baseUrl$path';
+          if (path.startsWith('http')) {
+            photoUrl = path;
           } else {
-            photoUrl = '$baseUrl/$path';
+            // BE should return full path like /uploads/profile-photos/10/file.jpg
+            photoUrl = 'http://210.79.191.17:5000$path';
           }
         }
+
+        print('📸 Final photoUrl: $photoUrl');
 
         final user = UserModel(
           id: data['id'] is int
@@ -79,6 +88,8 @@ class ProfileService {
           profilePicture: photoUrl,
         );
 
+        print('✅ User created with photo: ${user.profilePicture}');
+
         return {
           'success': true,
           'user': user,
@@ -91,6 +102,7 @@ class ProfileService {
         'message': response.data['message'] ?? 'Gagal mengambil profil',
       };
     } on DioException catch (e) {
+      print('❌ DioException in getProfile: ${e.message}');
       if (e.response?.statusCode == 401) {
         final message = e.response?.data['message'] ?? '';
         return {
@@ -101,6 +113,7 @@ class ProfileService {
       }
       return {'success': false, 'message': 'Gagal mengambil profil'};
     } catch (e) {
+      print('❌ Error in getProfile: $e');
       return {
         'success': false,
         'message': 'Terjadi kesalahan: ${e.toString()}',
@@ -184,10 +197,10 @@ class ProfileService {
             );
           }
 
-          // Try fotoUrl first (full path from API)
-          if (response.data['data']['fotoUrl'] != null) {
-            final fotoPath = response.data['data']['fotoUrl'].toString();
-            print('📸 Foto URL from API: $fotoPath');
+          // Try foto field from response (API returns 'foto' not 'fotoUrl')
+          if (response.data['data']['foto'] != null) {
+            final fotoPath = response.data['data']['foto'].toString();
+            print('📸 Foto path from API: $fotoPath');
 
             if (fotoPath.isNotEmpty) {
               if (fotoPath.startsWith('http')) {

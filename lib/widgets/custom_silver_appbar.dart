@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:e_logbook/screens/notification_screen.dart';
 import 'package:e_logbook/provider/user_provider.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -879,11 +880,9 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                           ),
                           child: IconButton(
                             onPressed: () {
-                              Navigator.push(
+                              NavigationHelper.pushNoTransition(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => NotificationScreen(),
-                                ),
+                                NotificationScreen(),
                               );
                             },
                             icon: const Icon(

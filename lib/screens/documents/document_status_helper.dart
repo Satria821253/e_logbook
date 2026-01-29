@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'nahkoda/nahkoda_document_status_screen.dart';
 import 'crew/crew_document_status_screen.dart';
 
@@ -27,10 +28,7 @@ class DocumentStatusHelper {
       screen = const CrewDocumentStatusScreen();
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => screen),
-    );
+    NavigationHelper.pushNoTransition(context, screen);
   }
 
   /// Get screen widget based on user role (for direct use)

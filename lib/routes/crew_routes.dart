@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import '../screens/crew/screens/abk_attendance_mark_screen.dart';
 import '../screens/data_raw_screen.dart';
 import '../screens/crew/screens/fish_photo_tips_screen.dart';
@@ -7,29 +8,23 @@ import 'common_routes.dart';
 
 class CrewRoutes {
   static void navigateToMarkAttendance(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => ABKAttendanceMarkScreen(),
-      ),
+      ABKAttendanceMarkScreen(),
     );
   }
 
   static void navigateToDataRaw(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => const DataRawScreen(),
-      ),
+      const DataRawScreen(),
     );
   }
 
   static void navigateToFishPhotoTips(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => const FishPhotoTipsScreen(),
-      ),
+      const FishPhotoTipsScreen(),
     );
   }
 

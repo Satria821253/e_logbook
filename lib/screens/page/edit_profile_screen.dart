@@ -1,4 +1,5 @@
 import 'package:e_logbook/services/api/profile_service.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -46,6 +47,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         final result = await ProfileService.updateProfile(photoPath: image.path);
         
         if (result['success'] == true) {
+          print('✅ Upload success, photoUrl: ${result['photoUrl']}');
+          
+          // Force reload profile to get updated photo
           await _loadProfile();
           
           if (!mounted) return;
@@ -89,15 +93,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _loadProfile() async {
     try {
+      print('🔄 Loading profile...');
       final result = await ProfileService.getProfile();
+      print('📝 Profile result: ${result['success']}, user: ${result['user']?.profilePicture}');
+      
       if (result['success'] == true && result['user'] != null) {
         if (mounted) {
           Provider.of<UserProvider>(context, listen: false)
               .setUser(result['user']);
+          print('✅ Profile updated in provider: ${result['user'].profilePicture}');
         }
       }
     } catch (e) {
-      // Silent fail
+      print('❌ Error loading profile: $e');
     }
   }
 
@@ -317,9 +325,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   builder: (context, userProvider, child) {
                     final user = userProvider.user;
                     final photoUrl = user?.profilePicture;
+                    
+                    print('🖼️ UI Render - photoUrl: $photoUrl');
+                    
                     final hasValidPhoto = photoUrl != null && 
                                           photoUrl.isNotEmpty && 
                                           (photoUrl.startsWith('http') || photoUrl.startsWith('file://'));
+                    
+                    print('🖼️ hasValidPhoto: $hasValidPhoto');
 
                     return GestureDetector(
                       onTap: _isLoading ? null : _showImageSourcePicker,
@@ -380,13 +393,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           _buildProfileItem(
                             title: 'Nama',
                             value: user?.name ?? 'Nama Pengguna',
-                            onTap: () {
-                              Navigator.push(
+                            onTap: () async {
+                              await NavigationHelper.pushNoTransition(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => const EditNameScreen(),
-                                ),
-                              ).then((_) => _loadProfile());
+                                const EditNameScreen(),
+                              );
+                              _loadProfile();
                             },
                           ),
                           _buildProfileItem(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/local/user_activity_service.dart';
@@ -116,10 +117,11 @@ class AccountInactiveDialog {
     await prefs.remove('user_data');
     
     if (context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-        (route) => false,
+      NavigationHelper.pushAndRemoveUntil(
+        context,
+        const WelcomeScreen(),
       );
     }
   }
 }
+

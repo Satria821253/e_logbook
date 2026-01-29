@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import '../../provider/user_provider.dart';
 import '../../services/api/vessel_service.dart';
 import '../../services/realtime/realtime_update_service.dart';
@@ -647,25 +648,20 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
           title: 'Dokumen Kapal',
           subtitle: 'Sertifikat & dokumen kapal',
           gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => VesselDocumentsScreen()),
-          ),
-        ),
-        SizedBox(height: 12),
-        
-        // Upload Sertifikat - Untuk semua
-        _buildMenuCard(
-          icon: Icons.upload_file_rounded,
-          title: 'Upload Sertifikat',
-          subtitle: 'Upload sertifikat jalan kapal',
-          gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-          onTap: () => Navigator.pushNamed(context, '/certificate-upload'),
+          onTap: () => NavigationHelper.pushNoTransition(context, VesselDocumentsScreen()),
         ),
         SizedBox(height: 12),
         
         // Menu untuk Nahkoda
         if (isNahkoda) ...[
+          _buildMenuCard(
+            icon: Icons.upload_file_rounded,
+            title: 'Upload Sertifikat',
+            subtitle: 'Upload sertifikat jalan kapal',
+            gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+            onTap: () => NavigationHelper.pushNamedNoTransition(context, '/certificate-upload'),
+          ),
+          SizedBox(height: 12),
           _buildMenuCard(
             icon: Icons.local_gas_station_rounded,
             title: 'Manajemen BBM',
@@ -676,10 +672,7 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
               if (!canAdd && mounted) {
                 _showFuelAlreadyFilledDialog();
               } else if (mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => FuelManagementScreen()),
-                );
+                NavigationHelper.pushNoTransition(context, FuelManagementScreen());
               }
             },
           ),
@@ -689,10 +682,7 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
             title: 'Ringkasan BBM',
             subtitle: 'Statistik konsumsi bahan bakar',
             gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => FuelSummaryScreen()),
-            ),
+            onTap: () => NavigationHelper.pushNoTransition(context, FuelSummaryScreen()),
           ),
         ],
         
@@ -708,10 +698,7 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
               if (!canAdd && mounted) {
                 _showIceAlreadyFilledDialog();
               } else if (mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => IceManagementScreen()),
-                );
+                NavigationHelper.pushNoTransition(context, IceManagementScreen());
               }
             },
           ),

@@ -61,28 +61,26 @@ class _PreTrackingScreenState extends State<PreTrackingScreen> {
     try {
       // Pindah ke ActiveTrackingScreen
       if (mounted) {
-        final result = await Navigator.pushReplacement(
+        final result = await NavigationHelper.pushReplacementNoTransition(
           context,
-          MaterialPageRoute(
-            builder: (context) => ActiveTrackingScreen(
-              vesselName: widget.vesselName,
-              vesselNumber: widget.vesselNumber,
-              captainName: widget.captainName,
-              crewCount: widget.crewCount,
-              selectedHarbor: widget.selectedHarbor,
-              departureTime: widget.departureTime,
-              estimatedDuration: widget.estimatedDuration,
-              emergencyContact: widget.emergencyContact,
-              fuelAmount: widget.fuelAmount,
-              iceStorage: widget.iceStorage,
-              notes: widget.notes,
-              harborCoordinates: {
-                'lat': widget.harborCoordinates?['latitude'] ?? -6.1944,
-                'lng': widget.harborCoordinates?['longitude'] ?? 106.8229,
-                'name': widget.harborCoordinates?['name'] ?? widget.selectedHarbor,
-              },
-              zoneRadius: DEFAULT_ZONE_RADIUS,
-            ),
+          ActiveTrackingScreen(
+            vesselName: widget.vesselName,
+            vesselNumber: widget.vesselNumber,
+            captainName: widget.captainName,
+            crewCount: widget.crewCount,
+            selectedHarbor: widget.selectedHarbor,
+            departureTime: widget.departureTime,
+            estimatedDuration: widget.estimatedDuration,
+            emergencyContact: widget.emergencyContact,
+            fuelAmount: widget.fuelAmount,
+            iceStorage: widget.iceStorage,
+            notes: widget.notes,
+            harborCoordinates: {
+              'lat': widget.harborCoordinates?['latitude'] ?? -6.1944,
+              'lng': widget.harborCoordinates?['longitude'] ?? 106.8229,
+              'name': widget.harborCoordinates?['name'] ?? widget.selectedHarbor,
+            },
+            zoneRadius: DEFAULT_ZONE_RADIUS,
           ),
         );
 

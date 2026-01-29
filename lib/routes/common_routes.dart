@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import '../screens/history_screen.dart';
 import '../screens/statistics_screen.dart';
 import '../screens/profile_screen.dart';
@@ -10,45 +11,45 @@ import '../screens/zone_violation_detail_screen.dart';
 class CommonRoutes {
   // Main navigation screens
   static void navigateToHome(BuildContext context) {
-    Navigator.pushReplacement(
+    NavigationHelper.pushReplacementNoTransition(
       context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
+      const HomeScreen(),
     );
   }
 
   static void navigateToHistory(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(builder: (context) => const HistoryScreen()),
+      const HistoryScreen(),
     );
   }
 
   static void navigateToStatistics(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+      const StatisticsScreen(),
     );
   }
 
   static void navigateToProfile(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      const ProfileScreen(),
     );
   }
 
   static void navigateToNotifications(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(builder: (context) => NotificationScreen()),
+      NotificationScreen(),
     );
   }
 
   // Utility screens
   static void navigateToMapPicker(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(builder: (context) =>  MapPickerScreen()),
+      MapPickerScreen(),
     );
   }
 
@@ -56,13 +57,11 @@ class CommonRoutes {
     required Map<String, dynamic> zoneInfo,
     required VoidCallback onDismiss,
   }) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => ZoneViolationDetailScreen(
-          zoneInfo: zoneInfo,
-          onDismiss: onDismiss,
-        ),
+      ZoneViolationDetailScreen(
+        zoneInfo: zoneInfo,
+        onDismiss: onDismiss,
       ),
     );
   }

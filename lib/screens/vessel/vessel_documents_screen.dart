@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../../provider/user_provider.dart';
 import '../../services/api/vessel_service.dart';
 import '../../services/realtime/realtime_update_service.dart';
-import 'vessel_certificates_screen.dart';
-import 'vessel_bbm_screen.dart';
-import 'vessel_ice_screen.dart';
+
 
 class VesselDocumentsScreen extends StatefulWidget {
   const VesselDocumentsScreen({Key? key}) : super(key: key);
@@ -169,11 +168,10 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
                                 subtitle: 'Riwayat pengisian bahan bakar',
                                 gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
                                 onTap: () {
-                                  Navigator.push(
+                                  NavigationHelper.pushNamedNoTransition(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (_) => VesselBBMScreen(documentsData: _documentsData),
-                                    ),
+                                    '/vessel-bbm',
+                                    arguments: _documentsData,
                                   );
                                 },
                               ),
@@ -184,13 +182,26 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
                                 subtitle: 'Riwayat pembelian es',
                                 gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
                                 onTap: () {
-                                  Navigator.push(
+                                  NavigationHelper.pushNamedNoTransition(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (_) => VesselIceScreen(),
-                                    ),
+                                    '/vessel-ice',
                                   );
                                 },
+                              ),
+                              SizedBox(height: 12),
+                              _buildMenuCard(
+                                icon: Icons.description_rounded,
+                                title: 'Sertifikat Kapal',
+                                subtitle: 'Dokumen sertifikat kapal',
+                                gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                                onTap: () => NavigationHelper.pushNamedNoTransition(
+                                  context,
+                                  '/vessel-certificates',
+                                  arguments: {
+                                    'documentsData': _documentsData,
+                                    'vesselData': _vesselData,
+                                  },
+                                ),
                               ),
                             ] else ...[
                               _buildMenuCard(
@@ -199,33 +210,28 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
                                 subtitle: 'Riwayat pembelian es',
                                 gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
                                 onTap: () {
-                                  Navigator.push(
+                                  NavigationHelper.pushNamedNoTransition(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (_) => VesselIceScreen(),
-                                    ),
+                                    '/vessel-ice',
                                   );
                                 },
                               ),
-                            ],
-                            SizedBox(height: 12),
-                            _buildMenuCard(
-                              icon: Icons.description_rounded,
-                              title: 'Sertifikat Jalan',
-                              subtitle: 'Dokumen sertifikat kapal',
-                              gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                              onTap: () async {
-                                final result = await Navigator.push(
+                              SizedBox(height: 12),
+                              _buildMenuCard(
+                                icon: Icons.description_rounded,
+                                title: 'Sertifikat Kapal',
+                                subtitle: 'Lihat dokumen sertifikat kapal',
+                                gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                                onTap: () => NavigationHelper.pushNamedNoTransition(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) => VesselCertificatesScreen(documentsData: _documentsData),
-                                  ),
-                                );
-                                if (result == true && mounted) {
-                                  _loadDocuments();
-                                }
-                              },
-                            ),
+                                  '/vessel-certificates',
+                                  arguments: {
+                                    'documentsData': _documentsData,
+                                    'vesselData': _vesselData,
+                                  },
+                                ),
+                              ),
+                            ],
                             SizedBox(height: 24),
                           ],
                         ),
@@ -397,3 +403,5 @@ class _VesselDocumentsScreenState extends State<VesselDocumentsScreen> {
   }
 
 }
+
+

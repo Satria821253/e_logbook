@@ -447,11 +447,9 @@ class _Step1KTPState extends State<Step1KTP> {
                 _processOCR(file);
               },
               onCameraTap: () async {
-                final file = await Navigator.push<File>(
+                final file = await NavigationHelper.push<File>(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const KTPScannerScreen(),
-                  ),
+                  const KTPScannerScreen(),
                 );
                 if (file != null) {
                   setState(() {

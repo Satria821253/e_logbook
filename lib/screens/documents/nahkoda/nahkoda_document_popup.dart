@@ -456,12 +456,7 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).pop();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const DocumentUploadStepper(),
-            ),
-          );
+          Navigator.pushNamed(context, '/nahkoda-document-upload');
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,

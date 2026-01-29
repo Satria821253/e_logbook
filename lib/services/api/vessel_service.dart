@@ -1250,4 +1250,98 @@ class VesselService {
       return true; // Default: bisa input jika error
     }
   }
+
+  // NEW: Upload vessel document (Sertifikat Jalan, Surat Izin Berlayar, dll)
+  Future<Map<String, dynamic>> uploadVesselDocument({
+    required String jenisDokumen,
+    required String filePath,
+    String? nomorSertifikat,
+    String? tanggalBerlaku,
+  }) async {
+    try {
+      print('\n========== UPLOAD VESSEL DOCUMENT START ==========');
+      print('📄 Jenis Dokumen: $jenisDokumen');
+      print('📄 Nomor: $nomorSertifikat');
+      print('📄 Tanggal Berlaku: $tanggalBerlaku');
+      print('📄 File: $filePath');
+      
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        throw Exception('Token tidak ditemukan');
+      }
+
+      final vesselData = await getVesselData();
+      if (vesselData == null) {
+        throw Exception('Tidak ada kapal yang di-assign.');
+      }
+
+      final kapalId = vesselData['kapal']['id'];
+      print('🚢 Kapal ID: $kapalId');
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/documents'),
+      );
+
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['jenisDokumen'] = jenisDokumen;
+      
+      if (nomorSertifikat != null && nomorSertifikat.isNotEmpty) {
+        request.fields['nomorSertifikat'] = nomorSertifikat;
+      }
+      
+      if (tanggalBerlaku != null && tanggalBerlaku.isNotEmpty) {
+        request.fields['tanggalBerlaku'] = tanggalBerlaku;
+      }
+
+      final file = File(filePath);
+      if (await file.exists()) {
+        String contentType = 'application/pdf';
+        if (filePath.toLowerCase().endsWith('.jpg') || filePath.toLowerCase().endsWith('.jpeg')) {
+          contentType = 'image/jpeg';
+        } else if (filePath.toLowerCase().endsWith('.png')) {
+          contentType = 'image/png';
+        }
+
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            filePath,
+            contentType: http_parser.MediaType.parse(contentType),
+          ),
+        );
+        print('📎 File added: ${file.path.split('/').last}');
+      } else {
+        throw Exception('File tidak ditemukan: $filePath');
+      }
+
+      print('📤 Sending request...');
+      final streamedResponse = await request.send().timeout(
+        const Duration(minutes: 2),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📊 Response status: ${response.statusCode}');
+      print('📊 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        if (result['success'] == true) {
+          print('✅ Document uploaded successfully');
+          print('========== UPLOAD VESSEL DOCUMENT END ==========\n');
+          return result;
+        } else {
+          throw Exception(result['message'] ?? 'Upload gagal');
+        }
+      } else {
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error uploading document: $e');
+      print('========== UPLOAD VESSEL DOCUMENT END ==========\n');
+      throw Exception('Error: $e');
+    }
+  }
 }

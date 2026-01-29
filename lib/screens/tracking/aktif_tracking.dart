@@ -5,13 +5,13 @@ import 'package:e_logbook/screens/tracking/widgets/vessel_header_card.dart';
 import 'package:e_logbook/screens/tracking/widgets/wheater_detail_dialog.dart';
 import 'package:e_logbook/screens/tracking/widgets/wheater_display_widget.dart';
 import 'package:e_logbook/screens/tracking/widgets/zone_validation_dialog.dart';
-import 'package:e_logbook/screens/zone_violation_detail_screen.dart';
 import 'package:e_logbook/services/device/location_tracking_service.dart';
 import 'package:e_logbook/services/device/zone_checker.dart';
 import 'package:e_logbook/services/realtime/realtime_service.dart';
 import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 
@@ -321,14 +321,13 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
       builder: (context) => ZoneViolationDialog(
         zoneInfo: _currentZoneInfo!,
         onViewDetail: () {
-          Navigator.push(
+          NavigationHelper.pushNamedNoTransition(
             context,
-            MaterialPageRoute(
-              builder: (context) => ZoneViolationDetailScreen(
-                zoneInfo: _currentZoneInfo!,
-                onDismiss: () {},
-              ),
-            ),
+            '/zone-violation-detail',
+            arguments: {
+              'zoneInfo': _currentZoneInfo!,
+              'onDismiss': () {},
+            },
           );
         },
       ),
@@ -988,14 +987,13 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(
+                  NavigationHelper.pushNamedNoTransition(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => ZoneViolationDetailScreen(
-                        zoneInfo: _currentZoneInfo!,
-                        onDismiss: () {},
-                      ),
-                    ),
+                    '/zone-violation-detail',
+                    arguments: {
+                      'zoneInfo': _currentZoneInfo!,
+                      'onDismiss': () {},
+                    },
                   );
                 },
                 icon: const Icon(Icons.info_outline),
@@ -1015,3 +1013,5 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
     );
   }
 }
+
+

@@ -1,9 +1,8 @@
-import 'package:e_logbook/screens/notification_detail_screen.dart';
-import 'package:e_logbook/screens/documents/document_upload_stepper.dart';
 import 'package:e_logbook/services/nitification/notification_service.dart';
 import 'package:e_logbook/services/nitification/admin_notification_service.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../models/document_requirement_model.dart';
@@ -538,15 +537,14 @@ class _NotificationScreenState extends State<NotificationScreen>
               : () async {
                   await NotificationService.markSystemAsRead(id);
                   await _updateUnreadCounts();
-                  Navigator.push(
+                  NavigationHelper.pushNamedNoTransition(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => NotificationDetailScreen(
-                        title: title,
-                        message: subtitle,
-                        timestamp: dateTime,
-                      ),
-                    ),
+                    '/notification-detail',
+                    arguments: {
+                      'title': title,
+                      'message': subtitle,
+                      'timestamp': dateTime,
+                    },
                   );
                 },
           onLongPress: () => _toggleSelection(id, 'system', null),
@@ -716,11 +714,9 @@ class _NotificationScreenState extends State<NotificationScreen>
                   
                   // Navigate to document upload stepper
                   if (_documentRequirements.isNotEmpty) {
-                    Navigator.push(
+                    NavigationHelper.pushNamedNoTransition(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const DocumentUploadStepper(),
-                      ),
+                      '/nahkoda-document-upload',
                     );
                   }
                 },
@@ -895,3 +891,5 @@ class _NotificationScreenState extends State<NotificationScreen>
     );
   }
 }
+
+

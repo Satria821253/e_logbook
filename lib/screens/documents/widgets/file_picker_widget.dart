@@ -3,6 +3,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:dotted_border/dotted_border.dart';
 
 class FilePickerWidget extends StatefulWidget {
@@ -10,6 +11,7 @@ class FilePickerWidget extends StatefulWidget {
   final String label;
   final File? initialFile;
   final VoidCallback? onCameraTap;
+  final bool allowPdf;
 
   const FilePickerWidget({
     Key? key,
@@ -17,6 +19,7 @@ class FilePickerWidget extends StatefulWidget {
     required this.label,
     this.initialFile,
     this.onCameraTap,
+    this.allowPdf = true,
   }) : super(key: key);
 
   @override
@@ -44,6 +47,35 @@ class _FilePickerWidgetState extends State<FilePickerWidget> {
 
       if (pickedFile != null) {
         File file = File(pickedFile.path);
+        
+        // Check file size (max 10MB)
+        int sizeInBytes = await file.length();
+        double sizeInMb = sizeInBytes / (1024 * 1024);
+        
+        if (sizeInMb > 10) {
+          _showError('Ukuran file maksimal 10MB');
+          return;
+        }
+
+        setState(() {
+          _selectedFile = file;
+        });
+        widget.onFilePicked(file);
+      }
+    } catch (e) {
+      _showError('Gagal memilih file: $e');
+    }
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        File file = File(result.files.single.path!);
         
         // Check file size (max 10MB)
         int sizeInBytes = await file.length();
@@ -127,10 +159,19 @@ class _FilePickerWidgetState extends State<FilePickerWidget> {
                   _pickImage(ImageSource.gallery);
                 },
               ),
+              if (widget.allowPdf)
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                  title: const Text('Pilih File (PDF/Image)'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickFile();
+                  },
+                ),
               if (_selectedFile != null)
                 ListTile(
                   leading: const Icon(Icons.delete, color: Colors.red),
-                  title: const Text('Hapus Foto'),
+                  title: const Text('Hapus File'),
                   onTap: () {
                     Navigator.pop(context);
                     setState(() {
@@ -143,6 +184,94 @@ class _FilePickerWidgetState extends State<FilePickerWidget> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFilePreview() {
+    if (_selectedFile == null) return const SizedBox.shrink();
+    
+    final fileName = _selectedFile!.path.split(RegExp(r'[\\/]')).last;
+    final isPdf = fileName.toLowerCase().endsWith('.pdf');
+    
+    if (isPdf) {
+      return Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green, width: 2),
+          color: Colors.grey[100],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.picture_as_pdf, size: 64, color: Colors.red),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                fileName,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 16),
+                  SizedBox(width: 4),
+                  Text('File Terpilih', style: TextStyle(color: Colors.white, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return Stack(
+      children: [
+        Container(
+          height: 200,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.green, width: 2),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.file(
+              _selectedFile!,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+            ),
+            padding: const EdgeInsets.all(8),
+            child: const Icon(
+              Icons.check,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -205,41 +334,7 @@ class _FilePickerWidgetState extends State<FilePickerWidget> {
                     ),
                   ),
                 )
-              : Stack(
-                  children: [
-                    Container(
-                      height: 200,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green, width: 2),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.file(
-                          _selectedFile!,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              : _buildFilePreview(),
         ),
       ],
     );

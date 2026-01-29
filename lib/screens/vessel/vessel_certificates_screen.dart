@@ -1,12 +1,16 @@
 import 'package:e_logbook/services/api/document_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../provider/user_provider.dart';
 
 class VesselCertificatesScreen extends StatefulWidget {
   final Map<String, dynamic>? documentsData;
+  final Map<String, dynamic>? vesselData;
 
-  const VesselCertificatesScreen({Key? key, this.documentsData}) : super(key: key);
+  const VesselCertificatesScreen({Key? key, this.documentsData, this.vesselData}) : super(key: key);
 
   @override
   State<VesselCertificatesScreen> createState() => _VesselCertificatesScreenState();
@@ -19,12 +23,34 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
     final sertifikatJalan = widget.documentsData?['sertifikatJalan'] as List? ?? [];
     if (sertifikatJalan.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _checkPersonalDocumentsAndShowDialog();
+        if (mounted) {
+          // Cek role user
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+          final isNahkoda = userProvider.user?.isNahkoda == true;
+          
+          if (isNahkoda) {
+            // Nahkoda: cek dokumen pribadi dan tampilkan popup upload
+            _checkPersonalDocumentsAndShowDialog();
+          } else {
+            // Crew: tampilkan popup bahwa nahkoda belum upload
+            _showCrewNoCertificateDialog();
+          }
+        }
       });
     }
   }
 
   Future<void> _checkPersonalDocumentsAndShowDialog() async {
+    // Cek role user terlebih dahulu
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final isNahkoda = userProvider.user?.isNahkoda == true;
+    
+    // Jika crew, jangan tampilkan popup upload
+    if (!isNahkoda) {
+      print('👥 [Certificates] User is crew, skip upload popup');
+      return;
+    }
+    
     try {
       final response = await DocumentService.getDocuments();
       if (response['success'] == true) {
@@ -69,6 +95,113 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
       print('❌ Error checking documents: $e');
       _showNoCertificateDialog(hasDocuments: false);
     }
+  }
+
+  void _showCrewNoCertificateDialog() {
+    final shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    
+    final shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: shakeController,
+      curve: Curves.easeInOut,
+    ));
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async {
+            shakeController.forward(from: 0);
+            return false;
+          },
+          child: AnimatedBuilder(
+            animation: shakeAnimation,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: shakeAnimation.value,
+                child: child,
+              );
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back, color: Colors.grey[700]),
+                          onPressed: () {
+                            shakeController.dispose();
+                            Navigator.pop(context);
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.info_outline, size: 40, color: Colors.blue),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Belum Ada Sertifikat Kapal',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Sertifikat kapal ini belum diupload oleh Nahkoda.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Silakan hubungi Nahkoda untuk mengupload sertifikat kapal.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        shakeController.dispose();
+                        Navigator.pop(context);
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text('OK, Mengerti', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showNoCertificateUploadDialog() {
@@ -160,7 +293,7 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
                         shakeController.dispose();
                         Navigator.pop(context);
                         Navigator.pop(context);
-                        Navigator.pushNamed(context, '/certificate-upload');
+                        NavigationHelper.pushNamedNoTransition(context, '/certificate-upload');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
@@ -270,10 +403,10 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
                         Navigator.pop(context);
                         if (hasDocuments) {
                           // Ada dokumen tapi belum approved, ke status screen
-                          Navigator.pushNamed(context, '/document-status');
+                          NavigationHelper.pushNamedNoTransition(context, '/document-status');
                         } else {
                           // Belum ada dokumen, ke upload screen
-                          Navigator.pushNamed(
+                          NavigationHelper.pushNamedNoTransition(
                             context,
                             '/nahkoda-document-upload',
                             arguments: {'fromVesselDocs': true},
@@ -301,6 +434,8 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
   Widget build(BuildContext context) {
     final kapalInfo = widget.documentsData?['kapal'];
     final sertifikatJalan = widget.documentsData?['sertifikatJalan'] as List? ?? [];
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final isNahkoda = userProvider.user?.isNahkoda == true;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -321,12 +456,12 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
           'Sertifikat Kapal',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        actions: [
-          // Upload button
+        actions: isNahkoda ? [
+          // Upload button - hanya untuk nahkoda
           IconButton(
             icon: Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
             onPressed: () async {
-              final result = await Navigator.pushNamed(context, '/certificate-upload');
+              final result = await NavigationHelper.pushNamedNoTransition(context, '/certificate-upload');
               if (result == true && mounted) {
                 RealtimeUpdateService.notifyListeners('certificates');
                 Navigator.pop(context, true);
@@ -334,7 +469,7 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
             },
             tooltip: 'Upload Sertifikat',
           ),
-        ],
+        ] : null,
       ),
       body: Column(
         children: [
@@ -356,7 +491,10 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
   }
 
   Widget _buildKapalHeader(Map<String, dynamic> kapal) {
-    final nahkoda = widget.documentsData?['nahkoda'] as Map<String, dynamic>?;
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final isNahkoda = userProvider.user?.isNahkoda == true;
+    final nahkoda = widget.vesselData?['nahkoda'] as Map<String, dynamic>?;
+    final nahkodaName = nahkoda?['nama'] ?? '-';
     
     return Container(
       padding: EdgeInsets.all(20),
@@ -370,72 +508,52 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(Icons.directions_boat_rounded, color: Colors.white, size: 28),
+          Container(
+            padding: EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
               ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      kapal['namaKapal'] ?? '-',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      kapal['nomorRegistrasi'] ?? '-',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(Icons.directions_boat_rounded, color: Colors.white, size: 28),
           ),
-          if (nahkoda != null) ...[
-            SizedBox(height: 12),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Color(0xFF10B981).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Color(0xFF10B981).withOpacity(0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.person, size: 16, color: Color(0xFF10B981)),
-                  SizedBox(width: 6),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  kapal['namaKapal'] ?? '-',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  kapal['nomorRegistrasi'] ?? '-',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                if (!isNahkoda) ...[
+                  SizedBox(height: 4),
                   Text(
-                    'Nahkoda: ${nahkoda['nama'] ?? '-'}',
+                    'Nahkoda: $nahkodaName',
                     style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF10B981),
-                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: Colors.grey[500],
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -605,3 +723,5 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
     );
   }
 }
+
+

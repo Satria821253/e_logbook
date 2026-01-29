@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import '../screens/nahkoda/screens/crew_attendance_screen.dart';
 import '../screens/nahkoda/screens/trip_info_screen.dart';
 import 'tracking_routes.dart';
@@ -7,20 +8,16 @@ import 'tracking_routes.dart';
 
 class NahkodaRoutes {
   static void navigateToTripInfo(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => const TripInfoScreen(),
-      ),
+      const TripInfoScreen(),
     );
   }
 
   static void navigateToCrewAttendance(BuildContext context) {
-    Navigator.push(
+    NavigationHelper.pushNoTransition(
       context,
-      MaterialPageRoute(
-        builder: (context) => CrewAttendanceScreen(),
-      ),
+      CrewAttendanceScreen(),
     );
   }
 

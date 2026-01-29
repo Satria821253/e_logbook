@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'account_info_screen.dart';
 import 'password_screen.dart';
 
@@ -35,28 +36,14 @@ class SettingsScreen extends StatelessWidget {
             icon: Icons.person_outline,
             title: 'Akun',
             subtitle: 'Informasi akun dan privasi',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AccountInfoScreen(),
-                ),
-              );
-            },
+            onTap: () => NavigationHelper.pushNoTransition(context, const AccountInfoScreen()),
           ),
           _buildMenuItem(
             context,
             icon: Icons.lock_outline,
             title: 'Kata Sandi',
             subtitle: 'Kelola kata sandi akun',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PasswordScreen(),
-                ),
-              );
-            },
+            onTap: () => NavigationHelper.pushNoTransition(context, const PasswordScreen()),
           ),
         ],
       ),

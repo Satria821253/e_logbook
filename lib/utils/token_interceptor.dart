@@ -32,9 +32,9 @@ class TokenInterceptor extends Interceptor {
 
     // Navigate to login if context available
     if (context != null && context!.mounted) {
-      Navigator.of(context!).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
+      NavigationHelper.pushAndRemoveUntil(
+        context!,
+        const LoginScreen(),
       );
       
       // Show snackbar
