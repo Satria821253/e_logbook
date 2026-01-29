@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:ui';
-import '../document_upload_stepper.dart';
+
 
 class NahkodaDocumentPopup extends StatefulWidget {
   const NahkodaDocumentPopup({Key? key}) : super(key: key);

@@ -256,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         backgroundColor: Colors.white,
                         child: hasValidPhoto
                             ? ClipOval(
-                                child: photoUrl!.startsWith('file://')
+                                child: photoUrl.startsWith('file://')
                                     ? Image.file(
                                         File(
                                           photoUrl.replaceFirst('file://', ''),

@@ -3,6 +3,7 @@ import 'package:e_logbook/screens/documents/models/ktp_ocr_result.dart';
 import 'package:e_logbook/screens/documents/widgets/ocr/edit_ktp_dialog.dart';
 import 'package:e_logbook/screens/documents/widgets/ocr/ktp_file_picker.dart';
 import 'package:e_logbook/screens/documents/widgets/ocr/ktp_ocr_result_widget.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/ocr/ktp_scanner_screen.dart';
@@ -447,7 +448,7 @@ class _Step1KTPState extends State<Step1KTP> {
                 _processOCR(file);
               },
               onCameraTap: () async {
-                final file = await NavigationHelper.push<File>(
+                final file = await NavigationHelper.pushNoTransition<File>(
                   context,
                   const KTPScannerScreen(),
                 );

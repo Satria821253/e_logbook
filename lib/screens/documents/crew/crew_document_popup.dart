@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import '../document_upload_stepper.dart';
 
 class CrewDocumentPopup extends StatefulWidget {
   const CrewDocumentPopup({Key? key}) : super(key: key);

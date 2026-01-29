@@ -117,9 +117,10 @@ class AccountInactiveDialog {
     await prefs.remove('user_data');
     
     if (context.mounted) {
-      NavigationHelper.pushAndRemoveUntil(
+      NavigationHelper.pushAndRemoveUntilNoTransition(
         context,
         const WelcomeScreen(),
+        (route) => false,
       );
     }
   }

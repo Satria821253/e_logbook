@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/Login/login_screen.dart';
@@ -32,9 +33,10 @@ class TokenInterceptor extends Interceptor {
 
     // Navigate to login if context available
     if (context != null && context!.mounted) {
-      NavigationHelper.pushAndRemoveUntil(
+      NavigationHelper.pushAndRemoveUntilNoTransition(
         context!,
         const LoginScreen(),
+        (route) => false,
       );
       
       // Show snackbar
