@@ -116,48 +116,58 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: SafeArea(
                   child: Center(
-                    child: Padding(
-                      padding: ResponsiveHelper.padding(context, mobile: 9, tablet: 12),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: ResponsiveHelper.padding(context, mobile: 9, tablet: 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                           // Logo IPB dengan background putih lebih kecil
-                          Container(
-                            width: ResponsiveHelper.loginLogoSize(context, mobile: 80, tablet: 140),
-                            height: ResponsiveHelper.loginLogoSize(context, mobile: 80, tablet: 140),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: ResponsiveHelper.width(context, mobile: 3, tablet: 4),
+                          Flexible(
+                            child: Container(
+                              constraints: BoxConstraints(
+                                maxWidth: ResponsiveHelper.loginLogoSize(context, mobile: 70, tablet: 120),
+                                maxHeight: ResponsiveHelper.loginLogoSize(context, mobile: 70, tablet: 120),
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.15),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 6),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: ResponsiveHelper.width(context, mobile: 3, tablet: 4),
                                 ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: Lottie.asset(
-                                DateTime.now().hour >= 18 || DateTime.now().hour < 6
-                                    ? 'assets/animations/tripmalam.json'
-                                    : 'assets/animations/tripsiang.json',
-                                width: ResponsiveHelper.loginLogoSize(context, mobile: 80, tablet: 140),
-                                height: ResponsiveHelper.loginLogoSize(context, mobile: 80, tablet: 140),
-                                fit: BoxFit.cover,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.15),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: Lottie.asset(
+                                  DateTime.now().hour >= 18 || DateTime.now().hour < 6
+                                      ? 'assets/animations/tripmalam.json'
+                                      : 'assets/animations/tripsiang.json',
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
                           ),
                           
-                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 16, tablet: 24)),
+                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 24)),
                           
                           // Title
                           Text(
                             'E-Logbook',
                             style: TextStyle(
-                              fontSize: ResponsiveHelper.font(context, mobile: 22, tablet: 32),
+                              fontSize: ResponsiveHelper.adaptiveValue(
+                                context,
+                                mobile: 18,
+                                smallTablet: 24,
+                                mediumTablet: 26,
+                                largeTablet: 28,
+                                mobileLandscape: 16,
+                              ),
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 1.0,
@@ -167,23 +177,33 @@ class _LoginScreenState extends State<LoginScreen> {
                           SizedBox(height: ResponsiveHelper.spacing(context, mobile: 6, tablet: 8)),
                           
                           // Subtitle
-                          Container(
-                            constraints: BoxConstraints(
-                              maxWidth: ResponsiveHelper.width(context, mobile: 200, tablet: 280),
-                            ),
-                            child: Text(
-                              'Sistem Manajemen Logbook Digital untuk Pelayaran Modern',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 14),
-                                color: Colors.white.withOpacity(0.9),
-                                height: 1.4,
+                          Flexible(
+                            child: Container(
+                              constraints: BoxConstraints(
+                                maxWidth: ResponsiveHelper.width(context, mobile: 200, tablet: 280),
+                              ),
+                              child: Text(
+                                'Sistem Manajemen Logbook Digital untuk Pelayaran Modern',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: ResponsiveHelper.adaptiveValue(
+                                  context,
+                                  mobile: 10,
+                                  smallTablet: 11,
+                                  mediumTablet: 12,
+                                  largeTablet: 13,
+                                  mobileLandscape: 9,
+                                ),
+                                  color: Colors.white.withOpacity(0.9),
+                                  height: 1.4,
+                                ),
                               ),
                             ),
                           ),
                           
 
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -273,10 +293,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
           // Logo IPB di dalam form (hanya untuk tablet)
           if (logoSize <= 90) ...[
             Center(
@@ -532,7 +553,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

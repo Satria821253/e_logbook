@@ -103,6 +103,15 @@ class _StepSertifikatJalanState extends State<StepSertifikatJalan> {
     try {
       final tanggal = '${_tanggalBerlaku!.year}-${_tanggalBerlaku!.month.toString().padLeft(2, '0')}-${_tanggalBerlaku!.day.toString().padLeft(2, '0')}';
       
+      print('\n📤 [UPLOAD SERTIFIKAT JALAN] START');
+      print('📝 Jenis Dokumen: Sertifikat Jalan');
+      print('📝 Nama: ${_namaController.text.trim()}');
+      print('📝 Nomor: ${_nomorController.text.trim()}');
+      print('📝 Tanggal Berlaku: $tanggal');
+      print('📝 File Path: $_filePath');
+      print('📝 File Name: $_fileName');
+      print('📝 File Type: $_fileType');
+      
       await VesselService().uploadVesselDocument(
         jenisDokumen: 'Sertifikat Jalan',
         filePath: _filePath!,
@@ -110,9 +119,11 @@ class _StepSertifikatJalanState extends State<StepSertifikatJalan> {
         tanggalBerlaku: tanggal,
       );
 
+      print('✅ [UPLOAD SERTIFIKAT JALAN] SUCCESS\n');
       _showSnackBar('Berhasil upload Sertifikat Jalan!', Colors.green);
       widget.onNext();
     } catch (e) {
+      print('❌ [UPLOAD SERTIFIKAT JALAN] ERROR: $e\n');
       _showSnackBar('Gagal upload: ${e.toString().replaceAll('Exception: ', '')}', Colors.red);
     } finally {
       setState(() => _isLoading = false);

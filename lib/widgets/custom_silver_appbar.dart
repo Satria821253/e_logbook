@@ -782,7 +782,7 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                           if (_cachedPhotoPath != null) {
                             imageProvider = FileImage(File(_cachedPhotoPath!));
                           } else if (hasValidPhoto) {
-                            if (photoUrl!.startsWith('file://') || photoUrl.startsWith('/')) {
+                            if (photoUrl.startsWith('file://') || photoUrl.startsWith('/')) {
                               imageProvider = FileImage(File(photoUrl.replaceFirst('file://', '')));
                             } else if (photoUrl.startsWith('http')) {
                               imageProvider = NetworkImage(photoUrl);

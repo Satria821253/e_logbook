@@ -6,9 +6,9 @@ class ResponsiveHelper {
   // ======================
   // Breakpoints
   // ======================
-  static const double tabletMin = 500; // Konsisten dengan splash screen
-  static const double tabletMedium = 600; // iPad, Galaxy Tab
-  static const double tabletLarge = 768; // iPad Pro, Galaxy Tab S8+
+  static const double tabletMin = 550; // Tablet mulai dari 550dp
+  static const double tabletMedium = 768; // iPad, Galaxy Tab
+  static const double tabletLarge = 1024; // iPad Pro, Galaxy Tab S8+
 
   // ======================
   // Device Type (berdasarkan dimensi terkecil untuk stabilitas orientasi)
@@ -17,8 +17,9 @@ class ResponsiveHelper {
     final size = MediaQuery.sizeOf(context);
     final shortestSide = size.shortestSide;
 
-    if (shortestSide >= tabletMin) return DeviceType.tablet;
-    return DeviceType.mobile;
+    final type = shortestSide >= tabletMin ? DeviceType.tablet : DeviceType.mobile;
+    
+    return type;
   }
 
   static bool isMobile(BuildContext context) =>
@@ -35,9 +36,16 @@ class ResponsiveHelper {
     
     final shortestSide = MediaQuery.sizeOf(context).shortestSide;
     
-    if (shortestSide >= tabletLarge) return 'large';   // iPad Pro, Galaxy Tab S8+
-    if (shortestSide >= tabletMedium) return 'medium'; // iPad, Galaxy Tab
-    return 'small'; // Tablet kecil 7-8 inch
+    String size;
+    if (shortestSide >= tabletLarge) {
+      size = 'large';   // iPad Pro, Galaxy Tab S8+
+    } else if (shortestSide >= tabletMedium) {
+      size = 'medium'; // iPad, Galaxy Tab
+    } else {
+      size = 'small'; // Tablet kecil 7-8 inch
+    }
+    
+    return size;
   }
 
   // ======================
@@ -89,25 +97,35 @@ class ResponsiveHelper {
     final landscape = isLandscape(context);
 
     if (size == 'mobile') {
-      return landscape && mobileLandscape != null ? mobileLandscape : mobile;
+      final result = landscape && mobileLandscape != null ? mobileLandscape : mobile;
+      return result;
     }
 
-    // Tablet - pilih ukuran berdasarkan size
-    if (landscape) {
-      switch (size) {
-        case 'large':
-          return largeTablet ?? mediumTablet ?? smallTablet ?? mobile * 1.6;
-        case 'medium':
-          return mediumTablet ?? smallTablet ?? mobile * 1.4;
-        case 'small':
-          return smallTablet ?? mobile * 1.2;
-        default:
-          return mobile;
-      }
-    } else {
-      // Portrait - ukuran lebih kecil
-      return smallTablet ?? mobile * 1.1;
+    // Tablet - pilih ukuran berdasarkan size dan orientasi
+    double result;
+    switch (size) {
+      case 'large':
+        if (landscape) {
+          result = largeTablet ?? mediumTablet ?? smallTablet ?? mobile * 1.6;
+        } else {
+          result = mediumTablet ?? smallTablet ?? mobile * 1.3;
+        }
+        break;
+      case 'medium':
+        if (landscape) {
+          result = mediumTablet ?? smallTablet ?? mobile * 1.4;
+        } else {
+          result = smallTablet ?? mobile * 1.2;
+        }
+        break;
+      case 'small':
+        result = smallTablet ?? mobile * 1.1;
+        break;
+      default:
+        result = mobile;
     }
+    
+    return result;
   }
 
   // ======================
@@ -301,5 +319,270 @@ class ResponsiveHelper {
     return isLandscape(context)
         ? size.shortestSide * 0.8
         : double.infinity;
+  }
+
+  // ======================
+  // AppBar Helper (untuk konsistensi header di semua screen)
+  // ======================
+  static double appBarHeight(
+    BuildContext context, {
+    double mobile = 56,
+    double smallTablet = 36,
+    double mediumTablet = 40,
+    double largeTablet = 44,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double appBarPadding(
+    BuildContext context, {
+    double mobile = 20,
+    double smallTablet = 12,
+    double mediumTablet = 14,
+    double largeTablet = 16,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double appBarTitleSize(
+    BuildContext context, {
+    double mobile = 20,
+    double smallTablet = 18,
+    double mediumTablet = 20,
+    double largeTablet = 22,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double appBarIconSize(
+    BuildContext context, {
+    double mobile = 24,
+    double smallTablet = 18,
+    double mediumTablet = 20,
+    double largeTablet = 22,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  // ======================
+  // Content Helper (untuk animasi, icon, dll di dalam form)
+  // ======================
+  static double animationSize(
+    BuildContext context, {
+    double mobile = 100,
+    double smallTablet = 80,
+    double mediumTablet = 90,
+    double largeTablet = 100,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double contentPadding(
+    BuildContext context, {
+    double mobile = 24,
+    double smallTablet = 20,
+    double mediumTablet = 22,
+    double largeTablet = 24,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double borderRadius(
+    BuildContext context, {
+    double mobile = 30,
+    double smallTablet = 24,
+    double mediumTablet = 26,
+    double largeTablet = 28,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  // ======================
+  // Popup/Dialog Helper
+  // ======================
+  static double popupHeight(
+    BuildContext context, {
+    double mobile = 600,
+    double smallTablet = 500,
+    double mediumTablet = 550,
+    double largeTablet = 600,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double popupMaxWidth(
+    BuildContext context, {
+    double mobile = 450,
+    double smallTablet = 400,
+    double mediumTablet = 450,
+    double largeTablet = 500,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double popupTitleSize(
+    BuildContext context, {
+    double mobile = 28,
+    double smallTablet = 22,
+    double mediumTablet = 24,
+    double largeTablet = 26,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double popupSubtitleSize(
+    BuildContext context, {
+    double mobile = 15,
+    double smallTablet = 13,
+    double mediumTablet = 14,
+    double largeTablet = 15,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double popupIllustrationSize(
+    BuildContext context, {
+    double mobile = 160,
+    double smallTablet = 120,
+    double mediumTablet = 140,
+    double largeTablet = 160,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double popupLottieSize(
+    BuildContext context, {
+    double mobile = 100,
+    double smallTablet = 80,
+    double mediumTablet = 90,
+    double largeTablet = 100,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double popupPadding(
+    BuildContext context, {
+    double mobile = 24,
+    double smallTablet = 20,
+    double mediumTablet = 22,
+    double largeTablet = 24,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double popupBorderRadius(
+    BuildContext context, {
+    double mobile = 32,
+    double smallTablet = 24,
+    double mediumTablet = 28,
+    double largeTablet = 32,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
+  }
+
+  static double popupButtonHeight(
+    BuildContext context, {
+    double mobile = 56,
+    double smallTablet = 48,
+    double mediumTablet = 52,
+    double largeTablet = 56,
+  }) {
+    return adaptiveValue(
+      context,
+      mobile: mobile,
+      smallTablet: smallTablet,
+      mediumTablet: mediumTablet,
+      largeTablet: largeTablet,
+    );
   }
 }

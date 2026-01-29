@@ -6,7 +6,7 @@ import 'package:e_logbook/widgets/custom_text_field.dart';
 import 'package:e_logbook/widgets/date_time_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
 
@@ -229,10 +229,6 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    double fs(double size) => size * (width / 390);
-    double sp(double size) => size * (width / 390);
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -247,37 +243,34 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
             children: [
               // Header
               Padding(
-                padding: EdgeInsets.only(top: sp(16), bottom: sp(16)),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    ),
-                    SizedBox(width: sp(12)),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Persiapan Trip Melaut',
-                            style: TextStyle(
-                              fontSize: fs(22),
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'Lengkapi data sebelum berangkat',
-                            style: TextStyle(
-                              fontSize: fs(13),
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                        ],
+                padding: EdgeInsets.all(ResponsiveHelper.appBarPadding(context)),
+                child: SizedBox(
+                  height: ResponsiveHelper.appBarHeight(context),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: ResponsiveHelper.appBarIconSize(context),
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
-                    ),
-                  ],
+                      SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 8)),
+                      Expanded(
+                        child: Text(
+                          'Persiapan Trip Melaut',
+                          style: TextStyle(
+                            fontSize: ResponsiveHelper.appBarTitleSize(context),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -288,12 +281,12 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                   decoration: BoxDecoration(
                     color: Colors.grey[50],
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(sp(30)),
-                      topRight: Radius.circular(sp(30)),
+                      topLeft: Radius.circular(ResponsiveHelper.borderRadius(context)),
+                      topRight: Radius.circular(ResponsiveHelper.borderRadius(context)),
                     ),
                   ),
                   child: SingleChildScrollView(
-                    padding: EdgeInsets.all(sp(24)),
+                    padding: EdgeInsets.all(ResponsiveHelper.contentPadding(context)),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -311,26 +304,26 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                     shape: BoxShape.circle,
                                   ),
                                   child: Lottie.asset(
-                                    'assets/animations/PreTrip.json', // ubah sesuai nama file Anda
-                                    width: fs(100),
-                                    height: fs(100),
+                                    'assets/animations/PreTrip.json',
+                                    width: ResponsiveHelper.animationSize(context),
+                                    height: ResponsiveHelper.animationSize(context),
                                   ),
                                 ),
-                                SizedBox(height: sp(16)),
+                                SizedBox(height: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                                 Text(
                                   'Formulir Pre-Trip',
                                   style: TextStyle(
-                                    fontSize: fs(20),
+                                    fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 16),
                                     fontWeight: FontWeight.bold,
                                     color: Colors.grey[800],
                                   ),
                                 ),
-                                SizedBox(height: sp(8)),
+                                SizedBox(height: ResponsiveHelper.spacing(context, mobile: 8, tablet: 6)),
                                 Text(
                                   'Data kapal & crew untuk tracking trip',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: fs(13),
+                                    fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 11),
                                     color: Colors.grey[600],
                                   ),
                                 ),
@@ -338,11 +331,11 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             ),
                           ),
 
-                          SizedBox(height: sp(32)),
+                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 32, tablet: 25)),
 
                           // ===== SECTION 1: DATA KAPAL =====
                           _buildSectionHeader('1. Data Kapal'),
-                          SizedBox(height: 12.h),
+                          const SizedBox(height: 10),
 
                           // Show vessel info if available
                           Consumer<UserProvider>(
@@ -350,11 +343,11 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                               final user = userProvider.user;
                               if (user?.vesselName != null) {
                                 return Container(
-                                  padding: EdgeInsets.all(sp(16)),
-                                  margin: EdgeInsets.only(bottom: sp(16)),
+                                  padding: EdgeInsets.all(ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
+                                  margin: EdgeInsets.only(bottom: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                                   decoration: BoxDecoration(
                                     color: Colors.blue.withOpacity(0.05),
-                                    borderRadius: BorderRadius.circular(sp(12)),
+                                    borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                     border: Border.all(
                                       color: Colors.blue.withOpacity(0.3),
                                     ),
@@ -369,18 +362,18 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                             Icons.directions_boat,
                                             color: Colors.blue[700],
                                           ),
-                                          SizedBox(width: sp(8)),
+                                          SizedBox(width: ResponsiveHelper.spacing(context, mobile: 8, tablet: 6)),
                                           Text(
                                             'Data Kapal Tersimpan',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              fontSize: fs(14),
+                                              fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 11),
                                               color: Colors.blue[800],
                                             ),
                                           ),
                                         ],
                                       ),
-                                      SizedBox(height: sp(12)),
+                                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                       Row(
                                         children: [
                                           Expanded(
@@ -391,21 +384,21 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                                 Text(
                                                   'Nama Kapal',
                                                   style: TextStyle(
-                                                    fontSize: fs(11),
+                                                    fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 9),
                                                     color: Colors.grey[600],
                                                   ),
                                                 ),
                                                 Text(
                                                   user!.vesselName!,
                                                   style: TextStyle(
-                                                    fontSize: fs(13),
+                                                    fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 11),
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                          SizedBox(width: sp(16)),
+                                          SizedBox(width: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment:
@@ -414,14 +407,14 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                                 Text(
                                                   'Nomor Kapal',
                                                   style: TextStyle(
-                                                    fontSize: fs(11),
+                                                    fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 9),
                                                     color: Colors.grey[600],
                                                   ),
                                                 ),
                                                 Text(
                                                   user.vesselNumber!,
                                                   style: TextStyle(
-                                                    fontSize: fs(13),
+                                                    fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 11),
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
@@ -430,7 +423,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                           ),
                                         ],
                                       ),
-                                      SizedBox(height: sp(8)),
+                                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 8, tablet: 6)),
                                       Row(
                                         children: [
                                           Expanded(
@@ -441,21 +434,21 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                                 Text(
                                                   'Nahkoda',
                                                   style: TextStyle(
-                                                    fontSize: fs(11),
+                                                    fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 9),
                                                     color: Colors.grey[600],
                                                   ),
                                                 ),
                                                 Text(
                                                   user.captainName!,
                                                   style: TextStyle(
-                                                    fontSize: fs(13),
+                                                    fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 11),
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                          SizedBox(width: sp(16)),
+                                          SizedBox(width: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment:
@@ -464,14 +457,14 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                                 Text(
                                                   'Jumlah ABK',
                                                   style: TextStyle(
-                                                    fontSize: fs(11),
+                                                    fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 9),
                                                     color: Colors.grey[600],
                                                   ),
                                                 ),
                                                 Text(
                                                   '${user.crewCount} orang',
                                                   style: TextStyle(
-                                                    fontSize: fs(13),
+                                                    fontSize: ResponsiveHelper.font(context, mobile: 13, tablet: 11),
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
@@ -495,7 +488,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             icon: Icons.directions_boat,
                             readOnly: true,
                           ),
-                          SizedBox(height: 16.h),
+                          SizedBox(height: 16),
 
                           CustomTextField(
                             controller: _vesselNumberController,
@@ -505,11 +498,11 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             readOnly: true,
                           ),
 
-                          SizedBox(height: 24.h),
+                          SizedBox(height: 24),
 
                           // ===== SECTION 2: DATA CREW =====
                           _buildSectionHeader('2. Data Crew'),
-                          SizedBox(height: 12.h),
+                          SizedBox(height: 12),
 
                           CustomTextField(
                             controller: _crewCountController,
@@ -535,12 +528,12 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
 
                           // Show crew details if edited
                           if (_crewDetails != null) ...[
-                            SizedBox(height: sp(16)),
+                            SizedBox(height: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                             Container(
-                              padding: EdgeInsets.all(sp(16)),
+                              padding: EdgeInsets.all(ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                               decoration: BoxDecoration(
                                 color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(sp(12)),
+                                borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                 border: Border.all(color: Colors.grey[300]!),
                               ),
                               child: Column(
@@ -552,24 +545,24 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                         Icons.people,
                                         color: Colors.grey[700],
                                       ),
-                                      SizedBox(width: sp(8)),
+                                      SizedBox(width: ResponsiveHelper.spacing(context, mobile: 8, tablet: 6)),
                                       Text(
                                         'Detail Kehadiran ABK',
                                         style: TextStyle(
-                                          fontSize: fs(14),
+                                          fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 11),
                                           fontWeight: FontWeight.bold,
                                           color: Colors.grey[800],
                                         ),
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: sp(12)),
+                                  SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                   ...(_crewDetails!['crewList'] as List).map((
                                     crew,
                                   ) {
                                     final status = crew['status'];
                                     return Padding(
-                                      padding: EdgeInsets.only(bottom: sp(4)),
+                                      padding: EdgeInsets.only(bottom: ResponsiveHelper.spacing(context, mobile: 4, tablet: 3)),
                                       child: Row(
                                         children: [
                                           Icon(
@@ -578,19 +571,19 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                                 : status == 'izin'
                                                 ? Icons.info
                                                 : Icons.cancel,
-                                            size: fs(16),
+                                            size: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
                                             color: status == 'present'
                                                 ? Colors.green
                                                 : status == 'izin'
                                                 ? Colors.orange
                                                 : Colors.red,
                                           ),
-                                          SizedBox(width: sp(8)),
+                                          SizedBox(width: ResponsiveHelper.spacing(context, mobile: 8, tablet: 6)),
                                           Expanded(
                                             child: Text(
                                               crew['name'],
                                               style: TextStyle(
-                                                fontSize: fs(12),
+                                                fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 10),
                                               ),
                                             ),
                                           ),
@@ -601,7 +594,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                                 ? 'Izin ${crew['reason']}'
                                                 : 'Tanpa Keterangan',
                                             style: TextStyle(
-                                              fontSize: fs(11),
+                                              fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 9),
                                               color: status == 'present'
                                                   ? Colors.green[700]
                                                   : status == 'izin'
@@ -619,17 +612,17 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             ),
                           ],
 
-                          SizedBox(height: sp(24)),
+                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 19)),
 
                           // ===== SECTION 3: PELABUHAN =====
                           _buildSectionHeader('3. Pelabuhan Keberangkatan'),
-                          SizedBox(height: 12.h),
+                          SizedBox(height: 12),
 
                           Container(
-                            padding: EdgeInsets.all(sp(16)),
+                            padding: EdgeInsets.all(ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                             decoration: BoxDecoration(
                               color: Colors.blue.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(sp(12)),
+                              borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                               border: Border.all(
                                 color: Colors.blue.withOpacity(0.3),
                               ),
@@ -637,7 +630,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             child: Row(
                               children: [
                                 Icon(Icons.anchor, color: Colors.blue[700]),
-                                SizedBox(width: sp(12)),
+                                SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -646,7 +639,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                       Text(
                                         _departureHarbor ?? 'Belum ditentukan',
                                         style: TextStyle(
-                                          fontSize: fs(16),
+                                          fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
                                           fontWeight: FontWeight.bold,
                                           color: Colors.blue[800],
                                         ),
@@ -657,10 +650,10 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                               ],
                             ),
                           ),
-                          SizedBox(height: sp(24)),
+                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 19)),
                           // ===== SECTION 4: ESTIMASI DURASI =====
                           _buildSectionHeader('4. Estimasi Durasi Trip'),
-                          SizedBox(height: 12.h),
+                          SizedBox(height: 12),
 
                           // Tanggal Keberangkatan (From Admin)
                           DateTimePickerField(
@@ -673,7 +666,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             isRequired: true,
                             hintText: 'Dari data admin',
                           ),
-                          SizedBox(height: 16.h),
+                          SizedBox(height: 16),
 
                           // Waktu Keberangkatan 
                           DateTimePickerField(
@@ -686,7 +679,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             isRequired: true,
                             hintText: 'Dari data admin',
                           ),
-                          SizedBox(height: 16.h),
+                          SizedBox(height: 16),
 
                           // Est Tanggal Kembali
                           DateTimePickerField(
@@ -733,15 +726,15 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             },
                             isRequired: true,
                           ),
-                          SizedBox(height: 16.h),
+                          SizedBox(height: 16),
 
                           _buildDurationSlider(),
 
-                          SizedBox(height: 24.h),
+                          SizedBox(height: 24),
 
                           // ===== SECTION 5: PERSEDIAAN =====
                           _buildSectionHeader('5. Persediaan'),
-                          SizedBox(height: 12.h),
+                          SizedBox(height: 12),
 
                           CustomTextField(
                             controller: _fuelController,
@@ -756,7 +749,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                               return null;
                             },
                           ),
-                          SizedBox(height: 16.h),
+                          SizedBox(height: 16),
 
                           CustomTextField(
                             controller: _iceStorageController,
@@ -772,7 +765,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             },
                           ),
 
-                          SizedBox(height: sp(24)),
+                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 19)),
 
                           // Submit/Start button
                           SizedBox(
@@ -786,9 +779,9 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                     ? Colors.green
                                     : const Color(0xFF1B4F9C),
                                 foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: sp(18)),
+                                padding: EdgeInsets.symmetric(vertical: ResponsiveHelper.spacing(context, mobile: 18, tablet: 14)),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(sp(12)),
+                                  borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                 ),
                                 elevation: 4,
                               ),
@@ -798,19 +791,19 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                           MainAxisAlignment.center,
                                       children: [
                                         SizedBox(
-                                          width: fs(20),
-                                          height: fs(20),
+                                          width: ResponsiveHelper.font(context, mobile: 20, tablet: 17),
+                                          height: ResponsiveHelper.font(context, mobile: 20, tablet: 17),
                                           child:
                                               const CircularProgressIndicator(
                                                 color: Colors.white,
                                                 strokeWidth: 2,
                                               ),
                                         ),
-                                        SizedBox(width: sp(12)),
+                                        SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                         Text(
                                           'MENGIRIM...',
                                           style: TextStyle(
-                                            fontSize: fs(16),
+                                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
                                             fontWeight: FontWeight.bold,
                                             letterSpacing: 0.5,
                                           ),
@@ -823,19 +816,19 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                           MainAxisAlignment.center,
                                       children: [
                                         SizedBox(
-                                          width: fs(20),
-                                          height: fs(20),
+                                          width: ResponsiveHelper.font(context, mobile: 20, tablet: 17),
+                                          height: ResponsiveHelper.font(context, mobile: 20, tablet: 17),
                                           child:
                                               const CircularProgressIndicator(
                                                 color: Colors.white,
                                                 strokeWidth: 2,
                                               ),
                                         ),
-                                        SizedBox(width: sp(12)),
+                                        SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                         Text(
                                           'MENUNGGU PERSETUJUAN ADMIN',
                                           style: TextStyle(
-                                            fontSize: fs(14),
+                                            fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 11),
                                             fontWeight: FontWeight.bold,
                                             letterSpacing: 0.5,
                                           ),
@@ -847,12 +840,12 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.sailing, size: fs(24)),
-                                        SizedBox(width: sp(12)),
+                                        Icon(Icons.sailing, size: ResponsiveHelper.font(context, mobile: 24, tablet: 20)),
+                                        SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                         Text(
                                           'MULAI TRIP SEKARANG',
                                           style: TextStyle(
-                                            fontSize: fs(16),
+                                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
                                             fontWeight: FontWeight.bold,
                                             letterSpacing: 0.5,
                                           ),
@@ -863,12 +856,12 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.send, size: fs(24)),
-                                        SizedBox(width: sp(12)),
+                                        Icon(Icons.send, size: ResponsiveHelper.font(context, mobile: 24, tablet: 20)),
+                                        SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                         Text(
                                           'KIRIM',
                                           style: TextStyle(
-                                            fontSize: fs(16),
+                                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
                                             fontWeight: FontWeight.bold,
                                             letterSpacing: 0.5,
                                           ),
@@ -880,12 +873,12 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
 
                           // Status info when waiting for approval
                           if (_isWaitingApproval) ...[
-                            SizedBox(height: sp(16)),
+                            SizedBox(height: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                             Container(
-                              padding: EdgeInsets.all(sp(16)),
+                              padding: EdgeInsets.all(ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                               decoration: BoxDecoration(
                                 color: Colors.orange.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(sp(12)),
+                                borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                 border: Border.all(
                                   color: Colors.orange.withOpacity(0.3),
                                 ),
@@ -896,7 +889,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                     Icons.info_outline,
                                     color: Colors.orange[700],
                                   ),
-                                  SizedBox(width: sp(12)),
+                                  SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -905,16 +898,16 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                         Text(
                                           'Menunggu Persetujuan',
                                           style: TextStyle(
-                                            fontSize: fs(14),
+                                            fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 11),
                                             fontWeight: FontWeight.bold,
                                             color: Colors.orange[800],
                                           ),
                                         ),
-                                        SizedBox(height: sp(4)),
+                                        SizedBox(height: ResponsiveHelper.spacing(context, mobile: 4, tablet: 3)),
                                         Text(
                                           'Data trip Anda sedang ditinjau oleh admin. Anda akan mendapat notifikasi setelah disetujui.',
                                           style: TextStyle(
-                                            fontSize: fs(12),
+                                            fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 10),
                                             color: Colors.orange[700],
                                           ),
                                         ),
@@ -928,12 +921,12 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
 
                           // Success info when approved
                           if (_isApproved) ...[
-                            SizedBox(height: sp(16)),
+                            SizedBox(height: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                             Container(
-                              padding: EdgeInsets.all(sp(16)),
+                              padding: EdgeInsets.all(ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
                               decoration: BoxDecoration(
                                 color: Colors.green.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(sp(12)),
+                                borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                 border: Border.all(
                                   color: Colors.green.withOpacity(0.3),
                                 ),
@@ -944,7 +937,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                     Icons.check_circle,
                                     color: Colors.green[700],
                                   ),
-                                  SizedBox(width: sp(12)),
+                                  SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -953,16 +946,16 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                         Text(
                                           'Trip Disetujui!',
                                           style: TextStyle(
-                                            fontSize: fs(14),
+                                            fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 11),
                                             fontWeight: FontWeight.bold,
                                             color: Colors.green[800],
                                           ),
                                         ),
-                                        SizedBox(height: sp(4)),
+                                        SizedBox(height: ResponsiveHelper.spacing(context, mobile: 4, tablet: 3)),
                                         Text(
                                           'Admin telah menyetujui trip Anda. Silakan mulai trip sekarang.',
                                           style: TextStyle(
-                                            fontSize: fs(12),
+                                            fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 10),
                                             color: Colors.green[700],
                                           ),
                                         ),
@@ -974,7 +967,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                             ),
                           ],
 
-                          SizedBox(height: sp(12)),
+                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
 
                           // Cancel button
                           SizedBox(
@@ -986,22 +979,22 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
                                 side: BorderSide(color: Colors.grey[400]!),
-                                padding: EdgeInsets.symmetric(vertical: sp(18)),
+                                padding: EdgeInsets.symmetric(vertical: ResponsiveHelper.spacing(context, mobile: 18, tablet: 14)),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(sp(12)),
+                                  borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
                                 ),
                               ),
                               child: Text(
                                 'Batal',
                                 style: TextStyle(
-                                  fontSize: fs(16),
+                                  fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ),
 
-                          SizedBox(height: sp(24)),
+                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 19)),
                         ],
                       ),
                     ),
@@ -1017,17 +1010,20 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
 
   Widget _buildSectionHeader(String title) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: ResponsiveHelper.width(context, mobile: 12, tablet: 10),
+        vertical: ResponsiveHelper.height(context, mobile: 8, tablet: 6),
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF1B4F9C).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8.r),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           Text(
             title,
             style: TextStyle(
-              fontSize: 16.sp,
+              fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 14),
               fontWeight: FontWeight.bold,
               color: const Color(0xFF1B4F9C),
             ),
@@ -1041,10 +1037,10 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
 
   Widget _buildDurationSlider() {
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 16, tablet: 14)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[300]!),
       ),
       child: Column(
@@ -1055,21 +1051,24 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
             children: [
               Text(
                 'Perkiraan Lama Trip',
-                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 12),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: 12.w,
-                  vertical: 6.h,
+                  horizontal: ResponsiveHelper.width(context, mobile: 12, tablet: 10),
+                  vertical: ResponsiveHelper.height(context, mobile: 6, tablet: 5),
                 ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1B4F9C),
-                  borderRadius: BorderRadius.circular(20.r),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '$_estimatedDuration Hari',
                   style: TextStyle(
-                    fontSize: 14.sp,
+                    fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 12),
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -1084,18 +1083,24 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
             divisions: 29,
             activeColor: Colors.grey[400],
             inactiveColor: Colors.grey[300],
-            onChanged: null, // Disabled slider
+            onChanged: null,
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '1 hari',
-                style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 10),
+                  color: Colors.grey[600],
+                ),
               ),
               Text(
                 '30 hari',
-                style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 10),
+                  color: Colors.grey[600],
+                ),
               ),
             ],
           ),

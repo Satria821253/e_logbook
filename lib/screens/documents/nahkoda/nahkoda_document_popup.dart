@@ -1,6 +1,7 @@
 // lib/screens/documents/nahkoda_document_popup.dart
 
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:ui';
 
@@ -209,10 +210,10 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
                     child: FadeTransition(
                       opacity: _fadeAnimation,
                       child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                        constraints: const BoxConstraints(maxWidth: 450),
+                        margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.popupPadding(context)),
+                        constraints: BoxConstraints(maxWidth: ResponsiveHelper.popupMaxWidth(context)),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(32),
+                          borderRadius: BorderRadius.circular(ResponsiveHelper.popupBorderRadius(context)),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.3),
@@ -222,7 +223,7 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
                           ],
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(32),
+                          borderRadius: BorderRadius.circular(ResponsiveHelper.popupBorderRadius(context)),
                           child: _buildPopupContent(),
                         ),
                       ),
@@ -238,7 +239,7 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
 
   Widget _buildPopupContent() {
     return Container(
-      height: 525,
+      height: ResponsiveHelper.popupHeight(context, mobile: 525, smallTablet: 450, mediumTablet: 480, largeTablet: 525),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -276,19 +277,19 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
                   children: [
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
+                        padding: EdgeInsets.all(ResponsiveHelper.popupPadding(context)),
                         child: Column(
                           children: [
                             // Captain illustration
                             _buildCaptainIllustration(),
 
-                            const SizedBox(height: 24),
+                            SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 20)),
 
                             // Title
-                            const Text(
+                             Text(
                               'Selamat Datang, Nahkoda!',
                               style: TextStyle(
-                                fontSize: 28,
+                                fontSize: ResponsiveHelper.popupTitleSize(context),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                                 height: 1.2,
@@ -297,12 +298,12 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
                               textAlign: TextAlign.center,
                             ),
 
-                            const SizedBox(height: 12),
+                            SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 10)),
 
-                            const Text(
+                            Text(
                               'Lengkapi dokumen kepelayaran Anda untuk memulai perjalanan',
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: ResponsiveHelper.popupSubtitleSize(context),
                                 color: Colors.white,
                                 height: 1.4,
                                 decoration: TextDecoration.none,
@@ -316,7 +317,7 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
 
                     // Action buttons at bottom
                     Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(ResponsiveHelper.popupPadding(context)),
                       child: _buildActionButtons(),
                     ),
                   ],
@@ -395,9 +396,15 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
   }
 
   Widget _buildCaptainIllustration() {
+    // Debug info
+    final illustrationSize = ResponsiveHelper.popupIllustrationSize(context);
+    final lottieSize = ResponsiveHelper.popupLottieSize(context, mobile: 120, smallTablet: 90, mediumTablet: 100, largeTablet: 110);
+    print('🖼️ [POPUP] Illustration size: $illustrationSize');
+    print('🖼️ [POPUP] Lottie size: $lottieSize');
+    
     return Container(
-      width: 160,
-      height: 160,
+      width: illustrationSize,
+      height: illustrationSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
@@ -433,8 +440,8 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
           Center(
             child: Lottie.asset(
               'assets/animations/captain.json',
-              width: 120,
-              height: 120,
+              width: lottieSize,
+              height: lottieSize,
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) {
                 return const Icon(
@@ -453,6 +460,7 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
   Widget _buildActionButtons() {
     return SizedBox(
       width: double.infinity,
+      height: ResponsiveHelper.popupButtonHeight(context),
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).pop();
@@ -461,7 +469,10 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: Color(0xFF1E3A8A),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: ResponsiveHelper.width(context, mobile: 24, tablet: 20),
+            vertical: ResponsiveHelper.height(context, mobile: 16, tablet: 14),
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -470,13 +481,13 @@ class _NahkodaDocumentPopupState extends State<NahkodaDocumentPopup>
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.upload_file, size: 20),
             SizedBox(width: 8),
             Text(
               'Mulai Upload Dokumen',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 14),
                 fontWeight: FontWeight.bold,
                 decoration: TextDecoration.none,
               ),

@@ -1,6 +1,7 @@
 // lib/screens/documents/crew_document_popup.dart
 
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'dart:ui';
 
 class CrewDocumentPopup extends StatefulWidget {
@@ -204,10 +205,10 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
                         _rotateAnimation,
                       ),
                       child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 24),
-                      constraints: const BoxConstraints(maxWidth: 450),
+                      margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.popupPadding(context)),
+                      constraints: BoxConstraints(maxWidth: ResponsiveHelper.popupMaxWidth(context)),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(32),
+                        borderRadius: BorderRadius.circular(ResponsiveHelper.popupBorderRadius(context)),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.cyan.withOpacity(0.4),
@@ -217,7 +218,7 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
                         ],
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(32),
+                        borderRadius: BorderRadius.circular(ResponsiveHelper.popupBorderRadius(context)),
                         child: _buildPopupContent(),
                       ),
                     ),
@@ -234,7 +235,7 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
 
   Widget _buildPopupContent() {
     return Container(
-      height: 600,
+      height: ResponsiveHelper.popupHeight(context),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -275,15 +276,15 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
               _buildHeader(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.all(ResponsiveHelper.popupPadding(context)),
                   child: Column(
                     children: [
                       _buildCrewIllustration(),
-                      const SizedBox(height: 24),
-                      const Text(
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 20)),
+                      Text(
                         'Ahoy, Crew!',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: ResponsiveHelper.popupTitleSize(context),
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           height: 1.2,
@@ -291,17 +292,17 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 10)),
+                      Text(
                         'Siapkan dokumen Anda untuk bergabung dalam pelayaran',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: ResponsiveHelper.popupSubtitleSize(context),
                           color: Colors.white70,
                           decoration: TextDecoration.none,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 32, tablet: 24)),
                       _buildActionButtons(),
                     ],
                   ),
@@ -359,8 +360,8 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
 
   Widget _buildCrewIllustration() {
     return Container(
-      width: 200,
-      height: 200,
+      width: ResponsiveHelper.popupIllustrationSize(context),
+      height: ResponsiveHelper.popupIllustrationSize(context),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         shape: BoxShape.circle,
@@ -368,7 +369,7 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
       child: Center(
         child: Icon(
           Icons.groups,
-          size: 100,
+          size: ResponsiveHelper.popupLottieSize(context),
           color: Colors.white.withOpacity(0.8),
         ),
       ),
@@ -382,6 +383,7 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
   Widget _buildActionButtons() {
     return SizedBox(
       width: double.infinity,
+      height: ResponsiveHelper.popupButtonHeight(context),
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).pop();
@@ -390,16 +392,19 @@ class _CrewDocumentPopupState extends State<CrewDocumentPopup>
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: const Color(0xFF0891B2),
-          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 18),
+          padding: EdgeInsets.symmetric(
+            horizontal: ResponsiveHelper.width(context, mobile: 48, tablet: 40),
+            vertical: ResponsiveHelper.height(context, mobile: 18, tablet: 16),
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
           ),
           elevation: 4,
         ),
-        child: const Text(
+        child: Text(
           'Lengkapi Dokumen',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 14),
             fontWeight: FontWeight.bold,
           ),
         ),

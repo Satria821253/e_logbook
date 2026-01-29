@@ -217,23 +217,66 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> with Ticker
       return;
     }
 
+    // Validasi tanggal tidak boleh di masa depan
+    final now = DateTime.now();
+    if (_tanggalPengisian!.isAfter(now)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('Tanggal tidak valid')),
+                ],
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Tanggal pengisian tidak boleh di masa depan. Periksa pengaturan waktu device Anda.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final jumlahLiter = double.parse(_jumlahLiterController.text);
       final hargaPerLiter = double.parse(_hargaPerLiterController.text);
       final totalHarga = double.parse(_totalHargaController.text);
+      
+      // Set waktu ke siang hari (12:00) untuk menghindari masalah timezone
+      final tanggalWithTime = DateTime(
+        _tanggalPengisian!.year,
+        _tanggalPengisian!.month,
+        _tanggalPengisian!.day,
+        12, 0, 0, // Set ke jam 12 siang
+      );
+      final tanggalISO = tanggalWithTime.toUtc().toIso8601String();
 
-      // Convert to UTC and format as ISO 8601 with Z
-      final tanggalISO = _tanggalPengisian!.toUtc().toIso8601String();
-
-      print('🔥 Submitting fuel data:');
-      print('   Jenis: $_jenisBahanBakar');
-      print('   Jumlah: $jumlahLiter');
-      print('   Harga/L: $hargaPerLiter');
-      print('   Total: $totalHarga');
-      print('   Tanggal (Local): $_tanggalPengisian');
-      print('   Tanggal (ISO UTC): $tanggalISO');
+      print('\n⛽ [UPLOAD FUEL DATA] START');
+      print('📝 Jenis Bahan Bakar: $_jenisBahanBakar');
+      print('📝 Jumlah Liter: $jumlahLiter');
+      print('📝 Harga Per Liter: Rp $hargaPerLiter');
+      print('📝 Total Harga: Rp $totalHarga');
+      print('📝 Tanggal Pengisian (Selected): $_tanggalPengisian');
+      print('📝 Tanggal Pengisian (With Time): $tanggalWithTime');
+      print('📝 Tanggal Pengisian (ISO UTC): $tanggalISO');
+      print('📝 Lokasi: ${_lokasiPengisianController.text.isNotEmpty ? _lokasiPengisianController.text : "(tidak diisi)"}');
+      print('📝 Keterangan: ${_keteranganController.text.isNotEmpty ? _keteranganController.text : "(tidak diisi)"}');
+      print('📝 Bukti File: ${_buktiFilePath ?? "(tidak ada)"}');
+      print('🚀 Calling VesselService.uploadBahanBakar()...');
 
       final result = await VesselService().uploadBahanBakar(
         jenisBahanBakar: _jenisBahanBakar,
@@ -250,10 +293,10 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> with Ticker
         buktiFilePath: _buktiFilePath,
       );
 
-      print('✅ Upload result: $result');
+      print('✅ [UPLOAD FUEL DATA] SUCCESS');
+      print('📥 API Response: $result\n');
 
       if (mounted) {
-        // Trigger auto-refresh di parent screen
         RealtimeUpdateService.notifyListeners('vessel');
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -273,21 +316,52 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> with Ticker
         Navigator.pop(context, true);
       }
     } catch (e) {
-      print('❌ Error uploading fuel: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(child: Text('Gagal menyimpan data: $e')),
+      print('❌ [UPLOAD FUEL DATA] ERROR: $e\n');
+      
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('tidak ada kapal') || errorMsg.contains('assign')) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Icon(Icons.warning_rounded, color: Colors.orange, size: 28),
+                SizedBox(width: 12),
+                Text('Tidak Ada Kapal'),
+              ],
+            ),
+            content: Text(
+              'Anda belum di-assign ke kapal. Hubungi admin untuk assignment kapal.',
+              style: TextStyle(fontSize: 15),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+                child: Text('OK'),
+              ),
             ],
           ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('Gagal menyimpan data: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -502,11 +576,12 @@ class _FuelManagementScreenState extends State<FuelManagementScreen> with Ticker
             // Tanggal Pengisian
             InkWell(
               onTap: () async {
+                final now = DateTime.now();
                 final date = await showDatePicker(
                   context: context,
-                  initialDate: DateTime.now().subtract(Duration(days: 1)),
-                  firstDate: DateTime.now().subtract(Duration(days: 365)),
-                  lastDate: DateTime.now().subtract(Duration(days: 1)),
+                  initialDate: now,
+                  firstDate: DateTime(now.year - 1),
+                  lastDate: now,
                   builder: (context, child) {
                     return Theme(
                       data: Theme.of(context).copyWith(

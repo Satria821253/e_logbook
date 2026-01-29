@@ -41,7 +41,7 @@ class _MainScreenState extends State<MainScreen> {
   ];
   
   String _currentAddress = "Mendeteksi lokasi...";
-  String? _cachedPhotoPath;
+  ImageProvider? _cachedImageProvider;
   
   @override
   void initState() {
@@ -50,14 +50,14 @@ class _MainScreenState extends State<MainScreen> {
     AuthService.addAccountStatusInterceptor(context);
     AuthService.addTokenInterceptor(context);
     _loadUserData();
-    _loadCachedPhoto();
+    _initCachedPhoto();
   }
   
-  Future<void> _loadCachedPhoto() async {
+  Future<void> _initCachedPhoto() async {
     final cachedPath = await ProfilePhotoCache.getCachedPhotoPath();
     if (mounted && cachedPath != null) {
       setState(() {
-        _cachedPhotoPath = cachedPath;
+        _cachedImageProvider = FileImage(File(cachedPath));
       });
     }
   }
@@ -724,40 +724,17 @@ class _MainScreenState extends State<MainScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFF1B4F9C), width: 1.5),
             ),
-            child: Consumer<UserProvider>(
-              builder: (context, userProvider, child) {
-                final user = userProvider.user;
-                final photoUrl = user?.profilePicture;
-                
-                print('🖼️ [Header Avatar] photoUrl: $photoUrl');
-                
-                final hasValidPhoto = photoUrl != null && photoUrl.isNotEmpty;
-
-                ImageProvider? imageProvider;
-                if (_cachedPhotoPath != null) {
-                  imageProvider = FileImage(File(_cachedPhotoPath!));
-                } else if (hasValidPhoto) {
-                  if (photoUrl!.startsWith('file://') || photoUrl.startsWith('/')) {
-                    imageProvider = FileImage(File(photoUrl.replaceFirst('file://', '')));
-                  } else if (photoUrl.startsWith('http')) {
-                    imageProvider = NetworkImage(photoUrl);
-                  }
-                }
-
-                return CircleAvatar(
-                  key: ValueKey(_cachedPhotoPath ?? photoUrl ?? 'default'),
-                  radius: avatarRadius,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage: imageProvider,
-                  child: !hasValidPhoto && _cachedPhotoPath == null
-                      ? Icon(
-                          Icons.person_rounded,
-                          color: const Color(0xFF1B4F9C),
-                          size: avatarRadius * 1.2,
-                        )
-                      : null,
-                );
-              },
+            child: CircleAvatar(
+              radius: avatarRadius,
+              backgroundColor: Colors.grey[200],
+              backgroundImage: _cachedImageProvider,
+              child: _cachedImageProvider == null
+                  ? Icon(
+                      Icons.person_rounded,
+                      color: const Color(0xFF1B4F9C),
+                      size: avatarRadius * 1.2,
+                    )
+                  : null,
             ),
           ),
         ],

@@ -1,5 +1,6 @@
 // lib/screens/documents/nahkoda_pending_popup.dart
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:ui';
 
@@ -200,10 +201,10 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
                   child: RotationTransition(
                     turns: Tween<double>(begin: 0.02, end: 0.0).animate(_rotateAnimation),
                     child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 24),
-                    constraints: const BoxConstraints(maxWidth: 450),
+                    margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.popupPadding(context)),
+                    constraints: BoxConstraints(maxWidth: ResponsiveHelper.popupMaxWidth(context)),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(ResponsiveHelper.popupBorderRadius(context)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.orange.withOpacity(0.4),
@@ -213,7 +214,7 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(ResponsiveHelper.popupBorderRadius(context)),
                       child: _buildPopupContent(),
                     ),
                   ),
@@ -243,7 +244,7 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
           ];
     
     return Container(
-      height: 600,
+      height: ResponsiveHelper.popupHeight(context),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: gradientColors,
@@ -268,34 +269,34 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
               _buildHeader(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.all(ResponsiveHelper.popupPadding(context)),
                   child: Column(
                     children: [
                       _buildPendingIllustration(),
-                      const SizedBox(height: 24),
-                      const Text(
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 20)),
+                      Text(
                         'Dokumen Sedang Diverifikasi',
                         style: TextStyle(
-                          fontSize: 26,
+                          fontSize: ResponsiveHelper.popupTitleSize(context, mobile: 26, smallTablet: 20, mediumTablet: 22, largeTablet: 24),
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           decoration: TextDecoration.none,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 10)),
                       Text(
                         'Admin sedang memeriksa ${widget.pendingCount} dokumen Anda',
-                        style: const TextStyle(
-                          fontSize: 15,
+                        style: TextStyle(
+                          fontSize: ResponsiveHelper.popupSubtitleSize(context),
                           color: Colors.white,
                           decoration: TextDecoration.none,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 32, tablet: 24)),
                       _buildProgressInfo(),
-                      const SizedBox(height: 32),
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 32, tablet: 24)),
                       _buildActionButtons(),
                     ],
                   ),
@@ -374,8 +375,8 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
     return ScaleTransition(
       scale: _pulseAnimation,
       child: Container(
-        width: 160,
-        height: 160,
+        width: ResponsiveHelper.popupIllustrationSize(context),
+        height: ResponsiveHelper.popupIllustrationSize(context),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
@@ -408,8 +409,8 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
             Center(
               child: Lottie.asset(
                 'assets/animations/pending.json',
-                width: 100,
-                height: 100,
+                width: ResponsiveHelper.popupLottieSize(context, mobile: 120, smallTablet: 90, mediumTablet: 100, largeTablet: 110),
+                height: ResponsiveHelper.popupLottieSize(context, mobile: 120, smallTablet: 90, mediumTablet: 100, largeTablet: 110),
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   return const Icon(
@@ -441,27 +442,27 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Progress Verifikasi',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 14),
                   fontWeight: FontWeight.bold,
                   decoration: TextDecoration.none,
                 ),
               ),
               Text(
                 '${(progress * 100).toInt()}%',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 16),
                   fontWeight: FontWeight.bold,
                   decoration: TextDecoration.none,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 10)),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
@@ -471,23 +472,23 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
               minHeight: 10,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 10)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '${widget.approvedCount} Disetujui',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 12),
                   decoration: TextDecoration.none,
                 ),
               ),
               Text(
                 '${widget.pendingCount} Menunggu',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 12),
                   decoration: TextDecoration.none,
                 ),
               ),
@@ -501,6 +502,7 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
   Widget _buildActionButtons() {
     return SizedBox(
       width: double.infinity,
+      height: ResponsiveHelper.popupButtonHeight(context),
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).pop();
@@ -509,7 +511,10 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: Color(0xFFFB8C00),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: ResponsiveHelper.width(context, mobile: 24, tablet: 20),
+            vertical: ResponsiveHelper.height(context, mobile: 16, tablet: 14),
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -517,13 +522,13 @@ class _NahkodaPendingPopupState extends State<NahkodaPendingPopup>
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.visibility, size: 20),
             SizedBox(width: 8),
             Text(
               'Lihat Detail Status',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 14),
                 fontWeight: FontWeight.bold,
               ),
             ),

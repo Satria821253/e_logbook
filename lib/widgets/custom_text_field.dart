@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class CustomTextField extends StatefulWidget {
   final TextEditingController controller;
@@ -55,14 +54,14 @@ class _CustomTextFieldState extends State<CustomTextField> {
         Row(
           children: [
             Container(
-              padding: EdgeInsets.all(isTablet ? 8.w : 6.w),
+              padding: EdgeInsets.all(isTablet ? 8 : 6),
               decoration: BoxDecoration(
                 color: _hasError
                     ? Colors.red.withOpacity(0.1)
                     : _isFocused
                         ? const Color(0xFF1B4F9C).withOpacity(0.1)
                         : Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(isTablet ? 8.r : 6.r),
+                borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
               ),
               child: Icon(
                 widget.icon,
@@ -71,14 +70,14 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     : _isFocused
                         ? const Color(0xFF1B4F9C)
                         : Colors.grey.shade600,
-                size: isTablet ? 20.sp : 18.sp,
+                size: isTablet ? 20 : 18,
               ),
             ),
-            SizedBox(width: isTablet ? 12.w : 10.w),
+            SizedBox(width: isTablet ? 12 : 10),
             Text(
               widget.label,
               style: TextStyle(
-                fontSize: isTablet ? 16.sp : 14.sp,
+                fontSize: isTablet ? 16 : 14,
                 fontWeight: FontWeight.w600,
                 color: _hasError
                     ? Colors.red
@@ -88,11 +87,11 @@ class _CustomTextFieldState extends State<CustomTextField> {
               ),
             ),
             if (widget.required) ...[
-              SizedBox(width: isTablet ? 6.w : 4.w),
+              SizedBox(width: isTablet ? 6 : 4),
               Text(
                 '*',
                 style: TextStyle(
-                  fontSize: isTablet ? 16.sp : 14.sp,
+                  fontSize: isTablet ? 16 : 14,
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
                 ),
@@ -101,7 +100,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           ],
         ),
         
-        SizedBox(height: isTablet ? 12.h : 10.h),
+        SizedBox(height: isTablet ? 12 : 10),
         
         // Text Field
         Focus(
@@ -127,14 +126,14 @@ class _CustomTextFieldState extends State<CustomTextField> {
             },
             onTap: widget.onTap,
             style: TextStyle(
-              fontSize: isTablet ? 16.sp : 14.sp,
+              fontSize: isTablet ? 16 : 14,
               color: Colors.black87,
               fontWeight: hasValue ? FontWeight.w500 : FontWeight.normal,
             ),
             decoration: InputDecoration(
               hintText: widget.hint,
               hintStyle: TextStyle(
-                fontSize: isTablet ? 16.sp : 14.sp,
+                fontSize: isTablet ? 16 : 14,
                 color: Colors.grey.shade600,
               ),
               suffixIcon: widget.suffixWidget,
@@ -145,11 +144,11 @@ class _CustomTextFieldState extends State<CustomTextField> {
                       ? const Color(0xFF1B4F9C).withOpacity(0.05)
                       : Colors.grey.shade50,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                 borderSide: BorderSide(
                   color: _hasError
                       ? Colors.red.withOpacity(0.3)
@@ -160,29 +159,29 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                 borderSide: BorderSide(
                   color: _hasError ? Colors.red : const Color(0xFF1B4F9C),
                   width: 2,
                 ),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                 borderSide: const BorderSide(
                   color: Colors.red,
                   width: 2,
                 ),
               ),
               focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                 borderSide: const BorderSide(
                   color: Colors.red,
                   width: 2,
                 ),
               ),
               contentPadding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 16.w : 14.w,
-                vertical: isTablet ? 16.h : 14.h,
+                horizontal: isTablet ? 16 : 14,
+                vertical: isTablet ? 16 : 14,
               ),
               errorStyle: const TextStyle(height: 0),
             ),
@@ -210,20 +209,20 @@ class _CustomTextFieldState extends State<CustomTextField> {
         
         // Error message
         if (_hasError && _errorText != null) ...[
-          SizedBox(height: isTablet ? 8.h : 6.h),
+          SizedBox(height: isTablet ? 8 : 6),
           Row(
             children: [
               Icon(
                 Icons.error_outline,
                 color: Colors.red,
-                size: isTablet ? 16.sp : 14.sp,
+                size: isTablet ? 16 : 14,
               ),
-              SizedBox(width: isTablet ? 8.w : 6.w),
+              SizedBox(width: isTablet ? 8 : 6),
               Expanded(
                 child: Text(
                   _errorText!,
                   style: TextStyle(
-                    fontSize: isTablet ? 14.sp : 12.sp,
+                    fontSize: isTablet ? 14 : 12,
                     color: Colors.red,
                     fontWeight: FontWeight.w500,
                   ),

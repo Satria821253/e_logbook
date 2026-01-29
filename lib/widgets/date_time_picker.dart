@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class DateTimePickerField extends StatelessWidget {
   final String label;
@@ -32,32 +31,32 @@ class DateTimePickerField extends StatelessWidget {
         Row(
           children: [
             Container(
-              padding: EdgeInsets.all(isTablet ? 8.w : 6.w),
+              padding: EdgeInsets.all(isTablet ? 8 : 6),
               decoration: BoxDecoration(
                 color: const Color(0xFF1B4F9C).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(isTablet ? 8.r : 6.r),
+                borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
               ),
               child: Icon(
                 icon,
                 color: const Color(0xFF1B4F9C),
-                size: isTablet ? 20.sp : 18.sp,
+                size: isTablet ? 20 : 18,
               ),
             ),
-            SizedBox(width: isTablet ? 12.w : 10.w),
+            SizedBox(width: isTablet ? 12 : 10),
             Text(
               label,
               style: TextStyle(
-                fontSize: isTablet ? 16.sp : 14.sp,
+                fontSize: isTablet ? 16 : 14,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
             if (isRequired) ...[
-              SizedBox(width: isTablet ? 6.w : 4.w),
+              SizedBox(width: isTablet ? 6 : 4),
               Text(
                 '*',
                 style: TextStyle(
-                  fontSize: isTablet ? 16.sp : 14.sp,
+                  fontSize: isTablet ? 16 : 14,
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
                 ),
@@ -66,23 +65,23 @@ class DateTimePickerField extends StatelessWidget {
           ],
         ),
         
-        SizedBox(height: isTablet ? 12.h : 10.h),
+        SizedBox(height: isTablet ? 12 : 10),
         
         // Input field
         InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+          borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
           child: Container(
             padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 16.w : 14.w,
-              vertical: isTablet ? 16.h : 14.h,
+              horizontal: isTablet ? 16 : 14,
+              vertical: isTablet ? 16 : 14,
             ),
             decoration: BoxDecoration(
               border: Border.all(
                 color: isEmpty ? Colors.grey.shade300 : const Color(0xFF1B4F9C).withOpacity(0.3),
                 width: isEmpty ? 1 : 1.5,
               ),
-              borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
               color: isEmpty ? Colors.grey.shade50 : const Color(0xFF1B4F9C).withOpacity(0.05),
             ),
             child: Row(
@@ -91,22 +90,22 @@ class DateTimePickerField extends StatelessWidget {
                   child: Text(
                     isEmpty ? (hintText ?? 'Pilih $label') : value,
                     style: TextStyle(
-                      fontSize: isTablet ? 16.sp : 14.sp,
+                      fontSize: isTablet ? 16 : 14,
                       color: isEmpty ? Colors.grey.shade600 : Colors.black87,
                       fontWeight: isEmpty ? FontWeight.normal : FontWeight.w500,
                     ),
                   ),
                 ),
                 Container(
-                  padding: EdgeInsets.all(isTablet ? 8.w : 6.w),
+                  padding: EdgeInsets.all(isTablet ? 8 : 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF1B4F9C).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(isTablet ? 8.r : 6.r),
+                    borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
                   ),
                   child: Icon(
                     Icons.keyboard_arrow_down,
                     color: const Color(0xFF1B4F9C),
-                    size: isTablet ? 20.sp : 18.sp,
+                    size: isTablet ? 20 : 18,
                   ),
                 ),
               ],
@@ -133,10 +132,10 @@ class CustomDatePicker {
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(isTablet ? 20.r : 16.r),
+          borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
         ),
         child: Container(
-          width: isTablet ? 400.w : double.infinity,
+          width: isTablet ? 400 : double.infinity,
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.7,
           ),
@@ -145,7 +144,7 @@ class CustomDatePicker {
             children: [
               // Header
               Container(
-                padding: EdgeInsets.all(isTablet ? 24.w : 20.w),
+                padding: EdgeInsets.all(isTablet ? 24 : 20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
@@ -153,30 +152,30 @@ class CustomDatePicker {
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(isTablet ? 20.r : 16.r),
-                    topRight: Radius.circular(isTablet ? 20.r : 16.r),
+                    topLeft: Radius.circular(isTablet ? 20 : 16),
+                    topRight: Radius.circular(isTablet ? 20 : 16),
                   ),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.all(isTablet ? 12.w : 10.w),
+                      padding: EdgeInsets.all(isTablet ? 12 : 10),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                       ),
                       child: Icon(
                         Icons.calendar_today,
                         color: Colors.white,
-                        size: isTablet ? 24.sp : 20.sp,
+                        size: isTablet ? 24 : 20,
                       ),
                     ),
-                    SizedBox(width: isTablet ? 16.w : 12.w),
+                    SizedBox(width: isTablet ? 16 : 12),
                     Expanded(
                       child: Text(
                         title,
                         style: TextStyle(
-                          fontSize: isTablet ? 20.sp : 18.sp,
+                          fontSize: isTablet ? 20 : 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -189,7 +188,7 @@ class CustomDatePicker {
               // Calendar
               Flexible(
                 child: Container(
-                  padding: EdgeInsets.all(isTablet ? 20.w : 16.w),
+                  padding: EdgeInsets.all(isTablet ? 20 : 16),
                   child: Theme(
                     data: Theme.of(context).copyWith(
                       colorScheme: Theme.of(context).colorScheme.copyWith(
@@ -211,12 +210,12 @@ class CustomDatePicker {
               
               // Actions
               Container(
-                padding: EdgeInsets.all(isTablet ? 20.w : 16.w),
+                padding: EdgeInsets.all(isTablet ? 20 : 16),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
                   borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(isTablet ? 20.r : 16.r),
-                    bottomRight: Radius.circular(isTablet ? 20.r : 16.r),
+                    bottomLeft: Radius.circular(isTablet ? 20 : 16),
+                    bottomRight: Radius.circular(isTablet ? 20 : 16),
                   ),
                 ),
                 child: SizedBox(
@@ -225,17 +224,17 @@ class CustomDatePicker {
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
                       padding: EdgeInsets.symmetric(
-                        vertical: isTablet ? 14.h : 12.h,
+                        vertical: isTablet ? 14 : 12,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(isTablet ? 10.r : 8.r),
+                        borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                       ),
                       side: const BorderSide(color: Colors.grey),
                     ),
                     child: Text(
                       'Batal',
                       style: TextStyle(
-                        fontSize: isTablet ? 16.sp : 14.sp,
+                        fontSize: isTablet ? 16 : 14,
                         fontWeight: FontWeight.w600,
                         color: Colors.grey.shade700,
                       ),
@@ -264,16 +263,16 @@ class CustomTimePicker {
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(isTablet ? 20.r : 16.r),
+          borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
         ),
         child: Container(
-          width: isTablet ? 400.w : double.infinity,
+          width: isTablet ? 400 : double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Header
               Container(
-                padding: EdgeInsets.all(isTablet ? 24.w : 20.w),
+                padding: EdgeInsets.all(isTablet ? 24 : 20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
@@ -281,30 +280,30 @@ class CustomTimePicker {
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(isTablet ? 20.r : 16.r),
-                    topRight: Radius.circular(isTablet ? 20.r : 16.r),
+                    topLeft: Radius.circular(isTablet ? 20 : 16),
+                    topRight: Radius.circular(isTablet ? 20 : 16),
                   ),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.all(isTablet ? 12.w : 10.w),
+                      padding: EdgeInsets.all(isTablet ? 12 : 10),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(isTablet ? 12.r : 10.r),
+                        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                       ),
                       child: Icon(
                         Icons.access_time,
                         color: Colors.white,
-                        size: isTablet ? 24.sp : 20.sp,
+                        size: isTablet ? 24 : 20,
                       ),
                     ),
-                    SizedBox(width: isTablet ? 16.w : 12.w),
+                    SizedBox(width: isTablet ? 16 : 12),
                     Expanded(
                       child: Text(
                         title,
                         style: TextStyle(
-                          fontSize: isTablet ? 20.sp : 18.sp,
+                          fontSize: isTablet ? 20 : 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -316,7 +315,7 @@ class CustomTimePicker {
               
               // Time Picker
               Container(
-                padding: EdgeInsets.all(isTablet ? 20.w : 16.w),
+                padding: EdgeInsets.all(isTablet ? 20 : 16),
                 child: Theme(
                   data: Theme.of(context).copyWith(
                     colorScheme: Theme.of(context).colorScheme.copyWith(
@@ -334,12 +333,12 @@ class CustomTimePicker {
               
               // Actions
               Container(
-                padding: EdgeInsets.all(isTablet ? 20.w : 16.w),
+                padding: EdgeInsets.all(isTablet ? 20 : 16),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
                   borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(isTablet ? 20.r : 16.r),
-                    bottomRight: Radius.circular(isTablet ? 20.r : 16.r),
+                    bottomLeft: Radius.circular(isTablet ? 20 : 16),
+                    bottomRight: Radius.circular(isTablet ? 20 : 16),
                   ),
                 ),
                 child: SizedBox(
@@ -348,17 +347,17 @@ class CustomTimePicker {
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
                       padding: EdgeInsets.symmetric(
-                        vertical: isTablet ? 14.h : 12.h,
+                        vertical: isTablet ? 14 : 12,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(isTablet ? 10.r : 8.r),
+                        borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                       ),
                       side: const BorderSide(color: Colors.grey),
                     ),
                     child: Text(
                       'Batal',
                       style: TextStyle(
-                        fontSize: isTablet ? 16.sp : 14.sp,
+                        fontSize: isTablet ? 16 : 14,
                         fontWeight: FontWeight.w600,
                         color: Colors.grey.shade700,
                       ),

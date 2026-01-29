@@ -1,0 +1,5 @@
+Ganti semua:
+- sp(angka) -> ResponsiveHelper.spacing(context, mobile: angka, tablet: angka*0.8)
+- fs(angka) -> ResponsiveHelper.font(context, mobile: angka, tablet: angka*0.85)
+- angka.h -> ResponsiveHelper.height(context, mobile: angka, tablet: angka*0.85)
+- angka.w -> ResponsiveHelper.width(context, mobile: angka, tablet: angka*0.85)

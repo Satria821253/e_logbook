@@ -492,15 +492,9 @@ class VesselService {
       request.fields['totalHarga'] = totalHarga.toString();
       request.fields['tanggalPengisian'] = tanggalPengisian;
 
-      if (lokasiPengisian != null && lokasiPengisian.isNotEmpty) {
-        request.fields['lokasiPengisian'] = lokasiPengisian;
-        print('📍 [uploadBahanBakar] Lokasi added: $lokasiPengisian');
-      }
-
-      if (keterangan != null && keterangan.isNotEmpty) {
-        request.fields['keterangan'] = keterangan;
-        print('📝 [uploadBahanBakar] Keterangan added: $keterangan');
-      }
+      // Kirim field optional sebagai empty string (bukan skip)
+      request.fields['lokasiPengisian'] = lokasiPengisian ?? '';
+      request.fields['keterangan'] = keterangan ?? '';
 
       if (buktiFilePath != null && buktiFilePath.isNotEmpty) {
         final file = File(buktiFilePath);

@@ -3,7 +3,6 @@ import 'package:e_logbook/services/nitification/admin_notification_service.dart'
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../models/document_requirement_model.dart';
 import '../provider/user_provider.dart';
@@ -256,8 +255,8 @@ class _NotificationScreenState extends State<NotificationScreen>
                           ),
                           if (_getAllUnreadCount() > 0)
                             Positioned(
-                              right: -8.w,
-                              top: -4.h,
+                              right: -8,
+                              top: -4,
                               child: Container(
                                 padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 2, tablet: 3)),
                                 decoration: const BoxDecoration(
@@ -300,8 +299,8 @@ class _NotificationScreenState extends State<NotificationScreen>
                           ),
                           if (_unreadSystemCount > 0)
                             Positioned(
-                              right: -8.w,
-                              top: -4.h,
+                              right: -8,
+                              top: -4,
                               child: Container(
                                 padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 2, tablet: 3)),
                                 decoration: const BoxDecoration(

@@ -452,7 +452,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   Widget build(BuildContext context) {
     super.build(context);
     
-    final size = MediaQuery.of(context).size;
     final isTablet = ResponsiveHelper.isTablet(context);
     
     // Jika tablet, render tanpa CustomSliverAppBar karena sudah ada header di MainScreen
@@ -1627,62 +1626,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     );
   }
 
-  Widget _buildTabletLayout() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Carousel - Full width
-        CatchCarousel(),
-        const SizedBox(height: 24),
-
-        // Document Alert - Admin sends from web, appears here automatically
-        // TODO: Uncomment when backend ready
-        // if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
-        //   _buildDocumentAlert(),
-        // if (!_isLoadingDocuments && _documentRequirements.isNotEmpty)
-        //   const SizedBox(height: 24),
-
-        // Statistics Title and Cards in white container
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Statistik Hari Ini',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildTabletStatisticsCards(),
-            ],
-          ),
-        ),
-        const SizedBox(height: 32),
-
-        // Weekly Activity Chart - Full width
-        _buildWeeklyActivity(),
-        const SizedBox(height: 32),
-
-        // Recent Catches - Full width below chart
-        _buildRecentCatches(),
-      ],
-    );
-  }
 
   Widget _buildTabletStatisticsCards() {
     final provider = Provider.of<CatchProvider>(context);
@@ -1830,45 +1773,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompactStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[600],
-            ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 // lib/screens/documents/crew_pending_popup.dart
 import 'package:flutter/material.dart';
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:ui';
 import 'dart:math' as math;
@@ -197,10 +198,10 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
                   child: RotationTransition(
                     turns: Tween<double>(begin: -0.02, end: 0.0).animate(_rotateAnimation),
                     child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 24),
-                    constraints: const BoxConstraints(maxWidth: 450),
+                    margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.popupPadding(context)),
+                    constraints: BoxConstraints(maxWidth: ResponsiveHelper.popupMaxWidth(context)),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(ResponsiveHelper.popupBorderRadius(context)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.orange.withOpacity(0.5),
@@ -210,7 +211,7 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(ResponsiveHelper.popupBorderRadius(context)),
                       child: _buildPopupContent(),
                     ),
                   ),
@@ -244,7 +245,7 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
     print('🎨 [CREW POPUP] Using colors: ${hasRejected ? "RED" : "ORANGE"}');
     
     return Container(
-      height: 600,
+      height: ResponsiveHelper.popupHeight(context),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: gradientColors,
@@ -275,34 +276,34 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
               _buildHeader(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.all(ResponsiveHelper.popupPadding(context)),
                   child: Column(
                     children: [
                       _buildPendingIllustration(),
-                      const SizedBox(height: 24),
-                      const Text(
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 20)),
+                      Text(
                         'Sedang Diproses',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: ResponsiveHelper.popupTitleSize(context),
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           decoration: TextDecoration.none,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 10)),
                       Text(
                         '${widget.pendingCount} dokumen Anda sedang diperiksa admin',
-                        style: const TextStyle(
-                          fontSize: 15,
+                        style: TextStyle(
+                          fontSize: ResponsiveHelper.popupSubtitleSize(context),
                           color: Colors.white,
                           decoration: TextDecoration.none,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 32, tablet: 24)),
                       _buildQuickInfo(),
-                      const SizedBox(height: 32),
+                      SizedBox(height: ResponsiveHelper.spacing(context, mobile: 32, tablet: 24)),
                       _buildActionButtons(),
                     ],
                   ),
@@ -384,8 +385,8 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
         return Transform.rotate(
           angle: math.sin(_waveController.value * 2 * math.pi) * 0.1,
           child: Container(
-            width: 160,
-            height: 160,
+            width: ResponsiveHelper.popupIllustrationSize(context),
+            height: ResponsiveHelper.popupIllustrationSize(context),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
@@ -418,8 +419,8 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
                 Center(
                   child: Lottie.asset(
                     'assets/animations/hourglass.json',
-                    width: 100,
-                    height: 100,
+                    width: ResponsiveHelper.popupLottieSize(context, mobile: 120, smallTablet: 90, mediumTablet: 100, largeTablet: 110),
+                    height: ResponsiveHelper.popupLottieSize(context, mobile: 120, smallTablet: 90, mediumTablet: 100, largeTablet: 110),
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       return const Icon(
@@ -568,13 +569,13 @@ class _CrewPendingPopupState extends State<CrewPendingPopup>
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.assignment, size: 20, color: Color(0xFFFB8C00)),
             SizedBox(width: 8),
             Text(
               'Lihat Status Detail',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 14),
                 fontWeight: FontWeight.bold,
                 color: Color(0xFFFB8C00),
               ),

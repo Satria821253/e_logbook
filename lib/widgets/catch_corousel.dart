@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:e_logbook/utils/responsive_helper.dart';
+
 
 class CatchCarousel extends StatefulWidget {
   const CatchCarousel({super.key});

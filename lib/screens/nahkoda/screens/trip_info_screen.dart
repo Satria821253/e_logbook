@@ -46,6 +46,8 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = ResponsiveHelper.isTablet(context);
+    
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -60,26 +62,35 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    ),
-                    Expanded(
-                      child: Text(
-                        'Info Trip',
-                        style: TextStyle(
-                          fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 24),
-                          fontWeight: FontWeight.bold,
+                padding: EdgeInsets.all(ResponsiveHelper.appBarPadding(context)),
+                child: SizedBox(
+                  height: ResponsiveHelper.appBarHeight(context),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(
+                          Icons.arrow_back,
                           color: Colors.white,
+                          size: ResponsiveHelper.appBarIconSize(context),
                         ),
-                        textAlign: TextAlign.center,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
-                    ),
-                    const SizedBox(width: 48),
-                  ],
+                      Expanded(
+                        child: Text(
+                          'Info Trip',
+                          style: TextStyle(
+                            fontSize: ResponsiveHelper.appBarTitleSize(context),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      SizedBox(width: ResponsiveHelper.appBarIconSize(context) + 16),
+                    ],
+                  ),
                 ),
               ),
 
