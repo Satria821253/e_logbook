@@ -10,7 +10,7 @@ import '../../utils/token_interceptor.dart';
 
 class AuthService {
   // VPS Production Server
-  static const String baseUrl = 'http://210.79.191.17:5000/api';
+  static const String baseUrl = 'http://192.168.1.19:5000/api';
 
   static late Dio _dio;
 
@@ -122,7 +122,7 @@ class AuthService {
         try {
           final vesselDio = Dio(
             BaseOptions(
-              baseUrl: 'http://210.79.191.17:5000',
+              baseUrl: 'http://192.168.1.19:5000',
               connectTimeout: const Duration(seconds: 30),
               receiveTimeout: const Duration(seconds: 30),
             ),

@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 class VesselService {
-  static const String baseUrl = 'http://210.79.191.17:5000';
+  static const String baseUrl = 'http://192.168.1.19:5000';
 
   Future<Map<String, dynamic>> checkAssignmentStatus() async {
     try {
@@ -137,12 +137,127 @@ class VesselService {
         '🎯 Role: $actualRole, Is crew? $isCrewRole, Force refresh? $forceRefresh',
       );
 
-      // Cek apakah cache sudah expired (lebih dari 1 hari)
-      final lastCacheTime = prefs.getInt('vessel_data_timestamp');
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final oneDayInMs = 24 * 60 * 60 * 1000; // 1 hari dalam milliseconds
+      // CREW: Gunakan endpoint assignment-status
+      if (isCrewRole) {
+        print('👥 [CREW] Using assignment-status endpoint...');
+        return await _getVesselDataForCrew(token, forceRefresh);
+      }
 
+      // NAHKODA: Gunakan endpoint my-vessel (existing logic)
+      return await _getVesselDataForNahkoda(token, forceRefresh);
+    } catch (e) {
+      print('❌ Error in getVesselData: $e');
+      print('========== getVesselData END (ERROR) ==========\n');
+      return null;
+    }
+  }
+
+  // Get vessel data for CREW using assignment-status endpoint
+  Future<Map<String, dynamic>?> _getVesselDataForCrew(
+    String token,
+    bool forceRefresh,
+  ) async {
+    try {
+      print('\n========== CREW VESSEL DATA FETCH START ==========');
+      print('👥 [CREW] Role: ABK/Crew detected');
+      print('🔑 [CREW] Token: ${token.substring(0, 30)}...');
+      print('🔄 [CREW] Force refresh: $forceRefresh');
+      print('🔍 [CREW] Fetching from assignment-status endpoint...');
+      print('🌐 [CREW] URL: $baseUrl/api/mobile/vessels/assignment-status');
+      
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/mobile/vessels/assignment-status'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('\n--- CREW API RESPONSE ---');
+      print('📥 [CREW] Response status: ${response.statusCode}');
+      print('📥 [CREW] Response body RAW: ${response.body}');
+      print('--- END RESPONSE ---\n');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('📦 [CREW] Parsed response data:');
+        print('   - success: ${responseData['success']}');
+        print('   - message: ${responseData['message'] ?? "(no message)"}');
+        print('   - data type: ${responseData['data']?.runtimeType}');
+        print('   - data: ${responseData['data']}');
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final data = responseData['data'];
+          print('\n🔍 [CREW] Checking data structure...');
+          print('   - hasAssignment: ${data["hasAssignment"]}');
+          print('   - assignedVessels: ${data["assignedVessels"]}');
+          
+          if (data['hasAssignment'] == true && data['assignedVessels'] != null) {
+            final vessels = data['assignedVessels'] as List;
+            if (vessels.isNotEmpty) {
+              final firstVessel = vessels[0];
+              final vesselId = firstVessel['id'];
+              
+              print('🔍 [CREW] Fetching full vessel details for ID: $vesselId');
+              
+              // Fetch full vessel data including nahkoda
+              final fullVesselData = await getVesselById(vesselId);
+              
+              final vesselData = {
+                'kapal': {
+                  'id': firstVessel['id'],
+                  'namaKapal': firstVessel['namaKapal'],
+                  'nomorRegistrasi': firstVessel['nomorRegistrasi'],
+                },
+                'nahkoda': fullVesselData?['nahkoda'],
+              };
+
+              print('✅ [CREW] Vessel data found');
+              print('🚢 [CREW] Kapal: ${firstVessel["namaKapal"]}');
+              print('👨✈️ [CREW] Nahkoda: ${fullVesselData?['nahkoda']?['nama'] ?? "null"}');
+              print('📋 [CREW] Total vessels: ${vessels.length}');
+
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('vessel_data', json.encode(vesselData));
+              await prefs.setInt(
+                'vessel_data_timestamp',
+                DateTime.now().millisecondsSinceEpoch,
+              );
+              print('========== getVesselData END (CREW-SUCCESS) ==========\n');
+              return vesselData;
+            }
+          }
+        }
+      }
+
+      print('❌ [CREW] No vessel data found from assignment-status');
+      print('ℹ️ [CREW] Backend response indicates: hasAssignment=false, assignedVessels=[]');
+      print('ℹ️ [CREW] This means crew is NOT assigned to any vessel in database');
+      print('========== getVesselData END (CREW-NULL) ==========\n');
+      return null;
+    } catch (e) {
+      print('❌ [CREW] Error: $e');
+      print('========== getVesselData END (CREW-ERROR) ==========\n');
+      return null;
+    }
+  }
+
+  // Get vessel data for NAHKODA using my-vessel endpoint (existing logic)
+  Future<Map<String, dynamic>?> _getVesselDataForNahkoda(
+    String token,
+    bool forceRefresh,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final oneDayInMs = 24 * 60 * 60 * 1000;
+
+      // Cek cache
       bool cacheExpired = false;
+      final lastCacheTime = prefs.getInt('vessel_data_timestamp');
+      
       if (lastCacheTime != null) {
         final timeDiff = now - lastCacheTime;
         cacheExpired = timeDiff > oneDayInMs;
@@ -156,108 +271,25 @@ class VesselService {
           );
         }
       } else {
-        // Jika tidak ada timestamp, anggap cache expired (untuk backward compatibility)
         cacheExpired = true;
         print('⚠️ No timestamp found, treating cache as expired');
       }
 
-      // Jika tidak force refresh dan cache belum expired, cek versi data dari backend
+      // Return cache if valid and not force refresh
       if (!forceRefresh && !cacheExpired) {
         final vesselDataString = prefs.getString('vessel_data');
         if (vesselDataString != null) {
           print('💾 Found cached vessel_data');
           final cachedData = json.decode(vesselDataString);
-
-          // Jika crew dan nahkoda null di cache, force refresh
-          if (isCrewRole && cachedData['nahkoda'] == null) {
-            print('⚠️ [CREW] Cache has null nahkoda, forcing refresh...');
-            cacheExpired = true;
-          }
-
-          // Cek versi data dari backend (lightweight check)
-          if (!cacheExpired) {
-            try {
-              print('🔍 Checking data version from backend...');
-              final versionResponse = await http
-                  .get(
-                    Uri.parse('$baseUrl/api/mobile/vessels/my-vessel'),
-                    headers: {
-                      'Authorization': 'Bearer $token',
-                      'Content-Type': 'application/json',
-                    },
-                  )
-                  .timeout(const Duration(seconds: 10));
-
-              if (versionResponse.statusCode == 200) {
-                final responseData = json.decode(versionResponse.body);
-                if (responseData['success'] == true) {
-                  final vessels = responseData['data'] as List;
-                  if (vessels.isNotEmpty) {
-                    final latestKapal = vessels[0];
-                    final cachedKapalId = cachedData['kapal']['id'];
-                    final latestKapalId = latestKapal['id'];
-
-                    // Cek apakah kapal ID berubah atau updatedAt berubah
-                    final cachedUpdatedAt = cachedData['kapal']['updatedAt'];
-                    final latestUpdatedAt = latestKapal['updatedAt'];
-
-                    // Cek perubahan data nahkoda
-                    final cachedNahkodaId = cachedData['nahkoda']?['id'];
-                    final latestNahkodaId = latestKapal['nahkoda']?['id'];
-
-                    if (cachedKapalId != latestKapalId) {
-                      print(
-                        '🔄 Kapal ID changed: $cachedKapalId -> $latestKapalId',
-                      );
-                      print('🔄 Forcing refresh due to vessel change');
-                      cacheExpired = true;
-                    } else if (cachedNahkodaId != latestNahkodaId) {
-                      print(
-                        '🔄 Nahkoda changed: $cachedNahkodaId -> $latestNahkodaId',
-                      );
-                      print('🔄 Forcing refresh due to nahkoda change');
-                      cacheExpired = true;
-                    } else if (cachedUpdatedAt != null &&
-                        latestUpdatedAt != null &&
-                        cachedUpdatedAt != latestUpdatedAt) {
-                      print(
-                        '🔄 Kapal data updated: $cachedUpdatedAt -> $latestUpdatedAt',
-                      );
-                      print('🔄 Forcing refresh due to data update');
-                      cacheExpired = true;
-                    } else {
-                      print('✅ Data version matches, using cache');
-                      print('📋 [CACHE] Kapal: ${cachedData['kapal']}');
-                      print('📋 [CACHE] Nahkoda: ${cachedData['nahkoda']}');
-                      print(
-                        '========== getVesselData END (CACHE) ==========\n',
-                      );
-                      return cachedData;
-                    }
-                  }
-                }
-              }
-            } catch (e) {
-              print('⚠️ Failed to check version, using cache: $e');
-              print('📋 [CACHE] Kapal: ${cachedData['kapal']}');
-              print('📋 [CACHE] Nahkoda: ${cachedData['nahkoda']}');
-              print('========== getVesselData END (CACHE) ==========\n');
-              return cachedData;
-            }
-          }
-        } else {
-          print('💾 No cache found');
-        }
-      } else {
-        if (forceRefresh) {
-          print('🔄 Force refresh enabled, skipping cache');
-        } else if (cacheExpired) {
-          print('🔄 Cache expired, refreshing from API');
+          print('📋 [CACHE] Kapal: ${cachedData['kapal']}');
+          print('📋 [CACHE] Nahkoda: ${cachedData['nahkoda']}');
+          print('========== getVesselData END (NAHKODA-CACHE) ==========\n');
+          return cachedData;
         }
       }
 
-      // Fetch dari API
-      print('🌐 Fetching from API...');
+      // Fetch from API
+      print('🌐 [NAHKODA] Fetching from my-vessel endpoint...');
       final vesselResponse = await http
           .get(
             Uri.parse('$baseUrl/api/mobile/vessels/my-vessel'),
@@ -268,75 +300,44 @@ class VesselService {
           )
           .timeout(const Duration(seconds: 30));
 
-      print('📥 API Response status: ${vesselResponse.statusCode}');
+      print('📥 [NAHKODA] API Response status: ${vesselResponse.statusCode}');
+      print('📥 [NAHKODA] API Response body: ${vesselResponse.body}');
 
       if (vesselResponse.statusCode == 200) {
         final responseData = json.decode(vesselResponse.body);
-        print('📥 API Response success: ${responseData['success']}');
+        print('📥 [NAHKODA] API Response success: ${responseData['success']}');
 
         if (responseData['success'] == true) {
           final vessels = responseData['data'] as List;
-          print('🚢 Vessels count: ${vessels.length}');
+          print('🚢 [NAHKODA] Vessels count: ${vessels.length}');
 
           if (vessels.isNotEmpty) {
             final kapal = vessels[0];
-            final vesselId = kapal['id'];
-            print('🚢 Vessel ID: $vesselId');
-            print('🚢 Vessel name: ${kapal['namaKapal']}');
-            print('🚢 Nahkoda from my-vessel: ${kapal['nahkoda']}');
+            final vesselData = {
+              'kapal': {
+                'id': kapal['id'],
+                'namaKapal': kapal['namaKapal'],
+                'nomorRegistrasi': kapal['nomorRegistrasi'],
+                'updatedAt': kapal['updatedAt'],
+              },
+              'nahkoda': kapal['nahkoda'],
+            };
 
-            // Untuk crew, ambil detail lengkap
-            if (isCrewRole) {
-              print('👥 [CREW] Fetching detailed data with nahkoda...');
-              final detailData = await getVesselById(vesselId);
-
-              if (detailData != null) {
-                final vesselData = {
-                  'kapal': {
-                    'id': detailData['id'],
-                    'namaKapal': detailData['namaKapal'],
-                    'nomorRegistrasi': detailData['nomorRegistrasi'],
-                    'updatedAt': detailData['updatedAt'],
-                  },
-                  'nahkoda': detailData['nahkoda'],
-                };
-
-                print(
-                  '💾 [CREW] Saving to cache with nahkoda: ${vesselData['nahkoda']?['nama']}',
-                );
-                await prefs.setString('vessel_data', json.encode(vesselData));
-                await prefs.setInt('vessel_data_timestamp', now);
-                print('========== getVesselData END (API-CREW) ==========\n');
-                return vesselData;
-              }
-            } else {
-              // Untuk nahkoda
-              final vesselData = {
-                'kapal': {
-                  'id': kapal['id'],
-                  'namaKapal': kapal['namaKapal'],
-                  'nomorRegistrasi': kapal['nomorRegistrasi'],
-                  'updatedAt': kapal['updatedAt'],
-                },
-                'nahkoda': kapal['nahkoda'],
-              };
-
-              print('💾 [NAHKODA] Saving to cache');
-              await prefs.setString('vessel_data', json.encode(vesselData));
-              await prefs.setInt('vessel_data_timestamp', now);
-              print('========== getVesselData END (API-NAHKODA) ==========\n');
-              return vesselData;
-            }
+            print('💾 [NAHKODA] Saving to cache');
+            await prefs.setString('vessel_data', json.encode(vesselData));
+            await prefs.setInt('vessel_data_timestamp', now);
+            print('========== getVesselData END (NAHKODA-API) ==========\n');
+            return vesselData;
           }
         }
       }
 
-      print('❌ No vessel data found');
-      print('========== getVesselData END (NULL) ==========\n');
+      print('❌ [NAHKODA] No vessel data found');
+      print('========== getVesselData END (NAHKODA-NULL) ==========\n');
       return null;
     } catch (e) {
-      print('❌ Error in getVesselData: $e');
-      print('========== getVesselData END (ERROR) ==========\n');
+      print('❌ [NAHKODA] Error: $e');
+      print('========== getVesselData END (NAHKODA-ERROR) ==========\n');
       return null;
     }
   }
@@ -591,24 +592,36 @@ class VesselService {
       final token = prefs.getString('auth_token');
 
       if (token == null) {
+        print('❌ [uploadIceData] Token tidak ditemukan');
         throw Exception('Token tidak ditemukan');
       }
+
+      print('🔑 [uploadIceData] Token found: ${token.substring(0, 20)}...');
 
       final vesselData = await getVesselData();
 
       if (vesselData == null) {
+        print('❌ [uploadIceData] Vessel data is null');
         throw Exception(
           'Tidak ada kapal yang di-assign. Hubungi admin untuk assign kapal.',
         );
       }
 
       final kapalId = vesselData['kapal']['id'];
-      print('🚢 Kapal ID: $kapalId');
-      print('📊 Data: $jenisEs, $jumlahKg kg, Rp $hargaPerKg/kg');
+      print('🚢 [uploadIceData] Kapal ID: $kapalId');
+      print('🚢 [uploadIceData] Kapal Name: ${vesselData['kapal']['namaKapal']}');
+      print('📋 [uploadIceData] Data yang akan dikirim:');
+      print('   - jenisEs: $jenisEs');
+      print('   - jumlahKg: $jumlahKg');
+      print('   - hargaPerKg: $hargaPerKg');
+      print('   - totalHarga: $totalHarga');
+      print('   - tanggalPembelian: $tanggalPembelian');
+      print('   - lokasiPembelian: ${lokasiPembelian ?? "(kosong)"}');
+      print('   - keterangan: ${keterangan ?? "(kosong)"}');
+      print('   - buktiFilePath: ${buktiFilePath ?? "(tidak ada)"}');
 
-      // Try with /api prefix first
       var url = '$baseUrl/api/mobile/vessel/$kapalId/ice-data';
-      print('🌐 [uploadIceData] Trying URL: $url');
+      print('🌐 [uploadIceData] URL: $url');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
 
@@ -635,6 +648,10 @@ class VesselService {
             contentType = 'image/png';
           }
 
+          print('📎 [uploadIceData] Uploading file: ${buktiFilePath.split('/').last}');
+          print('📎 [uploadIceData] Content-Type: $contentType');
+          print('📎 [uploadIceData] File size: ${await file.length()} bytes');
+
           request.files.add(
             await http.MultipartFile.fromPath(
               'bukti',
@@ -642,23 +659,29 @@ class VesselService {
               contentType: http_parser.MediaType.parse(contentType),
             ),
           );
+        } else {
+          print('⚠️ [uploadIceData] File not found: $buktiFilePath');
         }
+      } else {
+        print('ℹ️ [uploadIceData] No file to upload');
       }
 
-      print('📤 Sending ice data...');
+      print('📤 [uploadIceData] Sending request...');
+      print('📤 [uploadIceData] Request fields: ${request.fields}');
+      print('📤 [uploadIceData] Request files: ${request.files.length} file(s)');
+
       var streamedResponse = await request.send().timeout(
         const Duration(minutes: 2),
       );
       var response = await http.Response.fromStream(streamedResponse);
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
+      print('📥 [uploadIceData] Response status: ${response.statusCode}');
+      print('📥 [uploadIceData] Response body: ${response.body}');
 
-      // If 404, try without /api prefix
       if (response.statusCode == 404) {
-        print('⚠️ First attempt failed (404), trying without /api prefix...');
+        print('⚠️ [uploadIceData] First attempt failed (404), trying without /api prefix...');
         url = '$baseUrl/mobile/vessel/$kapalId/ice-data';
-        print('🌐 [uploadIceData] Trying URL: $url');
+        print('🌐 [uploadIceData] Retry URL: $url');
 
         request = http.MultipartRequest('POST', Uri.parse(url));
         request.headers['Authorization'] = 'Bearer $token';
@@ -694,34 +717,36 @@ class VesselService {
           }
         }
 
+        print('📤 [uploadIceData] Sending retry request...');
         streamedResponse = await request.send().timeout(
           const Duration(minutes: 2),
         );
         response = await http.Response.fromStream(streamedResponse);
 
-        print('📥 Second attempt status: ${response.statusCode}');
-        print('📥 Second attempt body: ${response.body}');
+        print('📥 [uploadIceData] Retry response status: ${response.statusCode}');
+        print('📥 [uploadIceData] Retry response body: ${response.body}');
       }
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        print('✅ Ice data uploaded successfully');
-        print('========== UPLOAD ICE DATA END ==========\n');
+        print('✅ [uploadIceData] Upload successful!');
+        print('========== UPLOAD ICE DATA END (SUCCESS) ==========\n');
 
-        // Trigger realtime update untuk refresh UI
         RealtimeUpdateService.notifyListeners('ice');
 
         return result;
       } else {
-        print('❌ Upload failed: ${response.body}');
-        print('========== UPLOAD ICE DATA END ==========\n');
+        print('❌ [uploadIceData] Upload failed: ${response.statusCode}');
+        print('❌ [uploadIceData] Error body: ${response.body}');
+        print('========== UPLOAD ICE DATA END (FAILED) ==========\n');
         throw Exception(
           'Gagal upload data es: ${response.statusCode} - ${response.body}',
         );
       }
-    } catch (e) {
-      print('❌ Exception: $e');
-      print('========== UPLOAD ICE DATA END ==========\n');
+    } catch (e, stackTrace) {
+      print('❌ [uploadIceData] Exception: $e');
+      print('❌ [uploadIceData] Stack trace: $stackTrace');
+      print('========== UPLOAD ICE DATA END (EXCEPTION) ==========\n');
       throw Exception('Error: $e');
     }
   }

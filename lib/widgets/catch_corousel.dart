@@ -71,7 +71,12 @@ class _CatchCarouselState extends State<CatchCarousel> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth > 600;
-    final carouselHeight = isTablet ? screenHeight * 0.4 : screenHeight * 0.32;
+    
+    // Poco F4: 1080x2400 (aspect ratio 9:20)
+    // Carousel height: 20-22% dari screen height untuk aspect ratio 16:9
+    final carouselHeight = isTablet 
+        ? screenHeight * 0.35 
+        : screenHeight * 0.22; // Lebih pendek untuk mobile
 
     return Column(
       mainAxisSize: MainAxisSize.min,

@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 class DocumentService {
-  static const String baseUrl = 'http://210.79.191.17:5000/api';
+  static const String baseUrl = 'http://192.168.1.19:5000/api';
 
   static final Dio _dio = Dio(
     BaseOptions(

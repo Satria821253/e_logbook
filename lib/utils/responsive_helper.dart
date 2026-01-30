@@ -6,7 +6,7 @@ class ResponsiveHelper {
   // ======================
   // Breakpoints
   // ======================
-  static const double tabletMin = 550; // Tablet mulai dari 550dp
+  static const double tabletMin = 540; // Tablet mulai dari 540dp (fix landscape detection)
   static const double tabletMedium = 768; // iPad, Galaxy Tab
   static const double tabletLarge = 1024; // iPad Pro, Galaxy Tab S8+
 

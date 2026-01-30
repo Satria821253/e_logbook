@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 
-class ProgressIndicatorWidget extends StatelessWidget {
+class ProgressIndicatorWidget extends StatefulWidget {
   final int currentStep;
   final int totalSteps;
   final Map<int, String>? documentStatuses; // step -> status mapping
@@ -15,8 +15,116 @@ class ProgressIndicatorWidget extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<ProgressIndicatorWidget> createState() => _ProgressIndicatorWidgetState();
+}
+
+class _ProgressIndicatorWidgetState extends State<ProgressIndicatorWidget> with TickerProviderStateMixin {
+  late List<AnimationController> _lineControllers;
+  late List<Animation<double>> _lineAnimations;
+  int _previousStep = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimations();
+    _previousStep = widget.currentStep;
+  }
+
+  void _initializeAnimations() {
+    _lineControllers = List.generate(
+      widget.totalSteps - 1,
+      (index) => AnimationController(
+        duration: const Duration(milliseconds: 500),
+        vsync: this,
+      ),
+    );
+
+    _lineAnimations = _lineControllers.map((controller) {
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+      );
+    }).toList();
+
+    // Animate lines for completed steps
+    _updateLineAnimations();
+  }
+
+  void _updateLineAnimations() {
+    for (int i = 0; i < widget.totalSteps - 1; i++) {
+      int step = i + 1;
+      String? status = widget.documentStatuses?[step];
+      
+      // Jika step sudah approved atau pending, tampilkan garis penuh
+      if (status == 'approved' || status == 'pending') {
+        _lineControllers[i].value = 1.0;
+      } else {
+        _lineControllers[i].value = 0.0;
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(ProgressIndicatorWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Jika step berubah atau status berubah, update animasi
+    if (oldWidget.currentStep != widget.currentStep || 
+        oldWidget.documentStatuses != widget.documentStatuses) {
+      
+      // Cek apakah ada step yang baru selesai
+      for (int i = 0; i < widget.totalSteps - 1; i++) {
+        int step = i + 1;
+        String? oldStatus = oldWidget.documentStatuses?[step];
+        String? newStatus = widget.documentStatuses?[step];
+        
+        // Jika status berubah menjadi approved/pending, animate garis
+        if ((oldStatus == null || oldStatus == 'rejected') && 
+            (newStatus == 'approved' || newStatus == 'pending')) {
+          _lineControllers[i].forward();
+        }
+      }
+      
+      _previousStep = widget.currentStep;
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _lineControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Color _getStepColor(int step, bool isCurrent, String? status) {
+    if (status == 'approved') {
+      return Colors.green;
+    } else if (status == 'pending') {
+      return Colors.orange;
+    } else if (status == 'rejected') {
+      return Colors.red;
+    } else {
+      if (isCurrent) {
+        return Colors.blue;
+      } else {
+        return Colors.grey[300]!;
+      }
+    }
+  }
+
+  IconData? _getStepIcon(String? status) {
+    if (status == 'approved') {
+      return Icons.check;
+    } else if (status == 'pending') {
+      return Icons.schedule;
+    } else if (status == 'rejected') {
+      return Icons.close;
+    }
+    return null;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    double progress = (currentStep / totalSteps);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -33,130 +141,112 @@ class ProgressIndicatorWidget extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Progress Bar
-          Row(
+          // Step Indicators with connecting lines
+          Stack(
             children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).primaryColor,
-                    ),
-                    minHeight: 8,
-                  ),
+              // Background lines layer
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Row(
+                  children: List.generate(widget.totalSteps, (index) {
+                    return Expanded(
+                      child: Row(
+                        children: [
+                          // Space for circle
+                          const SizedBox(width: 16),
+                          // Line
+                          if (index < widget.totalSteps - 1)
+                            Expanded(
+                              child: AnimatedBuilder(
+                                animation: _lineAnimations[index],
+                                builder: (context, child) {
+                                  int step = index + 1;
+                                  String? status = widget.documentStatuses?[step];
+                                  Color stepColor = _getStepColor(step, false, status);
+                                  
+                                  return CustomPaint(
+                                    painter: AnimatedLinePainter(
+                                      progress: _lineAnimations[index].value,
+                                      color: stepColor,
+                                    ),
+                                    child: Container(height: 3),
+                                  );
+                                },
+                              ),
+                            ),
+                          // Space for next circle
+                          if (index < widget.totalSteps - 1)
+                            const SizedBox(width: 16),
+                        ],
+                      ),
+                    );
+                  }),
                 ),
               ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '$currentStep/$totalSteps',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Step Indicators
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(totalSteps, (index) {
-              int step = index + 1;
-              bool isCurrent = step == currentStep;
-              String? status = documentStatuses?[step];
+              // Circles layer on top
+              Row(
+                children: List.generate(widget.totalSteps, (index) {
+                  int step = index + 1;
+                  bool isCurrent = step == widget.currentStep;
+                  String? status = widget.documentStatuses?[step];
+                  Color stepColor = _getStepColor(step, isCurrent, status);
+                  IconData? stepIcon = _getStepIcon(status);
 
-              // Tentukan warna berdasarkan status
-              Color stepColor;
-              IconData? stepIcon;
-              
-              // Jika ada status dari API, gunakan warna sesuai status
-              if (status == 'approved') {
-                stepColor = Colors.green; // Hijau - Disetujui
-                stepIcon = Icons.check;
-              } else if (status == 'pending') {
-                stepColor = Colors.orange; // Orange - Menunggu verifikasi
-                stepIcon = Icons.schedule;
-              } else if (status == 'rejected') {
-                stepColor = Colors.red; // Merah - Ditolak
-                stepIcon = Icons.close;
-              } else {
-                // Jika tidak ada status (belum pernah upload)
-                if (isCurrent) {
-                  stepColor = Colors.blue; // Biru - Sedang diisi
-                  stepIcon = null;
-                } else {
-                  stepColor = Colors.grey[300]!; // Abu - Belum diisi
-                  stepIcon = null;
-                }
-              }
-
-              return Expanded(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: stepColor,
-                          border: Border.all(
-                            color: isCurrent && status == null ? Colors.blue : Colors.transparent,
-                            width: 2,
+                  return Expanded(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: stepColor,
+                            border: Border.all(
+                              color: isCurrent && status == null ? Colors.blue : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: stepIcon != null
+                                ? Icon(
+                                    stepIcon,
+                                    color: Colors.white,
+                                    size: stepIcon == Icons.schedule ? 16 : 18,
+                                  )
+                                : Text(
+                                    '$step',
+                                    style: TextStyle(
+                                      color: isCurrent || status != null
+                                          ? Colors.white
+                                          : Colors.grey[600],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         ),
-                        child: Center(
-                          child: stepIcon != null
-                              ? Icon(
-                                  stepIcon,
-                                  color: Colors.white,
-                                  size: stepIcon == Icons.schedule ? 16 : 18,
-                                )
-                              : Text(
-                                  '$step',
-                                  style: TextStyle(
-                                    color: isCurrent || status != null
-                                        ? Colors.white
-                                        : Colors.grey[600],
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getStepLabel(step),
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: isCurrent && status == null
+                                ? Colors.blue
+                                : status != null
+                                    ? stepColor
+                                    : Colors.grey[600],
+                            fontWeight: isCurrent && status == null ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getStepLabel(step),
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: isCurrent && status == null
-                              ? Colors.blue
-                              : status != null
-                                  ? stepColor
-                                  : Colors.grey[600],
-                          fontWeight: isCurrent && status == null ? FontWeight.bold : FontWeight.normal,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ],
           ),
         ],
       ),
@@ -184,5 +274,34 @@ class ProgressIndicatorWidget extends StatelessWidget {
       default:
         return '';
     }
+  }
+}
+
+// Custom painter untuk garis yang beranimasi
+class AnimatedLinePainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  AnimatedLinePainter({
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    final startPoint = Offset(0, size.height / 2);
+    final endPoint = Offset(size.width * progress, size.height / 2);
+
+    canvas.drawLine(startPoint, endPoint, paint);
+  }
+
+  @override
+  bool shouldRepaint(AnimatedLinePainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.color != color;
   }
 }

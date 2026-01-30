@@ -134,7 +134,18 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final shortestSide = size.shortestSide;
+    final orientation = MediaQuery.of(context).orientation;
     final isTablet = ResponsiveHelper.isTablet(context);
+
+    print('📱 [RESPONSIVE] Profile Screen Build:');
+    print('   Width: ${size.width.toStringAsFixed(1)}');
+    print('   Height: ${size.height.toStringAsFixed(1)}');
+    print('   ShortestSide: ${shortestSide.toStringAsFixed(1)}');
+    print('   Orientation: $orientation');
+    print('   IsTablet: $isTablet');
+    print('   Layout: ${isTablet ? "TABLET" : "MOBILE"}');
 
     if (isTablet) {
       return _buildTabletLayout();
@@ -236,7 +247,14 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildProfileHeader() {
+    final size = MediaQuery.of(context).size;
+    final shortestSide = size.shortestSide;
     final isTablet = ResponsiveHelper.isTablet(context);
+    
+    print('👤 [HEADER] Building Profile Header:');
+    print('   ShortestSide: ${shortestSide.toStringAsFixed(1)}');
+    print('   IsTablet: $isTablet');
+    print('   Using SizedBox width: ${shortestSide >= 540 ? "245 (tablet)" : "60 (mobile)"}');
 
     return Container(
       width: double.infinity,
@@ -293,7 +311,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         imageProvider = FileImage(File(_cachedPhotoPath!));
                       } else if (hasValidPhoto) {
                         // Fallback ke URL jika cache belum ada
-                        if (photoUrl!.startsWith('file://')) {
+                        if (photoUrl.startsWith('file://')) {
                           imageProvider = FileImage(
                             File(photoUrl.replaceFirst('file://', '')),
                           );
@@ -329,129 +347,139 @@ class _ProfileScreenState extends State<ProfileScreen>
             builder: (context, userProvider, child) {
               final user = userProvider.user;
               print('📝 [UI-Name] Consumer rebuild - Name: ${user?.name}');
-              return Stack(
-                clipBehavior: Clip.none,
+              return Column(
                 children: [
-                  Column(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        user?.name ?? 'Nama Pengguna',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: ResponsiveHelper.font(
-                            context,
-                            mobile: 24,
-                            tablet: 22,
+                      if (MediaQuery.of(context).size.shortestSide >= 540)
+                        SizedBox(width: 245)
+                      else
+                        SizedBox(width: 60),
+                      Flexible(
+                        child: Text(
+                          user?.name ?? 'Nama Pengguna',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: ResponsiveHelper.font(
+                              context,
+                              mobile: 24,
+                              tablet: 22,
+                            ),
+                            fontWeight: FontWeight.bold,
                           ),
-                          fontWeight: FontWeight.bold,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
-                      SizedBox(
-                        height: ResponsiveHelper.height(
-                          context,
-                          mobile: 4,
-                          tablet: 6,
-                        ),
-                      ),
-                      Text(
-                        '@${user?.username ?? 'username'}',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: ResponsiveHelper.font(
+                      SizedBox(width: ResponsiveHelper.width(context, mobile: 8, tablet: 10)),
+                      InkWell(
+                        onTap: () async {
+                          print('🖱️ [PROFILE] Edit TAPPED!');
+                          await NavigationHelper.pushNoTransition(
                             context,
-                            mobile: 14,
-                            tablet: 14,
+                            const EditProfileScreen(),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: ResponsiveHelper.width(
+                              context,
+                              mobile: 10,
+                              tablet: 12,
+                            ),
+                            vertical: ResponsiveHelper.height(
+                              context,
+                              mobile: 6,
+                              tablet: 7,
+                            ),
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(
+                              ResponsiveHelper.width(
+                                context,
+                                mobile: 12,
+                                tablet: 14,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.edit,
+                                size: ResponsiveHelper.width(
+                                  context,
+                                  mobile: 14,
+                                  tablet: 15,
+                                ),
+                                color: Colors.black,
+                              ),
+                              SizedBox(
+                                width: ResponsiveHelper.width(
+                                  context,
+                                  mobile: 4,
+                                  tablet: 5,
+                                ),
+                              ),
+                              Text(
+                                'Edit',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: ResponsiveHelper.font(
+                                    context,
+                                    mobile: 12,
+                                    tablet: 13,
+                                  ),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      SizedBox(
-                        height: ResponsiveHelper.height(
-                          context,
-                          mobile: 4,
-                          tablet: 6,
-                        ),
-                      ),
-                      Text(
-                        user?.role ?? 'Nahkoda',
-                        style: TextStyle(
-                          color: const Color(0xFF1B4F9C),
-                          fontSize: ResponsiveHelper.font(
-                            context,
-                            mobile: 14,
-                            tablet: 14,
-                          ),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      if (MediaQuery.of(context).size.shortestSide >= 540)
+                        Spacer(),
                     ],
                   ),
-                  Positioned(
-                    right: -80,
-                    top: 1,
-                    child: GestureDetector(
-                      onTap: () async {
-                        await NavigationHelper.pushNoTransition(
-                          context,
-                          const EditProfileScreen(),
-                        );
-                      },
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: ResponsiveHelper.width(
-                            context,
-                            mobile: 10,
-                            tablet: 12,
-                          ),
-                          vertical: ResponsiveHelper.height(
-                            context,
-                            mobile: 6,
-                            tablet: 7,
-                          ),
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(
-                            ResponsiveHelper.width(
-                              context,
-                              mobile: 12,
-                              tablet: 14,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.edit,
-                              size: ResponsiveHelper.width(
-                                context,
-                                mobile: 14,
-                                tablet: 15,
-                              ),
-                              color: Colors.black,
-                            ),
-                            SizedBox(
-                              width: ResponsiveHelper.width(
-                                context,
-                                mobile: 4,
-                                tablet: 5,
-                              ),
-                            ),
-                            Text(
-                              'Edit',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: ResponsiveHelper.font(
-                                  context,
-                                  mobile: 12,
-                                  tablet: 13,
-                                ),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                  SizedBox(
+                    height: ResponsiveHelper.height(
+                      context,
+                      mobile: 4,
+                      tablet: 6,
+                    ),
+                  ),
+                  Text(
+                    '@${user?.username ?? 'username'}',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: ResponsiveHelper.font(
+                        context,
+                        mobile: 14,
+                        tablet: 14,
                       ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: ResponsiveHelper.height(
+                      context,
+                      mobile: 4,
+                      tablet: 6,
+                    ),
+                  ),
+                  Text(
+                    user?.role ?? 'Nahkoda',
+                    style: TextStyle(
+                      color: const Color(0xFF1B4F9C),
+                      fontSize: ResponsiveHelper.font(
+                        context,
+                        mobile: 14,
+                        tablet: 14,
+                      ),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -465,6 +493,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildStatsCard() {
     final isTablet = ResponsiveHelper.isTablet(context);
+    print('📊 [STATS] Building Stats Card - IsTablet: $isTablet');
 
     return Padding(
       padding: isTablet
@@ -551,8 +580,16 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildMenuSection() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 600;
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final shortestSide = size.shortestSide;
+    final isTablet = ResponsiveHelper.isTablet(context); // FIX: Use ResponsiveHelper
+    
+    print('📋 [MENU] Building Menu Section:');
+    print('   ScreenWidth: ${screenWidth.toStringAsFixed(1)}');
+    print('   ShortestSide: ${shortestSide.toStringAsFixed(1)}');
+    print('   IsTablet (ResponsiveHelper): $isTablet');
+    print('   Layout: ${isTablet ? "GRID" : "LIST"}');
 
     return Padding(
       padding: isTablet ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16),
@@ -562,11 +599,11 @@ class _ProfileScreenState extends State<ProfileScreen>
           Text(
             'Menu',
             style: TextStyle(
-              fontSize: screenWidth < 800 ? 16 : 18,
+              fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 18),
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: screenWidth < 800 ? 8 : 10),
+          SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
           isTablet ? _buildTabletMenuGrid() : _buildMobileMenuList(),
         ],
       ),
@@ -582,15 +619,21 @@ class _ProfileScreenState extends State<ProfileScreen>
           subtitle: 'Kelola persediaan dan sertifikat',
           onTap: () => NavigationHelper.pushNoTransition(context, VesselInfoScreen()),
         ),
+        SizedBox(height: 12),
         Consumer<UserProvider>(
           builder: (context, userProvider, child) {
             final user = userProvider.user;
             if (user?.isNahkoda == true) {
-              return _buildMenuItem(
-                icon: Icons.people_outline_rounded,
-                title: 'Kehadiran Crew',
-                subtitle: 'Lihat kehadiran crew kapal',
-                onTap: () => NavigationHelper.pushNoTransition(context, CrewAttendanceScreen()),
+              return Column(
+                children: [
+                  _buildMenuItem(
+                    icon: Icons.people_outline_rounded,
+                    title: 'Kehadiran Crew',
+                    subtitle: 'Lihat kehadiran crew kapal',
+                    onTap: () => NavigationHelper.pushNoTransition(context, CrewAttendanceScreen()),
+                  ),
+                  SizedBox(height: 12),
+                ],
               );
             }
             return const SizedBox.shrink();
@@ -604,19 +647,21 @@ class _ProfileScreenState extends State<ProfileScreen>
             Provider.of<NavigationProvider>(context, listen: false).setIndex(1);
           },
         ),
+        SizedBox(height: 12),
         _buildMenuItem(
           icon: Icons.help_outline_rounded,
           title: 'Bantuan',
           subtitle: 'Pusat bantuan dan FAQ',
           onTap: () => NavigationHelper.pushNoTransition(context, const HelpScreen()),
         ),
+        SizedBox(height: 12),
         _buildMenuItem(
           icon: Icons.info_outline_rounded,
           title: 'Tentang Aplikasi',
           subtitle: 'Versi 1.0',
           onTap: () {},
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
         _buildMenuItem(
           icon: Icons.logout_rounded,
           title: 'Keluar',
@@ -687,16 +732,22 @@ class _ProfileScreenState extends State<ProfileScreen>
         ]);
 
         final isLandscape = ResponsiveHelper.isLandscape(context);
-        final screenWidth = MediaQuery.of(context).size.width;
+        final size = MediaQuery.of(context).size;
+        final shortestSide = size.shortestSide;
+        
+        print('🏛️ [GRID] Building Menu Grid:');
+        print('   IsLandscape: $isLandscape');
+        print('   ShortestSide: ${shortestSide.toStringAsFixed(1)}');
+        
         return GridView.builder(
           padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: isLandscape ? 4.5 : (screenWidth < 800 ? 3.2 : 3.5),
-            crossAxisSpacing: screenWidth < 800 ? 10 : 12,
-            mainAxisSpacing: screenWidth < 800 ? 6 : 8,
+            childAspectRatio: isLandscape ? 4.5 : (shortestSide < 800 ? 3.2 : 3.5),
+            crossAxisSpacing: shortestSide < 800 ? 10 : 12,
+            mainAxisSpacing: shortestSide < 800 ? 6 : 8,
           ),
           itemCount: menuItems.length,
           itemBuilder: (context, i) => menuItems[i],
@@ -787,8 +838,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     required VoidCallback onTap,
     bool isLogout = false,
   }) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallTablet = screenWidth < 800;
+    final size = MediaQuery.of(context).size;
+    final shortestSide = size.shortestSide;
+    final isSmallTablet = shortestSide < 800;
     
     return Container(
       decoration: BoxDecoration(

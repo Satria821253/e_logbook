@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image/image.dart' as img;
 
 class KTPScannerScreen extends StatefulWidget {
   const KTPScannerScreen({Key? key}) : super(key: key);
@@ -126,13 +127,16 @@ class _KTPScannerScreenState extends State<KTPScannerScreen>
       
       final image = await _controller!.takePicture();
       
+      // Crop image to KTP frame area
+      final croppedFile = await _cropImageToFrame(image.path);
+      
       // Flash effect
       setState(() => _isScanning = false);
       await Future.delayed(const Duration(milliseconds: 100));
       
       if (mounted) {
         HapticFeedback.heavyImpact();
-        Navigator.pop(context, File(image.path));
+        Navigator.pop(context, croppedFile);
       }
     } catch (e) {
       if (mounted) {
@@ -142,6 +146,68 @@ class _KTPScannerScreenState extends State<KTPScannerScreen>
         });
         _showError('Gagal mengambil foto: $e');
       }
+    }
+  }
+
+  Future<File> _cropImageToFrame(String imagePath) async {
+    try {
+      // Load image
+      final bytes = await File(imagePath).readAsBytes();
+      final originalImage = img.decodeImage(bytes);
+      
+      if (originalImage == null) {
+        throw Exception('Failed to decode image');
+      }
+
+      // Get screen dimensions
+      final screenWidth = MediaQuery.of(context).size.width;
+      final screenHeight = MediaQuery.of(context).size.height;
+      
+      // Calculate frame dimensions (same as in UI)
+      final frameWidth = screenWidth; // Full width
+      final frameHeight = frameWidth / (85.6 / 53.98); // KTP aspect ratio
+      
+      // Calculate frame position (centered vertically)
+      final frameTop = (screenHeight - frameHeight) / 2;
+      
+      // Calculate crop area in image coordinates
+      final imageWidth = originalImage.width;
+      final imageHeight = originalImage.height;
+      
+      // Map screen coordinates to image coordinates
+      final scaleY = imageHeight / screenHeight;
+      
+      final cropX = 0; // Start from left edge
+      final cropY = (frameTop * scaleY).round();
+      final cropWidth = imageWidth; // Full width
+      final cropHeight = (frameHeight * scaleY).round();
+      
+      // Ensure crop dimensions are within image bounds
+      final safeCropY = cropY.clamp(0, imageHeight - 1);
+      final safeCropHeight = cropHeight.clamp(1, imageHeight - safeCropY);
+      
+      // Crop image
+      final croppedImage = img.copyCrop(
+        originalImage,
+        x: cropX,
+        y: safeCropY,
+        width: cropWidth,
+        height: safeCropHeight,
+      );
+      
+      // Save cropped image
+      final croppedBytes = img.encodeJpg(croppedImage, quality: 95);
+      final croppedFile = File(imagePath.replaceAll('.jpg', '_cropped.jpg'));
+      await croppedFile.writeAsBytes(croppedBytes);
+      
+      // Delete original file
+      await File(imagePath).delete();
+      
+      return croppedFile;
+    } catch (e) {
+      print('Error cropping image: $e');
+      // Return original file if cropping fails
+      return File(imagePath);
     }
   }
 

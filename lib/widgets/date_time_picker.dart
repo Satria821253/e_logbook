@@ -1,3 +1,4 @@
+import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 
 class DateTimePickerField extends StatelessWidget {
@@ -20,8 +21,7 @@ class DateTimePickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isTablet = size.shortestSide >= 600;
+    final isTablet = ResponsiveHelper.isTablet(context);
     final isEmpty = value.isEmpty || value == 'Pilih tanggal' || value == 'Pilih waktu';
 
     return Column(
@@ -125,8 +125,7 @@ class CustomDatePicker {
     DateTime? lastDate,
     String title = 'Pilih Tanggal',
   }) async {
-    final size = MediaQuery.of(context).size;
-    final isTablet = size.shortestSide >= 600;
+    final isTablet = ResponsiveHelper.isTablet(context);
     
     return showDialog<DateTime>(
       context: context,
@@ -256,8 +255,7 @@ class CustomTimePicker {
     TimeOfDay? initialTime,
     String title = 'Pilih Waktu',
   }) async {
-    final size = MediaQuery.of(context).size;
-    final isTablet = size.shortestSide >= 600;
+    final isTablet = ResponsiveHelper.isTablet(context);
     
     return showDialog<TimeOfDay>(
       context: context,
