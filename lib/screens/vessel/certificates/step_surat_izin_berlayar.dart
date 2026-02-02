@@ -74,8 +74,6 @@ class _StepSuratIzinBerlayarState extends State<StepSuratIzinBerlayar> {
     return months > 0 ? 'Aktif $years tahun $months bulan' : 'Aktif $years tahun';
   }
 
-  final List<String> _statusList = ['Aktif', 'Kadaluarsa'];
-
   @override
   void initState() {
     super.initState();

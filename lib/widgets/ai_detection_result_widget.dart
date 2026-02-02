@@ -21,8 +21,6 @@ class AIDetectionResultWidget extends StatelessWidget {
     // Responsive sizing
     final titleSize = isTablet ? 15.0 : 18.0;
     final subtitleSize = isTablet ? 10.0 : 12.0;
-    final labelSize = isTablet ? 10.0 : 12.0;
-    final valueSize = isTablet ? 11.0 : 13.0;
     final iconSize = isTablet ? 20.0 : 24.0;
     final padding = isTablet ? 12.0 : 16.0;
     

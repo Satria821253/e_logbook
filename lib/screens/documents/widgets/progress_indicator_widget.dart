@@ -21,13 +21,11 @@ class ProgressIndicatorWidget extends StatefulWidget {
 class _ProgressIndicatorWidgetState extends State<ProgressIndicatorWidget> with TickerProviderStateMixin {
   late List<AnimationController> _lineControllers;
   late List<Animation<double>> _lineAnimations;
-  int _previousStep = 0;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
-    _previousStep = widget.currentStep;
   }
 
   void _initializeAnimations() {
@@ -83,8 +81,6 @@ class _ProgressIndicatorWidgetState extends State<ProgressIndicatorWidget> with 
           _lineControllers[i].forward();
         }
       }
-      
-      _previousStep = widget.currentStep;
     }
   }
 

@@ -46,7 +46,6 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isTablet = ResponsiveHelper.isTablet(context);
     
     return Scaffold(
       body: Container(
