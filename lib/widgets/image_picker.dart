@@ -17,10 +17,27 @@ class ImagePickerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    double fs(double size) => size * (width / 390);
-    double sp(double size) => size * (width / 390);
-    final imagePreviewHeight = sp(140); // Slightly bigger for better preview
+    final size = MediaQuery.of(context).size;
+    final width = size.width;
+    final isTablet = width >= 600;
+    
+    // Responsive scaling
+    double fs(double size) {
+      if (isTablet) {
+        return (size * (width / 768)).clamp(size * 0.9, size * 1.3);
+      }
+      return size * (width / 390);
+    }
+    
+    double sp(double size) {
+      if (isTablet) {
+        return (size * (width / 768)).clamp(size, size * 1.5);
+      }
+      return size * (width / 390);
+    }
+    
+    // Image preview height - lebih kecil untuk tablet
+    final imagePreviewHeight = isTablet ? sp(100) : sp(140);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

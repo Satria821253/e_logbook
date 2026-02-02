@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 class VesselService {
-  static const String baseUrl = 'http://192.168.1.19:5000';
+  static const String baseUrl = 'http://210.79.191.17:5000';
 
   Future<Map<String, dynamic>> checkAssignmentStatus() async {
     try {
@@ -164,7 +164,7 @@ class VesselService {
       print('🔄 [CREW] Force refresh: $forceRefresh');
       print('🔍 [CREW] Fetching from assignment-status endpoint...');
       print('🌐 [CREW] URL: $baseUrl/api/mobile/vessels/assignment-status');
-      
+
       final response = await http
           .get(
             Uri.parse('$baseUrl/api/mobile/vessels/assignment-status'),
@@ -193,18 +193,19 @@ class VesselService {
           print('\n🔍 [CREW] Checking data structure...');
           print('   - hasAssignment: ${data["hasAssignment"]}');
           print('   - assignedVessels: ${data["assignedVessels"]}');
-          
-          if (data['hasAssignment'] == true && data['assignedVessels'] != null) {
+
+          if (data['hasAssignment'] == true &&
+              data['assignedVessels'] != null) {
             final vessels = data['assignedVessels'] as List;
             if (vessels.isNotEmpty) {
               final firstVessel = vessels[0];
               final vesselId = firstVessel['id'];
-              
+
               print('🔍 [CREW] Fetching full vessel details for ID: $vesselId');
-              
+
               // Fetch full vessel data including nahkoda
               final fullVesselData = await getVesselById(vesselId);
-              
+
               final vesselData = {
                 'kapal': {
                   'id': firstVessel['id'],
@@ -216,7 +217,9 @@ class VesselService {
 
               print('✅ [CREW] Vessel data found');
               print('🚢 [CREW] Kapal: ${firstVessel["namaKapal"]}');
-              print('👨✈️ [CREW] Nahkoda: ${fullVesselData?['nahkoda']?['nama'] ?? "null"}');
+              print(
+                '👨✈️ [CREW] Nahkoda: ${fullVesselData?['nahkoda']?['nama'] ?? "null"}',
+              );
               print('📋 [CREW] Total vessels: ${vessels.length}');
 
               final prefs = await SharedPreferences.getInstance();
@@ -233,8 +236,12 @@ class VesselService {
       }
 
       print('❌ [CREW] No vessel data found from assignment-status');
-      print('ℹ️ [CREW] Backend response indicates: hasAssignment=false, assignedVessels=[]');
-      print('ℹ️ [CREW] This means crew is NOT assigned to any vessel in database');
+      print(
+        'ℹ️ [CREW] Backend response indicates: hasAssignment=false, assignedVessels=[]',
+      );
+      print(
+        'ℹ️ [CREW] This means crew is NOT assigned to any vessel in database',
+      );
       print('========== getVesselData END (CREW-NULL) ==========\n');
       return null;
     } catch (e) {
@@ -257,7 +264,7 @@ class VesselService {
       // Cek cache
       bool cacheExpired = false;
       final lastCacheTime = prefs.getInt('vessel_data_timestamp');
-      
+
       if (lastCacheTime != null) {
         final timeDiff = now - lastCacheTime;
         cacheExpired = timeDiff > oneDayInMs;
@@ -609,7 +616,9 @@ class VesselService {
 
       final kapalId = vesselData['kapal']['id'];
       print('🚢 [uploadIceData] Kapal ID: $kapalId');
-      print('🚢 [uploadIceData] Kapal Name: ${vesselData['kapal']['namaKapal']}');
+      print(
+        '🚢 [uploadIceData] Kapal Name: ${vesselData['kapal']['namaKapal']}',
+      );
       print('📋 [uploadIceData] Data yang akan dikirim:');
       print('   - jenisEs: $jenisEs');
       print('   - jumlahKg: $jumlahKg');
@@ -648,7 +657,9 @@ class VesselService {
             contentType = 'image/png';
           }
 
-          print('📎 [uploadIceData] Uploading file: ${buktiFilePath.split('/').last}');
+          print(
+            '📎 [uploadIceData] Uploading file: ${buktiFilePath.split('/').last}',
+          );
           print('📎 [uploadIceData] Content-Type: $contentType');
           print('📎 [uploadIceData] File size: ${await file.length()} bytes');
 
@@ -668,7 +679,9 @@ class VesselService {
 
       print('📤 [uploadIceData] Sending request...');
       print('📤 [uploadIceData] Request fields: ${request.fields}');
-      print('📤 [uploadIceData] Request files: ${request.files.length} file(s)');
+      print(
+        '📤 [uploadIceData] Request files: ${request.files.length} file(s)',
+      );
 
       var streamedResponse = await request.send().timeout(
         const Duration(minutes: 2),
@@ -679,7 +692,9 @@ class VesselService {
       print('📥 [uploadIceData] Response body: ${response.body}');
 
       if (response.statusCode == 404) {
-        print('⚠️ [uploadIceData] First attempt failed (404), trying without /api prefix...');
+        print(
+          '⚠️ [uploadIceData] First attempt failed (404), trying without /api prefix...',
+        );
         url = '$baseUrl/mobile/vessel/$kapalId/ice-data';
         print('🌐 [uploadIceData] Retry URL: $url');
 
@@ -723,7 +738,9 @@ class VesselService {
         );
         response = await http.Response.fromStream(streamedResponse);
 
-        print('📥 [uploadIceData] Retry response status: ${response.statusCode}');
+        print(
+          '📥 [uploadIceData] Retry response status: ${response.statusCode}',
+        );
         print('📥 [uploadIceData] Retry response body: ${response.body}');
       }
 

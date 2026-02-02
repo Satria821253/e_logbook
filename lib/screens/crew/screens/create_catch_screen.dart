@@ -397,12 +397,26 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   Widget _buildCreateCatchScreen(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final width = size.width;
+    final isTablet = width >= 600;
 
-    // Improved responsive scaling with constraints
-    double fs(double size) =>
-        (size * (width / 390)).clamp(size * 0.8, size * 1.2);
-    double sp(double size) =>
-        (size * (width / 390)).clamp(size * 0.8, size * 1.2);
+    // Responsive scaling dengan batasan untuk tablet
+    double fs(double size) {
+      if (isTablet) {
+        // Untuk tablet, gunakan scaling yang lebih konservatif
+        return (size * (width / 768)).clamp(size * 0.9, size * 1.3);
+      }
+      // Untuk mobile
+      return (size * (width / 390)).clamp(size * 0.8, size * 1.2);
+    }
+    
+    double sp(double size) {
+      if (isTablet) {
+        // Untuk tablet, spacing lebih besar
+        return (size * (width / 768)).clamp(size, size * 1.5);
+      }
+      // Untuk mobile
+      return (size * (width / 390)).clamp(size * 0.8, size * 1.2);
+    }
 
     return Scaffold(
       appBar: AppBar(

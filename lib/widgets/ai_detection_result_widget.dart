@@ -15,9 +15,20 @@ class AIDetectionResultWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 600;
+    
+    // Responsive sizing
+    final titleSize = isTablet ? 15.0 : 18.0;
+    final subtitleSize = isTablet ? 10.0 : 12.0;
+    final labelSize = isTablet ? 10.0 : 12.0;
+    final valueSize = isTablet ? 11.0 : 13.0;
+    final iconSize = isTablet ? 20.0 : 24.0;
+    final padding = isTablet ? 12.0 : 16.0;
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: isTablet ? 12 : 16),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Colors.blue.shade50, Colors.white],
@@ -48,8 +59,8 @@ class AIDetectionResultWidget extends StatelessWidget {
                 ),
                 child: Image.asset(
                   'assets/icons/icon_ai.png',
-                  width: 24,
-                  height: 24,
+                  width: iconSize,
+                  height: iconSize,
                 ),
               ),
               const SizedBox(width: 12),
@@ -60,7 +71,7 @@ class AIDetectionResultWidget extends StatelessWidget {
                     Text(
                       'AI Detection',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: titleSize,
                         fontWeight: FontWeight.bold,
                         color: Colors.blue.shade800,
                       ),
@@ -69,7 +80,7 @@ class AIDetectionResultWidget extends StatelessWidget {
                     Text(
                       'Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: subtitleSize,
                         color: Colors.grey.shade600,
                         fontWeight: FontWeight.w500,
                       ),
@@ -107,30 +118,36 @@ class AIDetectionResultWidget extends StatelessWidget {
           const SizedBox(height: 12),
 
           // Detection Results
-          _buildResultRow('🐠 Nama Ikan', result.fishName),
-          _buildResultRow('🏷️ Jenis Ikan', result.fishType),
+          _buildResultRow(context, '🐠 Nama Ikan', result.fishName),
+          _buildResultRow(context, '🏷️ Jenis Ikan', result.fishType),
           _buildResultRow(
+            context,
             '✨ Kondisi Ikan',
             result.condition,
             trailing: _buildConditionIndicator(),
           ),
           _buildResultRow(
+            context,
             '📏 Est. Panjang Ikan',
             '${result.estimatedLength.toStringAsFixed(1)} cm',
           ),
           _buildResultRow(
+            context,
             '📐 Est. Tinggi Ikan',
             '${(result.estimatedLength * 0.25).toStringAsFixed(1)} cm',
           ),
           _buildResultRow(
+            context,
             '⚖️ Est. Berat Per Ikan',
             '${result.unitWeight.toStringAsFixed(2)} kg',
           ),
           _buildResultRow(
+            context,
             '📊 Est. Berat Total',
             '${result.estimatedWeight.toStringAsFixed(2)} kg',
           ),
           _buildResultRow(
+            context,
             '🔢 Est. Jumlah Ikan',
             '${result.estimatedQuantity} ekor',
           ),
@@ -369,11 +386,17 @@ class AIDetectionResultWidget extends StatelessWidget {
   }
 
   Widget _buildResultRow(
+    BuildContext context,
     String label,
     String value, {
     String? subtitle,
     Widget? trailing,
   }) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 600;
+    final labelSize = isTablet ? 10.0 : 12.0;
+    final valueSize = isTablet ? 11.0 : 13.0;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -384,7 +407,7 @@ class AIDetectionResultWidget extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: labelSize,
                 color: Colors.grey.shade600,
                 fontWeight: FontWeight.w500,
               ),
@@ -403,8 +426,8 @@ class AIDetectionResultWidget extends StatelessWidget {
                     Expanded(
                       child: Text(
                         value,
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: TextStyle(
+                          fontSize: valueSize,
                           fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),

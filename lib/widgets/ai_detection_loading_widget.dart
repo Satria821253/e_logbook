@@ -96,9 +96,20 @@ class _AIDetectionLoadingWidgetState extends State<AIDetectionLoadingWidget>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 600;
+    
+    // Responsive sizing
+    final lottieSize = isTablet ? 120.0 : 177.0;
+    final titleSize = isTablet ? 16.0 : 20.0;
+    final subtitleSize = isTablet ? 10.0 : 12.0;
+    final stepTextSize = isTablet ? 11.0 : 13.0;
+    final iconSize = isTablet ? 26.0 : 32.0;
+    final padding = isTablet ? 16.0 : 24.0;
+    
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
+      margin: EdgeInsets.all(isTablet ? 12 : 16),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Colors.blue.shade50, Colors.white],
@@ -121,15 +132,15 @@ class _AIDetectionLoadingWidgetState extends State<AIDetectionLoadingWidget>
           // AI Icon with Animation
           Lottie.asset(
             'assets/animations/AI.json',
-            height: 177 * _pulseAnimation.value,
-            width: 177 * _pulseAnimation.value,
+            height: lottieSize * _pulseAnimation.value,
+            width: lottieSize * _pulseAnimation.value,
             fit: BoxFit.contain,
           ),
 
           Text(
             'Gemini AI Menganalisis',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: titleSize,
               fontWeight: FontWeight.bold,
               color: Colors.blue.shade800,
             ),
@@ -140,7 +151,7 @@ class _AIDetectionLoadingWidgetState extends State<AIDetectionLoadingWidget>
           Text(
             'Mohon tunggu sebentar...',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: subtitleSize,
               color: Colors.grey.shade600,
               fontStyle: FontStyle.italic,
             ),
@@ -162,8 +173,8 @@ class _AIDetectionLoadingWidgetState extends State<AIDetectionLoadingWidget>
                   children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      width: 32,
-                      height: 32,
+                      width: iconSize,
+                      height: iconSize,
                       decoration: BoxDecoration(
                         color: isCompleted
                             ? Colors.green.shade500
@@ -211,7 +222,7 @@ class _AIDetectionLoadingWidgetState extends State<AIDetectionLoadingWidget>
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 300),
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: stepTextSize,
                           color: isActive
                               ? Colors.blue.shade700
                               : Colors.grey.shade600,

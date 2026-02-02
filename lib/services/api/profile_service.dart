@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/user_model.dart';
 
 class ProfileService {
-  static const String baseUrl = 'http://192.168.1.19:5000/api';
+  static const String baseUrl = 'http://210.79.191.17:5000/api';
 
   static final Dio _dio = Dio(
     BaseOptions(
@@ -60,20 +60,20 @@ class ProfileService {
           if (path.startsWith('http')) {
             photoUrl = path;
           } else if (path.startsWith('/')) {
-            photoUrl = 'http://192.168.1.19:5000$path';
+            photoUrl = 'http://210.79.191.17:5000$path';
           } else {
             // Path relatif tanpa slash, tambahkan /uploads/profile-photos/
-            photoUrl = 'http://192.168.1.19:5000/uploads/profile-photos/$path';
+            photoUrl = 'http://210.79.191.17:5000/uploads/profile-photos/$path';
           }
         } else if (foto != null && foto.toString().isNotEmpty) {
           final path = foto.toString();
           if (path.startsWith('http')) {
             photoUrl = path;
           } else if (path.startsWith('/')) {
-            photoUrl = 'http://192.168.1.19:5000$path';
+            photoUrl = 'http://210.79.191.17:5000$path';
           } else {
             // Path relatif tanpa slash, tambahkan /uploads/profile-photos/
-            photoUrl = 'http://192.168.1.19:5000/uploads/profile-photos/$path';
+            photoUrl = 'http://210.79.191.17:5000/uploads/profile-photos/$path';
           }
         }
 
@@ -210,11 +210,11 @@ class ProfileService {
               if (fotoPath.startsWith('http')) {
                 newPhotoUrl = fotoPath;
               } else if (fotoPath.startsWith('/')) {
-                newPhotoUrl = 'http://192.168.1.19:5000$fotoPath';
+                newPhotoUrl = 'http://210.79.191.17:5000$fotoPath';
               } else {
                 // Path relatif tanpa slash, tambahkan /uploads/profile-photos/
                 newPhotoUrl =
-                    'http://192.168.1.19:5000/uploads/profile-photos/$fotoPath';
+                    'http://210.79.191.17:5000/uploads/profile-photos/$fotoPath';
               }
               print('📸 Final photo URL: $newPhotoUrl');
             }

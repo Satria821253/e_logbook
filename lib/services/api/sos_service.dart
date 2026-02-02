@@ -5,7 +5,7 @@ import 'vessel_service.dart';
 
 class SosService {
   static final Dio _dio = Dio();
-  static const String baseUrl = 'http://192.168.1.19:5000';
+  static const String baseUrl = 'http://210.79.191.17:5000';
 
   /// Send SOS alert to backend
   ///
