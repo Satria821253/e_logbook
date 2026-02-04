@@ -50,8 +50,12 @@ class RealtimeUpdateService {
 
   /// Remove listener
   static void removeListener(String key) {
-    _listeners.remove(key);
-    print('🔇 Listener removed: $key');
+    if (_listeners.containsKey(key)) {
+      _listeners.remove(key);
+      print('🔇 Listener removed: $key');
+    } else {
+      print('⚠️ Listener not found: $key');
+    }
   }
   
   /// Get listener (untuk manual trigger)

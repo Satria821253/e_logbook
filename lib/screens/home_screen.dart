@@ -8,7 +8,6 @@ import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:provider/provider.dart';
-import 'package:lottie/lottie.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../provider/catch_provider.dart';
@@ -21,14 +20,15 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   bool _showDocumentAlert = false;
   bool _showPendingBanner = false;
   bool _showRejectedAlert = false;
   int _rejectedCount = 0;
   bool _hasShownPopup = false;
   bool _hasLoggedInit = false;
-  
+
   // Cache provider reference
   UserProvider? _userProvider;
 
@@ -41,7 +41,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     super.didChangeDependencies();
     // Save provider reference safely
     _userProvider = Provider.of<UserProvider>(context, listen: false);
-    print('🔄 [HOME] didChangeDependencies END, _userProvider=${_userProvider != null}');
+    print(
+      '🔄 [HOME] didChangeDependencies END, _userProvider=${_userProvider != null}',
+    );
   }
 
   @override
@@ -50,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     print('🚀 [HOME] initState START');
     WidgetsBinding.instance.addObserver(this);
     print('🚀 [HOME] initState called, mounted=$mounted');
-    
+
     // Register listener untuk auto-refresh documents (gunakan key unik)
     RealtimeUpdateService.addListener('documents-home', () {
       print('🔔 [HOME] Documents listener triggered! mounted=$mounted');
@@ -68,20 +70,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         print('⚠️ [HOME] Widget not mounted, skipping refresh');
       }
     });
-    
+
     // Juga listen ke 'documents' untuk compatibility
     RealtimeUpdateService.addListener('documents', () {
       print('🔔 [HOME] Documents (global) listener triggered!');
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            print('🔔 [HOME] Calling _checkDocumentCompletion from global listener');
+            print(
+              '🔔 [HOME] Calling _checkDocumentCompletion from global listener',
+            );
             _checkDocumentCompletion();
           }
         });
       }
     });
-    
+
     // Register listener untuk auto-refresh saat admin memverifikasi
     RealtimeUpdateService.addListener('document-verified', () {
       print('🔔 [HOME] Document-verified listener triggered! mounted=$mounted');
@@ -89,13 +93,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         print('🔔 Document verified by admin, auto-refreshing banner...');
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            print('🔔 [HOME] Calling _checkDocumentCompletion from verified listener');
+            print(
+              '🔔 [HOME] Calling _checkDocumentCompletion from verified listener',
+            );
             _checkDocumentCompletion();
           }
         });
       }
     });
-    
+
     print('🚀 [HOME] Scheduling _loadAllData with addPostFrameCallback');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       print('🚀 [HOME] addPostFrameCallback executing, mounted=$mounted');
@@ -105,21 +111,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   }
 
   Future<void> _loadAllData() async {
-    print('📥 [HOME] _loadAllData START, mounted=$mounted, _userProvider=${_userProvider != null}');
+    print(
+      '📥 [HOME] _loadAllData START, mounted=$mounted, _userProvider=${_userProvider != null}',
+    );
     if (!mounted || _userProvider == null) {
-      print('❌ [HOME] _loadAllData ABORT: mounted=$mounted, _userProvider=${_userProvider != null}');
+      print(
+        '❌ [HOME] _loadAllData ABORT: mounted=$mounted, _userProvider=${_userProvider != null}',
+      );
       return;
     }
-    
+
     print('📥 [HOME] Loading user from storage...');
     await _userProvider!.loadUserFromStorage();
     print('✅ [HOME] User loaded, mounted=$mounted');
-    
+
     if (!mounted) {
-      print('❌ [HOME] _loadAllData ABORT after loadUserFromStorage: mounted=$mounted');
+      print(
+        '❌ [HOME] _loadAllData ABORT after loadUserFromStorage: mounted=$mounted',
+      );
       return;
     }
-    
+
     // Tampilkan popup dulu jika perlu
     if (!_hasShownPopup) {
       print('📥 [HOME] Checking and showing popup...');
@@ -131,17 +143,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     } else {
       print('⏭️ [HOME] Popup already shown, skipping');
     }
-    
+
     if (!mounted) {
-      print('❌ [HOME] _loadAllData ABORT after _checkAndShowPopup: mounted=$mounted');
+      print(
+        '❌ [HOME] _loadAllData ABORT after _checkAndShowPopup: mounted=$mounted',
+      );
       return;
     }
-    
+
     // Setelah popup, baru load dan tampilkan banner
     print('📥 [HOME] Checking document completion...');
     await _checkDocumentCompletion();
     print('✅ [HOME] Document completion checked');
-    
+
     if (!_hasLoggedInit && mounted) {
       print('🔍 HomeScreen: _hasShownPopup = $_hasShownPopup');
       _hasLoggedInit = true;
@@ -151,12 +165,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
 
   Future<void> _checkAndShowPopup() async {
     if (!mounted || _userProvider == null) return;
-    
+
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    
+
     // Check if popup already shown in this session
-    final popupShownThisSession = prefs.getBool('popup_shown_this_session') ?? false;
+    final popupShownThisSession =
+        prefs.getBool('popup_shown_this_session') ?? false;
     if (popupShownThisSession) {
       print('⏭️ HomeScreen: Popup already shown this session, skip');
       return;
@@ -166,19 +181,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     try {
       final response = await DocumentService.getDocuments();
       if (!mounted) return;
-      
+
       if (response['success'] == true) {
         final docs = response['documents'] as List;
         final pending = docs.where((d) => d['status'] == 'pending').length;
         final approved = docs.where((d) => d['status'] == 'approved').length;
         final rejected = docs.where((d) => d['status'] == 'rejected').length;
-        
+
         if (!mounted) return;
-        
+
         final userRole = _userProvider!.user?.role ?? 'Crew';
-        
+
         print('👤 HomeScreen: User role = $userRole');
-        print('📋 HomeScreen: approved=$approved, pending=$pending, rejected=$rejected');
+        print(
+          '📋 HomeScreen: approved=$approved, pending=$pending, rejected=$rejected',
+        );
 
         // Jika semua dokumen sudah completed (8 dokumen approved), jangan tampilkan popup apapun
         if (approved >= 8) {
@@ -188,10 +205,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
 
         // Jika ada rejected, tampilkan popup rejected (prioritas tertinggi)
         if (rejected > 0 && mounted) {
-          print('🔴 HomeScreen: Showing rejected popup with rejectedCount=$rejected');
+          print(
+            '🔴 HomeScreen: Showing rejected popup with rejectedCount=$rejected',
+          );
           await prefs.setBool('popup_shown_this_session', true);
           if (!mounted) return;
-          
+
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               PendingPopupHelper.showPendingPopup(
@@ -206,14 +225,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           });
           return;
         }
-        
+
         // Jika ada pending dan sudah upload 8 dokumen, tampilkan pending popup
         final totalUploaded = approved + pending + rejected;
         if (pending > 0 && totalUploaded >= 8 && mounted) {
-          print('🟠 HomeScreen: Showing pending popup with pendingCount=$pending');
+          print(
+            '🟠 HomeScreen: Showing pending popup with pendingCount=$pending',
+          );
           await prefs.setBool('popup_shown_this_session', true);
           if (!mounted) return;
-          
+
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               PendingPopupHelper.showPendingPopup(
@@ -234,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           print('🎯 HomeScreen: Showing document upload popup');
           await prefs.setBool('popup_shown_this_session', true);
           if (!mounted) return;
-          
+
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               DocumentPopupHelper.showDocumentPopup(context, userRole);
@@ -250,11 +271,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // JANGAN remove listener karena home screen menggunakan AutomaticKeepAliveClientMixin
-    // Listener akan tetap aktif untuk menerima update real-time
-    print('🗑️ HomeScreen: dispose called (listeners kept active)');
-    // RealtimeUpdateService.removeListener('documents');
-    // RealtimeUpdateService.removeListener('document-verified');
+    
+    // ✅ Remove listeners untuk prevent memory leak
+    // Meskipun menggunakan AutomaticKeepAliveClientMixin, tetap harus cleanup
+    // karena listener bisa dipanggil saat widget sudah disposed
+    RealtimeUpdateService.removeListener('documents-home');
+    RealtimeUpdateService.removeListener('documents');
+    RealtimeUpdateService.removeListener('document-verified');
+    
+    print('🗑️ HomeScreen: dispose called, listeners removed');
     super.dispose();
   }
 
@@ -263,31 +288,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     // Auto-reload ketika app resumed (kembali dari background)
     if (state == AppLifecycleState.resumed) {
       print('🔄 App resumed, refreshing document status...');
-      // Re-register listeners jika belum ada
-      if (RealtimeUpdateService.getListener('documents') == null) {
-        print('🔔 Re-registering documents listener');
-        RealtimeUpdateService.addListener('documents', () {
-          print('🔔 [HOME] Documents listener triggered!');
-          if (mounted) {
-            print('🔔 Documents changed, auto-refreshing home screen...');
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _checkDocumentCompletion();
-            });
-          }
-        });
-      }
-      if (RealtimeUpdateService.getListener('document-verified') == null) {
-        print('🔔 Re-registering document-verified listener');
-        RealtimeUpdateService.addListener('document-verified', () {
-          print('🔔 [HOME] Document-verified listener triggered!');
-          if (mounted) {
-            print('🔔 Document verified by admin, auto-refreshing banner...');
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _checkDocumentCompletion();
-            });
-          }
-        });
-      }
+      // Cukup refresh data, listener sudah terdaftar di initState
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _checkDocumentCompletion();
       });
@@ -300,16 +301,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
       print('❌ [HOME] _checkDocumentCompletion ABORT: not mounted');
       return;
     }
-    
+
     print('🔍 [HOME] Getting SharedPreferences...');
     final prefs = await SharedPreferences.getInstance();
     print('✅ [HOME] SharedPreferences obtained, mounted=$mounted');
-    
+
     if (!mounted) {
       print('❌ [HOME] _checkDocumentCompletion ABORT after prefs: not mounted');
       return;
     }
-    
+
     // Get real document counts from API with error handling
     try {
       print('🔍 [HOME] Fetching documents from API...');
@@ -320,22 +321,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           return {'success': false};
         },
       );
-      
+
       print('✅ [HOME] API response received, mounted=$mounted');
       if (!mounted) {
         print('❌ [HOME] _checkDocumentCompletion ABORT after API: not mounted');
         return;
       }
-      
+
       if (response['success'] == true) {
         final docs = response['documents'] as List;
         final pending = docs.where((d) => d['status'] == 'pending').length;
         final approved = docs.where((d) => d['status'] == 'approved').length;
         final rejected = docs.where((d) => d['status'] == 'rejected').length;
         final total = docs.length;
-        
-        print('📊 [Document Status] Total: $total, Approved: $approved, Pending: $pending, Rejected: $rejected');
-        
+
+        print(
+          '📊 [Document Status] Total: $total, Approved: $approved, Pending: $pending, Rejected: $rejected',
+        );
+
         // Jika tidak ada dokumen sama sekali, reset semua status
         if (total == 0) {
           print('🧹 [HOME] No documents, resetting status...');
@@ -343,7 +346,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           await prefs.setBool('documents_pending', false);
           await prefs.setBool('has_rejected_documents', false);
           print('🧹 [Reset] No documents found, cleared all status');
-          
+
           if (mounted) {
             setState(() {
               _rejectedCount = 0;
@@ -356,35 +359,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           print('🔍 [HOME] _checkDocumentCompletion END (empty docs)');
           return;
         }
-        
-        // Validasi: 
+
+        // Validasi:
         // - Dokumen completed jika semua 8 dokumen sudah approved
         // - Pending popup HANYA muncul jika SEMUA 8 dokumen sudah diupload DAN ada yang pending
         // - Upload popup muncul jika belum lengkap 8 dokumen
         // - Rejected HANYA jika ada dokumen dengan status rejected (bukan dihapus)
         final allDocsApproved = approved >= 8;
-        final totalUploaded = approved + pending + rejected; // Total dokumen yang ada
+        final totalUploaded =
+            approved + pending + rejected; // Total dokumen yang ada
         const totalRequired = 8;
-        
+
         // Pending hanya jika sudah upload semua 8 dokumen dan ada yang masih pending
         final hasPending = totalUploaded >= totalRequired && pending > 0;
-        final hasRejected = rejected > 0; // Hanya jika ada rejected, bukan dihapus
-        
+        final hasRejected =
+            rejected > 0; // Hanya jika ada rejected, bukan dihapus
+
         // Update status
         await prefs.setBool('documents_completed', allDocsApproved);
         await prefs.setBool('documents_pending', hasPending);
         await prefs.setBool('has_rejected_documents', hasRejected);
         await prefs.setInt('approved_count', approved);
         await prefs.setInt('total_uploaded', totalUploaded);
-        
-        print('✅ [Validation] Approved: $approved, Pending: $pending, Rejected: $rejected, Total: $totalUploaded/8, Show pending: $hasPending, Show rejected: $hasRejected');
-        print('🎨 [UI UPDATE] Setting state - showRejected: $hasRejected, showPending: $hasPending, showAlert: ${!allDocsApproved && !hasPending && !hasRejected}');
-        
+
+        print(
+          '✅ [Validation] Approved: $approved, Pending: $pending, Rejected: $rejected, Total: $totalUploaded/8, Show pending: $hasPending, Show rejected: $hasRejected',
+        );
+        print(
+          '🎨 [UI UPDATE] Setting state - showRejected: $hasRejected, showPending: $hasPending, showAlert: ${!allDocsApproved && !hasPending && !hasRejected}',
+        );
+
         if (!mounted) {
           print('❌ [HOME] Not mounted before setState');
           return;
         }
-        
+
         // Update state with setState after frame to avoid conflicts
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -413,32 +422,37 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             }
           });
         });
-        
+
         print('🔍 [HOME] _checkDocumentCompletion END (success)');
         return;
       }
     } catch (e) {
       print('⚠️ [HOME] Error fetching documents (offline mode): $e');
     }
-    
+
     print('🔍 [HOME] Using fallback cached data, mounted=$mounted');
     if (!mounted) {
-      print('❌ [HOME] _checkDocumentCompletion ABORT before fallback: not mounted');
+      print(
+        '❌ [HOME] _checkDocumentCompletion ABORT before fallback: not mounted',
+      );
       return;
     }
-    
+
     // Fallback if API fails - use cached data
     final documentsCompleted = prefs.getBool('documents_completed') ?? false;
     final documentsPending = prefs.getBool('documents_pending') ?? false;
     final hasRejected = prefs.getBool('has_rejected_documents') ?? false;
-    
-    print('💾 [Cached] completed=$documentsCompleted, pending=$documentsPending, rejected=$hasRejected');
-    
+
+    print(
+      '💾 [Cached] completed=$documentsCompleted, pending=$documentsPending, rejected=$hasRejected',
+    );
+
     if (mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         setState(() {
-          _showDocumentAlert = !documentsCompleted && !documentsPending && !hasRejected;
+          _showDocumentAlert =
+              !documentsCompleted && !documentsPending && !hasRejected;
           _showPendingBanner = documentsPending;
           _showRejectedAlert = hasRejected && !documentsPending;
         });
@@ -451,16 +465,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     final isTablet = ResponsiveHelper.isTablet(context);
-    
+
     // Jika tablet, render tanpa CustomSliverAppBar karena sudah ada header di MainScreen
     if (isTablet) {
       return RefreshIndicator(
         onRefresh: _checkDocumentCompletion,
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 16),
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 8,
+              bottom: 16,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -484,7 +503,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                       return const SizedBox.shrink();
                     },
                   ),
-                
+
                 // Pending Banner
                 if (_showPendingBanner) _buildPendingBanner(),
                 if (_showPendingBanner) const SizedBox(height: 12),
@@ -518,12 +537,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                       Text(
                         'Statistik Hari Ini',
                         style: TextStyle(
-                          fontSize: MediaQuery.of(context).size.width < 800 ? 14 : 16,
+                          fontSize: MediaQuery.of(context).size.width < 800
+                              ? 14
+                              : 16,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1A1A1A),
                         ),
                       ),
-                      SizedBox(height: MediaQuery.of(context).size.width < 800 ? 10 : 12),
+                      SizedBox(
+                        height: MediaQuery.of(context).size.width < 800
+                            ? 10
+                            : 12,
+                      ),
                       _buildTabletStatisticsCards(),
                     ],
                   ),
@@ -588,112 +613,60 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           slivers: [
             CustomSliverAppBar(),
             SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -10),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
-                ),
-                padding: ResponsiveHelper.padding(
-                  context,
-                  mobile: 20,
-                  tablet: 32,
-                ),
-                child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Carousel
-                  CatchCarousel(),
-                  SizedBox(
-                    height: ResponsiveHelper.height(
-                      context,
-                      mobile: 16,
-                      tablet: 20,
+              child: Transform.translate(
+                offset: const Offset(0, -10),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
                   ),
-
-                  // Document Alert
-                  if (_showDocumentAlert)
-                    ValueListenableBuilder<bool>(
-                      valueListenable: DocumentPopupHelper.isPopupVisible,
-                      builder: (context, isPopupVisible, child) {
-                        if (!isPopupVisible) {
-                          return Column(
-                            children: [
-                              _buildDocumentAlert(),
-                              SizedBox(
-                                height: ResponsiveHelper.height(
-                                  context,
-                                  mobile: 16,
-                                  tablet: 20,
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  
-                  // Pending Banner
-                  if (_showPendingBanner) _buildPendingBanner(),
-                  if (_showPendingBanner)
-                    SizedBox(
-                      height: ResponsiveHelper.height(
-                        context,
-                        mobile: 16,
-                        tablet: 20,
-                      ),
-                    ),
-
-                  // Rejected Alert (berbeda dengan document alert)
-                  if (_showRejectedAlert) _buildRejectedAlert(),
-                  if (_showRejectedAlert)
-                    SizedBox(
-                      height: ResponsiveHelper.height(
-                        context,
-                        mobile: 16,
-                        tablet: 20,
-                      ),
-                    ),
-
-                  // Statistics Container
-                  Container(
-                    padding: ResponsiveHelper.padding(
-                      context,
-                      mobile: 20,
-                      tablet: 24,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                  padding: ResponsiveHelper.padding(
+                    context,
+                    mobile: 20,
+                    tablet: 32,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Carousel
+                      CatchCarousel(),
+                      SizedBox(
+                        height: ResponsiveHelper.height(
+                          context,
+                          mobile: 16,
+                          tablet: 20,
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Statistik Hari Ini',
-                          style: TextStyle(
-                            fontSize: ResponsiveHelper.font(
-                              context,
-                              mobile: 20,
-                              tablet: 24,
-                            ),
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A1A),
-                          ),
+                      ),
+
+                      // Document Alert
+                      if (_showDocumentAlert)
+                        ValueListenableBuilder<bool>(
+                          valueListenable: DocumentPopupHelper.isPopupVisible,
+                          builder: (context, isPopupVisible, child) {
+                            if (!isPopupVisible) {
+                              return Column(
+                                children: [
+                                  _buildDocumentAlert(),
+                                  SizedBox(
+                                    height: ResponsiveHelper.height(
+                                      context,
+                                      mobile: 16,
+                                      tablet: 20,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
                         ),
+
+                      // Pending Banner
+                      if (_showPendingBanner) _buildPendingBanner(),
+                      if (_showPendingBanner)
                         SizedBox(
                           height: ResponsiveHelper.height(
                             context,
@@ -701,65 +674,117 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                             tablet: 20,
                           ),
                         ),
-                        _buildStatisticsCards(),
-                      ],
-                    ),
-                  ),
 
-                  SizedBox(
-                    height: ResponsiveHelper.height(
-                      context,
-                      mobile: 28,
-                      tablet: 36,
-                    ),
-                  ),
-
-                  // Weekly Activity Chart
-                  _buildWeeklyActivity(),
-
-                  SizedBox(
-                    height: ResponsiveHelper.height(
-                      context,
-                      mobile: 28,
-                      tablet: 36,
-                    ),
-                  ),
-
-                  // Recent Catches Container
-                  Container(
-                    padding: ResponsiveHelper.padding(
-                      context,
-                      mobile: 20,
-                      tablet: 24,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                      // Rejected Alert (berbeda dengan document alert)
+                      if (_showRejectedAlert) _buildRejectedAlert(),
+                      if (_showRejectedAlert)
+                        SizedBox(
+                          height: ResponsiveHelper.height(
+                            context,
+                            mobile: 16,
+                            tablet: 20,
+                          ),
                         ),
-                      ],
-                    ),
-                    child: _buildRecentCatches(),
-                  ),
 
-                  SizedBox(
-                    height: ResponsiveHelper.height(
-                      context,
-                      mobile: 20,
-                      tablet: 28,
-                    ),
+                      // Statistics Container
+                      Container(
+                        padding: ResponsiveHelper.padding(
+                          context,
+                          mobile: 20,
+                          tablet: 24,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Statistik Hari Ini',
+                              style: TextStyle(
+                                fontSize: ResponsiveHelper.font(
+                                  context,
+                                  mobile: 20,
+                                  tablet: 24,
+                                ),
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                            SizedBox(
+                              height: ResponsiveHelper.height(
+                                context,
+                                mobile: 16,
+                                tablet: 20,
+                              ),
+                            ),
+                            _buildStatisticsCards(),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(
+                        height: ResponsiveHelper.height(
+                          context,
+                          mobile: 28,
+                          tablet: 36,
+                        ),
+                      ),
+
+                      // Weekly Activity Chart
+                      _buildWeeklyActivity(),
+
+                      SizedBox(
+                        height: ResponsiveHelper.height(
+                          context,
+                          mobile: 28,
+                          tablet: 36,
+                        ),
+                      ),
+
+                      // Recent Catches Container
+                      Container(
+                        padding: ResponsiveHelper.padding(
+                          context,
+                          mobile: 20,
+                          tablet: 24,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: _buildRecentCatches(),
+                      ),
+
+                      SizedBox(
+                        height: ResponsiveHelper.height(
+                          context,
+                          mobile: 20,
+                          tablet: 28,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -786,7 +811,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           children: [
             Expanded(
               child: _buildModernStatCard(
-                lottieAsset: 'assets/animations/fish.json',
+                icon: Icons.phishing_rounded,
                 label: 'Tangkapan',
                 value: '${todayCatches.length}',
                 subtitle: 'ikan',
@@ -798,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             ),
             Expanded(
               child: _buildModernStatCard(
-                lottieAsset: 'assets/animations/Weighing.json',
+                icon: Icons.scale_rounded,
                 label: 'Total Berat',
                 value: totalWeight.toStringAsFixed(1),
                 subtitle: 'kg',
@@ -814,7 +839,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           children: [
             Expanded(
               child: _buildModernStatCard(
-                lottieAsset: 'assets/animations/money.json',
+                icon: Icons.payments_rounded,
                 label: 'Pendapatan',
                 value: '${(totalRevenue / 1000).toStringAsFixed(0)}k',
                 subtitle: 'Rupiah',
@@ -826,7 +851,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             ),
             Expanded(
               child: _buildModernStatCard(
-                lottieAsset: 'assets/animations/chart.json',
+                icon: Icons.trending_up_rounded,
                 label: 'Rata-rata',
                 value: averageWeight.toStringAsFixed(1),
                 subtitle: 'kg/ikan',
@@ -840,7 +865,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
   }
 
   Widget _buildModernStatCard({
-    required String lottieAsset,
+    required IconData icon,
     required String label,
     required String value,
     required String subtitle,
@@ -871,7 +896,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Lottie Animation
           Container(
             width: ResponsiveHelper.width(context, mobile: 40, tablet: 60),
             height: ResponsiveHelper.height(context, mobile: 40, tablet: 60),
@@ -881,28 +905,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                 ResponsiveHelper.width(context, mobile: 12, tablet: 15),
               ),
             ),
-            child: Center(
-              child: Lottie.asset(
-                lottieAsset,
-                width: ResponsiveHelper.width(context, mobile: 40, tablet: 60),
-                height: ResponsiveHelper.height(
-                  context,
-                  mobile: 40,
-                  tablet: 60,
-                ),
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.analytics,
-                    color: Colors.white,
-                    size: ResponsiveHelper.width(
-                      context,
-                      mobile: 24,
-                      tablet: 36,
-                    ),
-                  );
-                },
-              ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: ResponsiveHelper.width(context, mobile: 24, tablet: 32),
             ),
           ),
           SizedBox(
@@ -962,9 +968,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
               ),
             ],
           ),
-        ]
-        ),
-      );
+        ],
+      ),
+    );
   }
 
   Widget _buildWeeklyActivity() {
@@ -1105,9 +1111,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                     color: const Color(0xFF4A90E2),
                     barWidth: 3,
                     isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: false,
-                    ),
+                    dotData: FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
                       gradient: LinearGradient(
@@ -1218,11 +1222,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
               padding: EdgeInsets.all(isTablet ? 24 : 32),
               child: Column(
                 children: [
-                  Icon(Icons.inbox_outlined, size: emptyIconSize, color: Colors.grey[400]),
+                  Icon(
+                    Icons.inbox_outlined,
+                    size: emptyIconSize,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'Belum ada tangkapan',
-                    style: TextStyle(color: Colors.grey[600], fontSize: emptyTextSize),
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: emptyTextSize,
+                    ),
                   ),
                 ],
               ),
@@ -1288,7 +1299,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right_rounded, color: Colors.grey[400], size: isTablet ? 20 : 24),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.grey[400],
+                    size: isTablet ? 20 : 24,
+                  ),
                 ],
               ),
             ),
@@ -1328,11 +1343,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(
-                  Icons.warning,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                child: const Icon(Icons.warning, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -1350,10 +1361,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                     SizedBox(height: 4),
                     Text(
                       'Lengkapi dokumen pribadi Anda',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.white),
                     ),
                   ],
                 ),
@@ -1365,9 +1373,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                final userProvider = Provider.of<UserProvider>(context, listen: false);
+                final userProvider = Provider.of<UserProvider>(
+                  context,
+                  listen: false,
+                );
                 final userRole = userProvider.user?.role ?? 'Crew';
-                final route = (userRole.toLowerCase() == 'nahkoda' || userRole.toLowerCase() == 'captain')
+                final route =
+                    (userRole.toLowerCase() == 'nahkoda' ||
+                        userRole.toLowerCase() == 'captain')
                     ? '/nahkoda-document-upload'
                     : '/crew-document-upload';
                 await NavigationHelper.pushNamedNoTransition(context, route);
@@ -1392,7 +1405,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
       ),
     );
   }
-  
+
   Widget _buildRejectedAlert() {
     return Container(
       width: double.infinity,
@@ -1446,10 +1459,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                     const SizedBox(height: 4),
                     Text(
                       '$_rejectedCount dokumen perlu diupload ulang',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
+                      style: const TextStyle(fontSize: 14, color: Colors.white),
                     ),
                   ],
                 ),
@@ -1461,9 +1471,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                final userProvider = Provider.of<UserProvider>(context, listen: false);
+                final userProvider = Provider.of<UserProvider>(
+                  context,
+                  listen: false,
+                );
                 final userRole = userProvider.user?.role ?? 'Crew';
-                final route = (userRole.toLowerCase() == 'nahkoda' || userRole.toLowerCase() == 'captain')
+                final route =
+                    (userRole.toLowerCase() == 'nahkoda' ||
+                        userRole.toLowerCase() == 'captain')
                     ? '/nahkoda-document-status'
                     : '/crew-document-status';
                 await NavigationHelper.pushNamedNoTransition(context, route);
@@ -1488,7 +1503,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
       ),
     );
   }
-  
+
   Widget _buildPendingBanner() {
     return Container(
       width: double.infinity,
@@ -1551,10 +1566,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                     SizedBox(height: 4),
                     Text(
                       'Menunggu persetujuan admin',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.white),
                     ),
                   ],
                 ),
@@ -1592,9 +1604,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () async {
-              final userProvider = Provider.of<UserProvider>(context, listen: false);
+              final userProvider = Provider.of<UserProvider>(
+                context,
+                listen: false,
+              );
               final userRole = userProvider.user?.role ?? 'Crew';
-              final route = (userRole.toLowerCase() == 'nahkoda' || userRole.toLowerCase() == 'captain')
+              final route =
+                  (userRole.toLowerCase() == 'nahkoda' ||
+                      userRole.toLowerCase() == 'captain')
                   ? '/nahkoda-document-status'
                   : '/crew-document-status';
               await NavigationHelper.pushNamedNoTransition(context, route);
@@ -1626,21 +1643,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     );
   }
 
-
   Widget _buildTabletStatisticsCards() {
     final provider = Provider.of<CatchProvider>(context);
     final todayCatches = provider.todayCatches;
-    final totalWeight = todayCatches.fold<double>(0, (sum, c) => sum + c.weight);
-    final totalRevenue = todayCatches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
-    final averageWeight = todayCatches.isEmpty ? 0.0 : totalWeight / todayCatches.length;
+    final totalWeight = todayCatches.fold<double>(
+      0,
+      (sum, c) => sum + c.weight,
+    );
+    final totalRevenue = todayCatches.fold<double>(
+      0,
+      (sum, c) => sum + c.totalRevenue,
+    );
+    final averageWeight = todayCatches.isEmpty
+        ? 0.0
+        : totalWeight / todayCatches.length;
     final screenWidth = MediaQuery.of(context).size.width;
     final cardSpacing = screenWidth < 800 ? 10.0 : 12.0;
 
     return Row(
       children: [
         Expanded(
-          child: _buildCompactLottieCard(
-            lottieAsset: 'assets/animations/fish.json',
+          child: _buildCompactIconCard(
+            icon: Icons.phishing_rounded,
             label: 'Tangkapan',
             value: '${todayCatches.length}',
             subtitle: 'ikan',
@@ -1649,8 +1673,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         ),
         SizedBox(width: cardSpacing),
         Expanded(
-          child: _buildCompactLottieCard(
-            lottieAsset: 'assets/animations/Weighing.json',
+          child: _buildCompactIconCard(
+            icon: Icons.scale_rounded,
             label: 'Berat',
             value: totalWeight.toStringAsFixed(1),
             subtitle: 'kg',
@@ -1659,8 +1683,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         ),
         SizedBox(width: cardSpacing),
         Expanded(
-          child: _buildCompactLottieCard(
-            lottieAsset: 'assets/animations/money.json',
+          child: _buildCompactIconCard(
+            icon: Icons.payments_rounded,
             label: 'Pendapatan',
             value: '${(totalRevenue / 1000).toStringAsFixed(0)}k',
             subtitle: 'Rupiah',
@@ -1669,8 +1693,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
         ),
         SizedBox(width: cardSpacing),
         Expanded(
-          child: _buildCompactLottieCard(
-            lottieAsset: 'assets/animations/chart.json',
+          child: _buildCompactIconCard(
+            icon: Icons.trending_up_rounded,
             label: 'Rata-rata',
             value: averageWeight.toStringAsFixed(1),
             subtitle: 'kg/ikan',
@@ -1681,8 +1705,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     );
   }
 
-  Widget _buildCompactLottieCard({
-    required String lottieAsset,
+  Widget _buildCompactIconCard({
+    required IconData icon,
     required String label,
     required String value,
     required String subtitle,
@@ -1691,13 +1715,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     final screenWidth = MediaQuery.of(context).size.width;
     final cardPadding = screenWidth < 800 ? 12.0 : 14.0;
     final iconSize = screenWidth < 800 ? 36.0 : 40.0;
-    final lottieSize = screenWidth < 800 ? 28.0 : 32.0;
+    final iconSizeInner = screenWidth < 800 ? 20.0 : 22.0;
     final labelSize = screenWidth < 800 ? 11.0 : 12.0;
     final valueSize = screenWidth < 800 ? 18.0 : 20.0;
     final subtitleSize = screenWidth < 800 ? 10.0 : 11.0;
     final iconRadius = screenWidth < 800 ? 9.0 : 10.0;
     final cardRadius = screenWidth < 800 ? 12.0 : 14.0;
-    
+
     return Container(
       padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
@@ -1725,16 +1749,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(iconRadius),
             ),
-            child: Center(
-              child: Lottie.asset(
-                lottieAsset,
-                width: lottieSize,
-                height: lottieSize,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(Icons.analytics, color: Colors.white, size: lottieSize * 0.6);
-                },
-              ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: iconSizeInner,
             ),
           ),
           SizedBox(height: screenWidth < 800 ? 8 : 10),
@@ -1842,20 +1860,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
               ),
               titlesData: FlTitlesData(
                 show: true,
-                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: reservedSizeBottom,
                     interval: 5,
                     getTitlesWidget: (value, meta) {
-                      if (value.toInt() >= 0 && value.toInt() < monthlyData.length && value.toInt() % 5 == 0) {
+                      if (value.toInt() >= 0 &&
+                          value.toInt() < monthlyData.length &&
+                          value.toInt() % 5 == 0) {
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
                             monthlyData[value.toInt()]['day'],
-                            style: TextStyle(color: Colors.grey[600], fontSize: axisLabelSize, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: axisLabelSize,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         );
                       }
@@ -1871,7 +1899,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                     getTitlesWidget: (value, meta) {
                       return Text(
                         value.toInt().toString(),
-                        style: TextStyle(color: Colors.grey[600], fontSize: axisLabelSize),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: axisLabelSize,
+                        ),
                       );
                     },
                   ),
@@ -1891,9 +1922,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
                   color: const Color(0xFF4A90E2),
                   barWidth: 3,
                   isStrokeCapRound: true,
-                  dotData: FlDotData(
-                    show: false,
-                  ),
+                  dotData: FlDotData(show: false),
                   belowBarData: BarAreaData(
                     show: true,
                     gradient: LinearGradient(
@@ -1914,9 +1943,3 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Au
     );
   }
 }
-
-
-
-
-
-

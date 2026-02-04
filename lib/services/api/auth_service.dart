@@ -24,6 +24,7 @@ class AuthService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
         },
       ),
     );
@@ -68,6 +69,13 @@ class AuthService {
       final response = await _dio.post(
         '/mobile/login',
         data: {'email': login, 'password': password},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        ),
       );
 
       print('📥 Login response status: ${response.statusCode}');

@@ -11,7 +11,10 @@ class DocumentService {
       connectTimeout: const Duration(minutes: 2),
       receiveTimeout: const Duration(minutes: 2),
       sendTimeout: const Duration(minutes: 2),
-      headers: {'Accept': 'application/json'},
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
     ),
   );
 
@@ -135,6 +138,8 @@ class DocumentService {
         errorMessage = 'Upload timeout. File mungkin terlalu besar';
       } else if (e.type == DioExceptionType.receiveTimeout) {
         errorMessage = 'Server tidak merespons. Coba lagi nanti';
+      } else if (e.response?.statusCode == 419) {
+        errorMessage = 'Session expired. Silakan login ulang';
       }
 
       return {
