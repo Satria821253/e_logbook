@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 class DocumentService {
-  static const String baseUrl = 'http://210.79.191.17:5000/api';
+  static const String baseUrl = kIsWeb
+      ? 'http://elogbookipb.web.id:5000/api'
+      : 'https://elogbookipb.web.id/api';
 
   static final Dio _dio = Dio(
     BaseOptions(

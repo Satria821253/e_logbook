@@ -564,7 +564,7 @@ class _LoginScreenState extends State<LoginScreen> {
     
     try {
       final result = await AuthService.login(
-        login: _emailPhoneController.text,
+        email: _emailPhoneController.text,
         password: _passwordController.text,
       );
       

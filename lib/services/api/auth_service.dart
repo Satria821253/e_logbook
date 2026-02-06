@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/user_model.dart';
 import '../nitification/admin_notification_service.dart';
@@ -9,8 +10,10 @@ import '../../utils/account_status_interceptor.dart';
 import '../../utils/token_interceptor.dart';
 
 class AuthService {
-  // VPS Production Server
-  static const String baseUrl = 'http://210.79.191.17:5000/api';
+  // Use HTTP for web development, HTTPS for mobile
+  static const String baseUrl = kIsWeb 
+      ? 'http://elogbookipb.web.id:5000/api'
+      : 'https://elogbookipb.web.id/api';
 
   static late Dio _dio;
 
@@ -39,7 +42,6 @@ class AuthService {
   }
 
   static void addTokenInterceptor(BuildContext context) {
-    // Remove old token interceptor if exists
     _dio.interceptors.removeWhere((i) => i is TokenInterceptor);
     _dio.interceptors.add(TokenInterceptor(context: context));
   }
@@ -60,215 +62,139 @@ class AuthService {
   }
 
   static Future<Map<String, dynamic>> login({
-    required String login,
+    required String email,
     required String password,
   }) async {
     try {
-      print('🔐 Login attempt for user: $login');
-
       final response = await _dio.post(
         '/mobile/login',
-        data: {'email': login, 'password': password},
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
-        ),
+        data: {'email': email, 'password': password},
       );
-
-      print('📥 Login response status: ${response.statusCode}');
-      print('📥 Login response data: ${response.data}');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         final token = response.data['token'];
-        final userData = response.data['user'];
-        final profile = userData['profile'] ?? {};
-        final kapal = profile['kapal'];
-
-        print('✅ Login successful for user: ${profile['nama']}');
-        print('👤 User role from API: ${userData['role']}');
-        print('🚢 Vessel data from API: $kapal');
-        print('🚢 Profile structure: $profile');
-        print('🚢 Kapal keys: ${kapal?.keys}');
-
-        // Map role from API: 'nahkoda' -> 'Nahkoda', 'abk' -> 'Crew', 'crew' -> 'Crew'
-        String mappedRole = 'Nahkoda';
-        if (userData['role'] != null) {
-          final apiRole = userData['role'].toString().toLowerCase();
-          if (apiRole == 'abk' || apiRole == 'crew') {
-            mappedRole = 'Crew';
-          } else if (apiRole == 'nahkoda') {
-            mappedRole = 'Nahkoda';
-          }
-        }
-
-        print('🔄 Mapped role: $mappedRole');
-
-        final user = UserModel(
-          id: userData['id'] is int
-              ? userData['id']
-              : int.tryParse(userData['id'].toString()) ?? 0,
-          name: profile['nama'] ?? '',
-          email: userData['email'] ?? '',
-          phone: profile['telepon'] ?? '',
-          address: profile['alamat'],
-          role: mappedRole,
-          profilePicture: null,
-          vesselName: kapal?['namaKapal'],
-          vesselNumber: kapal?['nomorKapal'],
-          captainName: kapal?['nahkoda']?['nama'],
-        );
-
-        if (token != null) {
-          await saveToken(token);
-          print('💾 Token saved successfully');
-        }
-
-        // Fetch vessel data from my-vessel endpoint
-        try {
-          final vesselDio = Dio(
-            BaseOptions(
-              baseUrl: 'http://210.79.191.17:5000',
-              connectTimeout: const Duration(seconds: 30),
-              receiveTimeout: const Duration(seconds: 30),
-            ),
-          );
-
-          final vesselResponse = await vesselDio.get(
-            '/api/mobile/vessels/my-vessel',
-            options: Options(headers: {'Authorization': 'Bearer $token'}),
-          );
-
-          if (vesselResponse.statusCode == 200 &&
-              vesselResponse.data['success'] == true) {
-            final vessels = vesselResponse.data['data'] as List;
-            if (vessels.isNotEmpty) {
-              final vesselData = vessels[0];
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString(
-                'vessel_data',
-                jsonEncode({
-                  'kapal': {
-                    'id': vesselData['id'],
-                    'namaKapal': vesselData['namaKapal'],
-                    'nomorRegistrasi': vesselData['nomorRegistrasi'],
-                  },
-                  'nahkoda': vesselData['nahkoda'],
-                }),
-              );
-              print('💾 Vessel data fetched: ${vesselData['namaKapal']}');
-            } else {
-              print('ℹ️ No vessel assigned');
-            }
-          } else {
-            print('ℹ️ No vessel assigned');
-          }
-        } catch (e) {
-          print('ℹ️ Could not fetch vessel: $e');
-        }
-
-        // Initialize document requirements for nahkoda after successful login
-        if (user.isNahkoda) {
-          await AdminNotificationService.initializeNahkodaDocuments(user.email);
-
-          // Create welcome notification
-          await AdminNotificationService.createAdminNotification(
-            userId: user.email,
-            title: 'Selamat Datang, Nahkoda!',
-            message:
-                'Mohon lengkapi dokumen-dokumen yang diperlukan sebelum memulai trip pertama Anda.',
-            type: 'document_requirement',
-            isUrgent: true,
-          );
-        }
+        final user = await _processUserData(response.data['user']);
+        
+        if (token != null) await saveToken(token);
+        await _fetchVesselData(token);
+        await _initializeUserNotifications(user);
 
         return {
           'success': true,
           'user': user,
           'token': token,
-          'message': response.data['message'] ?? 'Login berhasil',
-        };
-      } else {
-        print('❌ Login failed: ${response.data['message']}');
-        return {
-          'success': false,
-          'message': response.data['message'] ?? 'Login gagal',
+          'message': 'Login berhasil',
         };
       }
-    } on DioException catch (e) {
-      print('⚠️ DioException: ${e.type}');
-      print('⚠️ Response: ${e.response?.data}');
 
-      if (e.response?.statusCode == 400) {
-        return {
-          'success': false,
-          'message':
-              e.response?.data['message'] ?? 'Email dan password wajib diisi',
-        };
-      } else if (e.response?.statusCode == 401) {
-        final message =
-            e.response?.data['message'] ?? 'Email atau password salah';
-        return {
-          'success': false,
-          'message': message,
-          'isAccountInactive': message.toLowerCase().contains('tidak aktif'),
-        };
-      } else if (e.response?.statusCode == 403) {
-        return {
-          'success': false,
-          'message':
-              e.response?.data['message'] ??
-              'Akun tidak memiliki akses mobile app',
-        };
-      } else if (e.response?.statusCode == 429) {
-        return {
-          'success': false,
-          'message':
-              e.response?.data['message'] ??
-              'Terlalu banyak percobaan, coba lagi nanti',
-        };
-      } else if (e.type == DioExceptionType.connectionTimeout) {
-        return {
-          'success': false,
-          'message': 'Koneksi timeout. Periksa koneksi internet Anda',
-          'isTimeout': true,
-        };
-      } else if (e.type == DioExceptionType.receiveTimeout) {
-        return {
-          'success': false,
-          'message': 'Server tidak merespons. Coba lagi nanti',
-          'isTimeout': true,
-        };
-      } else if (e.type == DioExceptionType.connectionError) {
-        return {
-          'success': false,
-          'message':
-              'Tidak dapat terhubung ke server. Periksa koneksi internet Anda',
-        };
-      } else if (e.type == DioExceptionType.sendTimeout) {
-        return {
-          'success': false,
-          'message': 'Gagal mengirim data. Coba lagi',
-          'isTimeout': true,
-        };
-      } else {
-        return {
-          'success': false,
-          'message': e.response?.data['message'] ?? 'Login gagal. Coba lagi',
-        };
-      }
+      return {
+        'success': false,
+        'message': response.data['message'] ?? 'Login gagal',
+      };
+    } on DioException catch (e) {
+      return _handleLoginError(e);
     } catch (e) {
-      print('❌ Unexpected error: $e');
       return {'success': false, 'message': 'Terjadi kesalahan tidak terduga'};
     }
   }
 
+  static Future<UserModel> _processUserData(Map<String, dynamic> userData) async {
+    final profile = userData['profile'] ?? {};
+    
+    String mappedRole = 'Crew';
+    if (userData['role'] != null) {
+      final apiRole = userData['role'].toString().toLowerCase();
+      if (apiRole == 'nahkoda') mappedRole = 'Nahkoda';
+    }
+
+    return UserModel(
+      id: userData['id'] is int ? userData['id'] : int.tryParse(userData['id'].toString()) ?? 0,
+      name: profile['nama'] ?? '',
+      email: userData['email'] ?? '',
+      phone: profile['telepon'] ?? '',
+      address: profile['alamat'],
+      role: mappedRole,
+      profilePicture: null,
+      vesselName: null,
+      vesselNumber: null,
+      captainName: null,
+    );
+  }
+
+  static Future<void> _fetchVesselData(String token) async {
+    try {
+      final vesselResponse = await _dio.get(
+        '/mobile/vessels/my-vessel',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (vesselResponse.statusCode == 200 && vesselResponse.data['success'] == true) {
+        final vessels = vesselResponse.data['data'] as List;
+        if (vessels.isNotEmpty) {
+          final vesselData = vessels[0];
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(
+            'vessel_data',
+            jsonEncode({
+              'kapal': {
+                'id': vesselData['id'],
+                'namaKapal': vesselData['namaKapal'],
+                'nomorRegistrasi': vesselData['nomorRegistrasi'],
+              },
+              'nahkoda': vesselData['nahkoda'],
+            }),
+          );
+        }
+      }
+    } catch (e) {
+      // Silent fail - vessel data is optional
+    }
+  }
+
+  static Future<void> _initializeUserNotifications(UserModel user) async {
+    if (user.isNahkoda) {
+      try {
+        await AdminNotificationService.initializeNahkodaDocuments(user.email);
+        await AdminNotificationService.createAdminNotification(
+          userId: user.email,
+          title: 'Selamat Datang, Nahkoda!',
+          message: 'Mohon lengkapi dokumen-dokumen yang diperlukan sebelum memulai trip pertama Anda.',
+          type: 'document_requirement',
+          isUrgent: true,
+        );
+      } catch (e) {
+        // Silent fail - notifications are optional
+      }
+    }
+  }
+
+  static Map<String, dynamic> _handleLoginError(DioException e) {
+    if (e.response?.statusCode == 400) {
+      return {'success': false, 'message': e.response?.data['message'] ?? 'Email dan password wajib diisi'};
+    } else if (e.response?.statusCode == 401) {
+      final message = e.response?.data['message'] ?? 'Email atau password salah';
+      return {'success': false, 'message': message, 'isAccountInactive': message.toLowerCase().contains('tidak aktif')};
+    } else if (e.response?.statusCode == 403) {
+      return {'success': false, 'message': e.response?.data['message'] ?? 'Akun tidak memiliki akses mobile app'};
+    } else if (e.response?.statusCode == 429) {
+      return {'success': false, 'message': e.response?.data['message'] ?? 'Terlalu banyak percobaan, coba lagi nanti'};
+    } else if (e.type == DioExceptionType.connectionTimeout) {
+      return {'success': false, 'message': 'Koneksi timeout. Periksa koneksi internet Anda', 'isTimeout': true};
+    } else if (e.type == DioExceptionType.receiveTimeout) {
+      return {'success': false, 'message': 'Server tidak merespons. Coba lagi nanti', 'isTimeout': true};
+    } else if (e.type == DioExceptionType.connectionError) {
+      return {'success': false, 'message': 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda'};
+    } else if (e.type == DioExceptionType.sendTimeout) {
+      return {'success': false, 'message': 'Gagal mengirim data. Coba lagi', 'isTimeout': true};
+    }
+    return {'success': false, 'message': e.response?.data['message'] ?? 'Login gagal. Coba lagi'};
+  }
+
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs
-        .clear(); // Hapus semua data termasuk token, user_data, vessel_data, dll
-    print('🚪 Logout: All data cleared');
+    await prefs.remove('auth_token');
+    await prefs.remove('user_data');
+    await prefs.remove('vessel_data');
+    await prefs.remove('popup_shown_this_session');
   }
 }

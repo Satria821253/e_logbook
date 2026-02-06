@@ -69,7 +69,7 @@ class UserProvider extends ChangeNotifier {
     try {
       final dio = Dio(
         BaseOptions(
-          baseUrl: 'http://210.79.191.17:5000',
+          baseUrl: 'http://elogbookipb.web.id:5000',
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 10),
         ),
@@ -109,11 +109,11 @@ class UserProvider extends ChangeNotifier {
             if (path.startsWith('http')) {
               fullPhotoUrl = '$path?t=$timestamp';
             } else if (path.startsWith('/')) {
-              fullPhotoUrl = 'http://210.79.191.17:5000$path?t=$timestamp';
+              fullPhotoUrl = 'http://elogbookipb.web.id:5000$path?t=$timestamp';
             } else {
               // Path relatif tanpa slash, tambahkan /uploads/profile-photos/
               fullPhotoUrl =
-                  'http://210.79.191.17:5000/uploads/profile-photos/$path?t=$timestamp';
+                  'http://elogbookipb.web.id:5000/uploads/profile-photos/$path?t=$timestamp';
             }
           }
 
@@ -278,7 +278,7 @@ class UserProvider extends ChangeNotifier {
       try {
         final dio = Dio(
           BaseOptions(
-            baseUrl: 'http://210.79.191.17:5000',
+            baseUrl: 'http://elogbookipb.web.id:5000',
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 10),
           ),
@@ -317,11 +317,11 @@ class UserProvider extends ChangeNotifier {
             if (path.startsWith('http')) {
               photoUrl = '$path?t=$timestamp';
             } else if (path.startsWith('/')) {
-              photoUrl = 'http://210.79.191.17:5000$path?t=$timestamp';
+              photoUrl = 'http://elogbookipb.web.id:5000$path?t=$timestamp';
             } else {
               // Path relatif tanpa slash, tambahkan /uploads/profile-photos/
               photoUrl =
-                  'http://210.79.191.17:5000/uploads/profile-photos/$path?t=$timestamp';
+                  'http://elogbookipb.web.id:5000/uploads/profile-photos/$path?t=$timestamp';
             }
           }
 

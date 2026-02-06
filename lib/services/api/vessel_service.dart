@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 class VesselService {
-  static const String baseUrl = 'http://210.79.191.17:5000';
+  static const String baseUrl = 'http://elogbookipb.web.id:5000';
 
   Future<Map<String, dynamic>> checkAssignmentStatus() async {
     try {
