@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import '../../../services/api/vessel_service.dart';
+import '../../../services/api/trip_service.dart';
 
 class StepSuratIzinBerlayar extends StatefulWidget {
+  final int? tripId;
   final VoidCallback onNext;
-  const StepSuratIzinBerlayar({Key? key, required this.onNext}) : super(key: key);
+  
+  const StepSuratIzinBerlayar({Key? key, this.tripId, required this.onNext}) : super(key: key);
   
   @override
   State<StepSuratIzinBerlayar> createState() => _StepSuratIzinBerlayarState();
@@ -14,85 +16,12 @@ class StepSuratIzinBerlayar extends StatefulWidget {
 
 class _StepSuratIzinBerlayarState extends State<StepSuratIzinBerlayar> {
   final _formKey = GlobalKey<FormState>();
-  final _nomorSIBController = TextEditingController();
-  final _pelabuhanKeberangkatanController = TextEditingController();
-  final _tanggalBerlayarController = TextEditingController();
-  final _masaBerlakuController = TextEditingController();
-  final _statusController = TextEditingController();
+  final _keteranganController = TextEditingController();
   
-  String? _namaKapal;
-  String? _nomorRegistrasi;
-  DateTime? _tanggalBerlayar;
-  DateTime? _masaBerlaku;
   String? _filePath;
   String? _fileName;
   String? _fileType;
   bool _isLoading = false;
-  
-  String _getStatusText() {
-    if (_masaBerlaku == null) return '';
-    final now = DateTime.now();
-    
-    if (_masaBerlaku!.isBefore(now)) {
-      return 'Kadaluarsa';
-    }
-    
-    final duration = _masaBerlaku!.difference(now);
-    final totalHours = duration.inHours;
-    final totalDays = duration.inDays;
-    
-    if (totalHours < 24) {
-      final hours = totalHours;
-      final minutes = duration.inMinutes % 60;
-      if (hours == 0) {
-        return 'Aktif $minutes menit';
-      }
-      return minutes > 0 ? 'Aktif $hours jam $minutes menit' : 'Aktif $hours jam';
-    }
-    
-    if (totalDays < 7) {
-      final days = totalDays;
-      final hours = totalHours % 24;
-      return hours > 0 ? 'Aktif $days hari $hours jam' : 'Aktif $days hari';
-    }
-    
-    if (totalDays < 30) {
-      final weeks = (totalDays / 7).floor();
-      final days = totalDays % 7;
-      return days > 0 ? 'Aktif $weeks minggu $days hari' : 'Aktif $weeks minggu';
-    }
-    
-    if (totalDays < 365) {
-      final months = (totalDays / 30).floor();
-      final days = totalDays % 30;
-      return days > 0 ? 'Aktif $months bulan $days hari' : 'Aktif $months bulan';
-    }
-    
-    final years = (totalDays / 365).floor();
-    final remainingDays = totalDays % 365;
-    final months = (remainingDays / 30).floor();
-    return months > 0 ? 'Aktif $years tahun $months bulan' : 'Aktif $years tahun';
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    try {
-      final vesselData = await VesselService().getVesselData();
-      if (vesselData != null && vesselData['kapal'] != null) {
-        setState(() {
-          _namaKapal = vesselData['kapal']['namaKapal'];
-          _nomorRegistrasi = vesselData['kapal']['nomorRegistrasi'];
-        });
-      }
-    } catch (e) {
-      print('Error loading data: $e');
-    }
-  }
 
   Future<void> _pickFile() async {
     try {
@@ -147,42 +76,52 @@ class _StepSuratIzinBerlayarState extends State<StepSuratIzinBerlayar> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     
-    if (_namaKapal == null || _nomorRegistrasi == null || _pelabuhanKeberangkatanController.text.trim().isEmpty ||
-        _tanggalBerlayar == null || _masaBerlaku == null || _filePath == null) {
-      _showSnackBar('Semua field wajib diisi', Colors.orange);
+    if (widget.tripId == null) {
+      _showSnackBar('Trip ID tidak ditemukan', Colors.red);
+      return;
+    }
+    
+    if (_filePath == null) {
+      _showSnackBar('File dokumen wajib diupload', Colors.orange);
       return;
     }
 
     setState(() => _isLoading = true);
+
     try {
-      final masaBerlakuStr = '${_masaBerlaku!.year}-${_masaBerlaku!.month.toString().padLeft(2, '0')}-${_masaBerlaku!.day.toString().padLeft(2, '0')} ${_masaBerlaku!.hour.toString().padLeft(2, '0')}:${_masaBerlaku!.minute.toString().padLeft(2, '0')}';
-      final status = _getStatusText();
+      print('\n========== UPLOAD IZIN MELAUT START ==========');
+      print('📤 [Upload] Trip ID: ${widget.tripId}');
+      print('📤 [Upload] Jenis Dokumen: izinMelaut');
+      print('📤 [Upload] File Path: $_filePath');
+      print('📤 [Upload] Keterangan: ${_keteranganController.text.trim()}');
       
-      print('\n📤 [UPLOAD SIB] START (MOCK MODE)');
-      print('📝 Nomor SIB: ${_nomorSIBController.text.trim()}');
-      print('📝 Nama Kapal: $_namaKapal');
-      print('📝 Nomor Registrasi: $_nomorRegistrasi');
-      print('📝 Pelabuhan Keberangkatan: ${_pelabuhanKeberangkatanController.text.trim()}');
-      print('📝 Tanggal Berlayar: ${_tanggalBerlayar!.year}-${_tanggalBerlayar!.month.toString().padLeft(2, '0')}-${_tanggalBerlayar!.day.toString().padLeft(2, '0')}');
-      print('📝 Masa Berlaku: $masaBerlakuStr');
-      print('📝 Status: $status');
-      
-      // TODO: Uncomment saat backend siap
-      // await VesselService().uploadVesselDocument(
-      //   jenisDokumen: 'Surat Izin Berlayar',
-      //   filePath: _filePath!,
-      //   nomorSertifikat: _nomorSIBController.text.trim(),
-      //   tanggalBerlaku: masaBerlakuStr,
-      // );
-      
-      await Future.delayed(Duration(seconds: 2));
-      
-      print('✅ [UPLOAD SIB] SUCCESS (MOCK)\n');
-      _showSnackBar('Berhasil upload Surat Izin Berlayar! (Mock Mode)', Colors.green);
+      final response = await TripService.uploadTripDocument(
+        tripId: widget.tripId!,
+        jenisDokumen: 'izinMelaut',
+        filePath: _filePath!,
+        keterangan: _keteranganController.text.trim().isEmpty 
+            ? null 
+            : _keteranganController.text.trim(),
+      );
+
+      print('📦 [Upload] Backend response:');
+      print('   Success: ${response['success']}');
+      print('   Message: ${response['message']}');
+      print('   All Documents Complete: ${response['data']?['allDocumentsComplete']}');
+      print('   Trip Status: ${response['data']?['tripStatus']}');
+      print('========== UPLOAD IZIN MELAUT END ==========\n');
+
+      _showSnackBar(
+        response['message'] ?? 'Berhasil upload Surat Izin Melaut!', 
+        Colors.green,
+      );
       widget.onNext();
     } catch (e) {
-      print('❌ [UPLOAD SIB] ERROR: $e\n');
-      _showSnackBar('Gagal upload: ${e.toString().replaceAll('Exception: ', '')}', Colors.red);
+      print('❌ [UPLOAD IZIN MELAUT] ERROR: $e\n');
+      _showSnackBar(
+        'Gagal upload: ${e.toString().replaceAll('Exception: ', '')}', 
+        Colors.red,
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -190,11 +129,7 @@ class _StepSuratIzinBerlayarState extends State<StepSuratIzinBerlayar> {
 
   @override
   void dispose() {
-    _nomorSIBController.dispose();
-    _pelabuhanKeberangkatanController.dispose();
-    _tanggalBerlayarController.dispose();
-    _masaBerlakuController.dispose();
-    _statusController.dispose();
+    _keteranganController.dispose();
     super.dispose();
   }
 
@@ -238,9 +173,9 @@ class _StepSuratIzinBerlayarState extends State<StepSuratIzinBerlayar> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Surat Izin Berlayar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B4F9C))),
+                              Text('Surat Izin Melaut', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B4F9C))),
                               SizedBox(height: 2),
-                              Text('Data surat izin berlayar kapal', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                              Text('Izin berlayar dari otoritas pelabuhan', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                             ],
                           ),
                         ),
@@ -249,13 +184,14 @@ class _StepSuratIzinBerlayarState extends State<StepSuratIzinBerlayar> {
                   ),
                   SizedBox(height: 20),
                   
-                  // Nomor SIB
+                  // Keterangan
                   TextFormField(
-                    controller: _nomorSIBController,
-                    textInputAction: TextInputAction.next,
+                    controller: _keteranganController,
+                    maxLines: 3,
+                    maxLength: 200,
                     decoration: InputDecoration(
-                      labelText: 'Nomor SIB *',
-                      hintText: 'Contoh: SIB-001/2024',
+                      labelText: 'Keterangan (Opsional)',
+                      hintText: 'Contoh: Izin melaut berlaku sampai 31 Des 2026',
                       prefixIcon: Padding(
                         padding: EdgeInsets.all(12),
                         child: Container(
@@ -268,244 +204,13 @@ class _StepSuratIzinBerlayarState extends State<StepSuratIzinBerlayar> {
                             shaderCallback: (bounds) => LinearGradient(
                               colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
                             ).createShader(bounds),
-                            child: Icon(Icons.confirmation_number, color: Colors.white, size: 18),
+                            child: Icon(Icons.note, color: Colors.white, size: 18),
                           ),
                         ),
                       ),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Nomor SIB wajib diisi' : null,
                   ),
-                  SizedBox(height: 16),
-                  
-                  // Nama Kapal (Read-only)
-                  TextFormField(
-                    initialValue: _namaKapal ?? 'Loading...',
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: 'Nama Kapal *',
-                      prefixIcon: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                            ).createShader(bounds),
-                            child: Icon(Icons.directions_boat, color: Colors.white, size: 18),
-                          ),
-                        ),
-                      ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  
-                  // Nomor Registrasi (Read-only)
-                  TextFormField(
-                    initialValue: _nomorRegistrasi ?? 'Loading...',
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: 'Nomor Registrasi *',
-                      prefixIcon: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                            ).createShader(bounds),
-                            child: Icon(Icons.badge, color: Colors.white, size: 18),
-                          ),
-                        ),
-                      ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  
-                  // Pelabuhan Keberangkatan (Manual input)
-                  TextFormField(
-                    controller: _pelabuhanKeberangkatanController,
-                    textInputAction: TextInputAction.next,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: InputDecoration(
-                      labelText: 'Pelabuhan Keberangkatan *',
-                      hintText: 'Contoh: Tanjung Priok',
-                      prefixIcon: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                            ).createShader(bounds),
-                            child: Icon(Icons.anchor, color: Colors.white, size: 18),
-                          ),
-                        ),
-                      ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Pelabuhan keberangkatan wajib diisi' : null,
-                  ),
-                  SizedBox(height: 16),
-                  
-                  // Tanggal Berlayar
-                  TextFormField(
-                    controller: _tanggalBerlayarController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: 'Tanggal Berlayar *',
-                      hintText: 'Pilih tanggal berlayar',
-                      prefixIcon: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                            ).createShader(bounds),
-                            child: Icon(Icons.calendar_today, color: Colors.white, size: 18),
-                          ),
-                        ),
-                      ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onTap: () async {
-                      final now = DateTime.now();
-                      final initialDate = _tanggalBerlayar ?? now;
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: initialDate,
-                        firstDate: DateTime(2000),
-                        lastDate: now.add(Duration(days: 365)),
-                      );
-                      if (date != null) {
-                        setState(() {
-                          _tanggalBerlayar = date;
-                          _tanggalBerlayarController.text = '${date.day}/${date.month}/${date.year}';
-                        });
-                      }
-                    },
-                    validator: (value) => _tanggalBerlayar == null ? 'Tanggal berlayar wajib diisi' : null,
-                  ),
-                  SizedBox(height: 16),
-                  
-                  // Masa Berlaku
-                  TextFormField(
-                    controller: _masaBerlakuController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: 'Masa Berlaku *',
-                      hintText: 'Pilih masa berlaku',
-                      prefixIcon: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                            ).createShader(bounds),
-                            child: Icon(Icons.event_available, color: Colors.white, size: 18),
-                          ),
-                        ),
-                      ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onTap: () async {
-                      final now = DateTime.now();
-                      final initialDate = _masaBerlaku ?? now.add(Duration(days: 1));
-                      
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: initialDate,
-                        firstDate: now,
-                        lastDate: now.add(Duration(days: 3650)),
-                      );
-                      if (date != null) {
-                        setState(() {
-                          _masaBerlaku = DateTime(date.year, date.month, date.day, 23, 59);
-                          _masaBerlakuController.text = '${date.day}/${date.month}/${date.year}';
-                          _statusController.text = _getStatusText();
-                        });
-                      }
-                    },
-                    validator: (value) {
-                      if (_masaBerlaku == null) return 'Masa berlaku wajib diisi';
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16),
-                  
-                  // Status (Auto-calculated)
-                  if (_masaBerlaku != null)
-                    TextFormField(
-                      controller: _statusController,
-                      readOnly: true,
-                      decoration: InputDecoration(
-                        labelText: 'Status',
-                        prefixIcon: Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: ShaderMask(
-                              shaderCallback: (bounds) => LinearGradient(
-                                colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                              ).createShader(bounds),
-                              child: Icon(Icons.info_outline, color: Colors.white, size: 18),
-                            ),
-                          ),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: _getStatusText().contains('Aktif') ? Colors.green : Colors.red,
-                            width: 2,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: _getStatusText().contains('Aktif') ? Colors.green : Colors.red,
-                            width: 2,
-                          ),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                      ),
-                      style: TextStyle(
-                        color: _getStatusText().contains('Aktif') ? Colors.green[700] : Colors.red[700],
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                   SizedBox(height: 20),
                   
                   // File Upload

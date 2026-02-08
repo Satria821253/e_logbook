@@ -2,7 +2,6 @@ import 'package:e_logbook/screens/splash_screen.dart';
 import 'package:e_logbook/screens/page/edit_profile_screen.dart';
 import 'package:e_logbook/screens/settings/settings_screen.dart';
 import 'package:e_logbook/screens/help_screen.dart';
-import 'package:e_logbook/screens/nahkoda/screens/crew_attendance_screen.dart';
 import 'package:e_logbook/screens/vessel/vessel_info_screen.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
@@ -620,25 +619,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           onTap: () => NavigationHelper.pushNoTransition(context, VesselInfoScreen()),
         ),
         SizedBox(height: 12),
-        Consumer<UserProvider>(
-          builder: (context, userProvider, child) {
-            final user = userProvider.user;
-            if (user?.isNahkoda == true) {
-              return Column(
-                children: [
-                  _buildMenuItem(
-                    icon: Icons.people_outline_rounded,
-                    title: 'Kehadiran Crew',
-                    subtitle: 'Lihat kehadiran crew kapal',
-                    onTap: () => NavigationHelper.pushNoTransition(context, CrewAttendanceScreen()),
-                  ),
-                  SizedBox(height: 12),
-                ],
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
         _buildMenuItem(
           icon: Icons.assessment_outlined,
           title: 'Laporan',
@@ -687,17 +667,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             onTap: () => NavigationHelper.pushNoTransition(context, VesselInfoScreen()),
           ),
         );
-
-        if (user?.isNahkoda == true) {
-          menuItems.add(
-            _buildMenuItem(
-              icon: Icons.people_outline_rounded,
-              title: 'Kehadiran Crew',
-              subtitle: 'Lihat kehadiran crew kapal',
-              onTap: () => NavigationHelper.pushNoTransition(context, CrewAttendanceScreen()),
-            ),
-          );
-        }
 
         menuItems.addAll([
           _buildMenuItem(

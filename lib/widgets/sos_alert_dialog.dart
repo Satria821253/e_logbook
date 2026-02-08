@@ -28,10 +28,11 @@ class _SosAlertDialogState extends State<SosAlertDialog> with WidgetsBindingObse
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 540;
     final bottomInset = WidgetsBinding.instance.window.viewInsets.bottom;
     final newKeyboardVisible = bottomInset > 0;
     
-    print('⌨️ Keyboard metrics changed: bottomInset=$bottomInset, visible=$newKeyboardVisible');
+    print('⌨️ Keyboard metrics changed: bottomInset=$bottomInset, visible=$newKeyboardVisible, isTablet=$isTablet');
     
     if (_keyboardVisible != newKeyboardVisible) {
       print('🔄 Keyboard state changed from $_keyboardVisible to $newKeyboardVisible');
@@ -40,27 +41,32 @@ class _SosAlertDialogState extends State<SosAlertDialog> with WidgetsBindingObse
       });
       print('✅ setState called, _keyboardVisible=$_keyboardVisible');
       
-      if (newKeyboardVisible) {
-        // Keyboard baru muncul, scroll ke bawah setelah rebuild
-        print('⬆️ Keyboard OPENED, scheduling scroll down');
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted && _scrollController.hasClients) {
-            final maxScroll = _scrollController.position.maxScrollExtent;
-            print('📜 After rebuild - Max scroll: $maxScroll');
-            if (maxScroll > 0) {
-              _scrollController.animateTo(
-                maxScroll,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-              );
-              print('✅ Scrolled to bottom');
+      // Hanya auto-scroll di tablet
+      if (isTablet) {
+        if (newKeyboardVisible) {
+          // Keyboard baru muncul, scroll ke bawah setelah rebuild
+          print('⬆️ Keyboard OPENED (TABLET), scheduling scroll down');
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted && _scrollController.hasClients) {
+              final maxScroll = _scrollController.position.maxScrollExtent;
+              print('📜 After rebuild - Max scroll: $maxScroll');
+              if (maxScroll > 0) {
+                _scrollController.animateTo(
+                  maxScroll,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+                print('✅ Scrolled to bottom');
+              }
             }
-          }
-        });
-      } else if (!newKeyboardVisible) {
-        // Keyboard baru saja ditutup
-        print('⬇️ Keyboard CLOSED detected!');
-        _scrollToTop();
+          });
+        } else if (!newKeyboardVisible) {
+          // Keyboard baru saja ditutup
+          print('⬇️ Keyboard CLOSED (TABLET) detected!');
+          _scrollToTop();
+        }
+      } else {
+        print('📱 Mobile device - skipping auto-scroll');
       }
     }
   }
@@ -84,9 +90,12 @@ class _SosAlertDialogState extends State<SosAlertDialog> with WidgetsBindingObse
   }
 
   void _onFocusChange() {
-    print('🔍 Focus changed: ${_textFieldFocusNode.hasFocus}');
-    if (_textFieldFocusNode.hasFocus) {
-      print('⏳ Scheduling scroll down...');
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 540;
+    print('🔍 Focus changed: ${_textFieldFocusNode.hasFocus}, isTablet=$isTablet');
+    
+    // Hanya auto-scroll di tablet
+    if (_textFieldFocusNode.hasFocus && isTablet) {
+      print('⏳ Scheduling scroll down (TABLET)...');
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted && _scrollController.hasClients) {
           final maxScroll = _scrollController.position.maxScrollExtent;
@@ -103,6 +112,8 @@ class _SosAlertDialogState extends State<SosAlertDialog> with WidgetsBindingObse
           print('❌ ScrollController not ready');
         }
       });
+    } else if (!isTablet) {
+      print('📱 Mobile device - skipping auto-scroll on focus');
     }
   }
 
@@ -169,7 +180,7 @@ class _SosAlertDialogState extends State<SosAlertDialog> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    final isTablet = MediaQuery.of(context).size.width > 600;
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 540;
     final maxWidth = isTablet ? 450.0 : 400.0;
     final animationSize = isTablet ? 90.0 : 100.0;
     final titleSize = isTablet ? 20.0 : 24.0;
@@ -388,8 +399,8 @@ class _SosAlertDialogState extends State<SosAlertDialog> with WidgetsBindingObse
                             ),
                     ),
                   ),
-                  // Extra padding saat keyboard muncul
-                  if (_keyboardVisible) SizedBox(height: 120),
+                  // Extra padding saat keyboard muncul (hanya di tablet)
+                  if (_keyboardVisible && isTablet) SizedBox(height: 120),
                 ],
               ),
             ),

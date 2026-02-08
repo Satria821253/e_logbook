@@ -33,34 +33,18 @@ class NahkodaMenuItems extends StatelessWidget {
             ),
           ),
         ),
-        // Kehadiran Crew
+        // Jadwal Tugas
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
           bottom: ResponsiveHelper.height(context, mobile: 220, tablet: 290),
           child: ScaleTransition(
             scale: animation,
             child: FloatingActionButtonWidget(
-              icon: Icons.assignment_ind_rounded,
-              color: Colors.blue,
+              icon: Icons.calendar_today,
+              color: Colors.purple,
               onTap: () {
                 onMenuToggle();
-                NahkodaRoutes.navigateToCrewAttendance(context);
-              },
-            ),
-          ),
-        ),
-        // Persiapan Trip (paling atas)
-        Positioned(
-          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
-          child: ScaleTransition(
-            scale: animation,
-            child: FloatingActionButtonWidget(
-              icon: Icons.sailing,
-              color: Colors.green,
-              onTap: () {
-                onMenuToggle();
-                NahkodaRoutes.navigateToTripInfo(context);
+                NahkodaRoutes.navigateToMySchedules(context);
               },
             ),
           ),

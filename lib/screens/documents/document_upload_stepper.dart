@@ -302,8 +302,9 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
     }
 
     return Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
+      resizeToAvoidBottomInset: false,
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -344,50 +345,64 @@ class _DocumentUploadStepperState extends State<DocumentUploadStepper> {
           },
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          if (_isDocumentUploaded(_getDocTypeForStep(_currentStep)))
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.green[100],
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green[700], size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Dokumen ini sudah diupload dan disetujui',
-                      style: TextStyle(
-                        color: Colors.green[900],
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+          Column(
+            children: [
+              if (_isDocumentUploaded(_getDocTypeForStep(_currentStep)))
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  color: Colors.green[100],
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green[700], size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Dokumen ini sudah diupload dan disetujui',
+                          style: TextStyle(
+                            color: Colors.green[900],
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    height: MediaQuery.of(context).size.height - 200,
+                    child: PageView(
+                      controller: _pageController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        Step1KTP(onNext: _goToNextStep),
+                        Step2PasFoto(onNext: _goToNextStep),
+                        Step3NPWP(onNext: _goToNextStep),
+                        Step4BukuPelaut(onNext: _goToNextStep),
+                        Step5SertifikatNahkoda(onNext: _goToNextStep),
+                        Step6BST(onNext: _goToNextStep),
+                        Step7SuratSehat(onNext: _goToNextStep),
+                        Step8SKCK(onNext: _goToNextStep),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                Step1KTP(onNext: _goToNextStep),
-                Step2PasFoto(onNext: _goToNextStep),
-                Step3NPWP(onNext: _goToNextStep),
-                Step4BukuPelaut(onNext: _goToNextStep),
-                Step5SertifikatNahkoda(onNext: _goToNextStep),
-                Step6BST(onNext: _goToNextStep),
-                Step7SuratSehat(onNext: _goToNextStep),
-                Step8SKCK(onNext: _goToNextStep),
-              ],
-            ),
+            ],
           ),
-          ProgressIndicatorWidget(
-            currentStep: _currentStep,
-            totalSteps: _totalSteps,
-            documentStatuses: _documentStatuses,
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: ProgressIndicatorWidget(
+              currentStep: _currentStep,
+              totalSteps: _totalSteps,
+              documentStatuses: _documentStatuses,
+            ),
           ),
         ],
       ),

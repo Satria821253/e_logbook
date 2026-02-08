@@ -1,5 +1,4 @@
 import 'package:e_logbook/services/api/document_service.dart';
-import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:intl/intl.dart';
@@ -432,10 +431,25 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
 
   @override
   Widget build(BuildContext context) {
+    print('\n========== VESSEL CERTIFICATES SCREEN BUILD ==========');
     final kapalInfo = widget.documentsData?['kapal'];
     final sertifikatJalan = widget.documentsData?['sertifikatJalan'] as List? ?? [];
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final isNahkoda = userProvider.user?.isNahkoda == true;
+
+
+
+    print('📦 [Certificates Screen] Received data:');
+    print('   documentsData: ${widget.documentsData}');
+    print('   vesselData: ${widget.vesselData}');
+    print('📄 [Certificates Screen] Sertifikat Jalan:');
+    print('   Count: ${sertifikatJalan.length}');
+    if (sertifikatJalan.isNotEmpty) {
+      for (var i = 0; i < sertifikatJalan.length; i++) {
+        print('   Certificate $i: ${sertifikatJalan[i]}');
+      }
+    } else {
+      print('   ⚠️ NO CERTIFICATES FOUND!');
+    }
+    print('========== VESSEL CERTIFICATES SCREEN BUILD END ==========\n');
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -456,20 +470,6 @@ class _VesselCertificatesScreenState extends State<VesselCertificatesScreen> wit
           'Sertifikat Kapal',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        actions: isNahkoda ? [
-          // Upload button - hanya untuk nahkoda
-          IconButton(
-            icon: Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
-            onPressed: () async {
-              final result = await NavigationHelper.pushNamedNoTransition(context, '/certificate-upload');
-              if (result == true && mounted) {
-                RealtimeUpdateService.notifyListeners('certificates');
-                Navigator.pop(context, true);
-              }
-            },
-            tooltip: 'Upload Sertifikat',
-          ),
-        ] : null,
       ),
       body: Column(
         children: [

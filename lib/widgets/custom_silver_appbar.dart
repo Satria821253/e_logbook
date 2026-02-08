@@ -4,7 +4,6 @@ import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:e_logbook/screens/notification_screen.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
-import 'package:e_logbook/utils/profile_photo_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -23,7 +22,6 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
     with TickerProviderStateMixin {
   String _currentAddress = "Mendeteksi lokasi...";
   Position? _currentPosition;
-  String? _cachedPhotoPath;
 
   // Weather data
   WeatherData? _weatherData;
@@ -38,16 +36,11 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
     super.initState();
     _getCurrentLocation();
     _startWeatherUpdates();
-    _loadCachedPhoto();
   }
   
-  Future<void> _loadCachedPhoto() async {
-    final cachedPath = await ProfilePhotoCache.getCachedPhotoPath();
-    if (mounted && cachedPath != null) {
-      setState(() {
-        _cachedPhotoPath = cachedPath;
-      });
-    }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
   }
 
   @override
@@ -778,10 +771,10 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                           final photoUrl = user?.profilePicture;
                           final hasValidPhoto = photoUrl != null && photoUrl.isNotEmpty;
                           
+                          print('🔍 [UI] Building CircleAvatar with photo: $photoUrl');
+                          
                           ImageProvider? imageProvider;
-                          if (_cachedPhotoPath != null) {
-                            imageProvider = FileImage(File(_cachedPhotoPath!));
-                          } else if (hasValidPhoto) {
+                          if (hasValidPhoto) {
                             if (photoUrl.startsWith('file://') || photoUrl.startsWith('/')) {
                               imageProvider = FileImage(File(photoUrl.replaceFirst('file://', '')));
                             } else if (photoUrl.startsWith('http')) {
@@ -790,11 +783,11 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                           }
                           
                           return CircleAvatar(
-                            key: ValueKey(_cachedPhotoPath ?? photoUrl ?? 'default'),
+                            key: ValueKey(photoUrl ?? 'default'),
                             radius: avatarRadius,
                             backgroundColor: Colors.grey[200],
                             backgroundImage: imageProvider,
-                            child: !hasValidPhoto && _cachedPhotoPath == null
+                            child: !hasValidPhoto
                                 ? Icon(
                                     Icons.person,
                                     size: 32,

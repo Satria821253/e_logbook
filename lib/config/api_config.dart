@@ -1,6 +1,10 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
+  // Base URL untuk backend API
+  static String get baseUrl => 
+      dotenv.env['API_BASE_URL'] ?? 'https://elogbookipb.web.id/api';
+
   // Load API Key from environment
   static String get geminiApiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
 

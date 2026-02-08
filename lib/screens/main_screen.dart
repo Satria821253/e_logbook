@@ -395,8 +395,8 @@ class _MainScreenState extends State<MainScreen> {
                             _buildActionItem(Icons.storage, 'Data Raw', () {
                               CrewRoutes.navigateToDataRaw(context);
                             }),
-                            _buildActionItem(Icons.check_circle, 'Daftar Hadir', () {
-                              CrewRoutes.navigateToMarkAttendance(context);
+                            _buildActionItem(Icons.calendar_today, 'Jadwal Tugas', () {
+                              CrewRoutes.navigateToMySchedules(context);
                             }),
                             _buildActionItem(Icons.support_agent, 'WhatsApp CS', () {
                               CrewRoutes.navigateToCustomerService(context);
@@ -405,8 +405,8 @@ class _MainScreenState extends State<MainScreen> {
                             _buildActionItem(Icons.sailing, 'Info Trip', () {
                               NahkodaRoutes.navigateToTripInfo(context);
                             }),
-                            _buildActionItem(Icons.assignment_ind, 'Kehadiran Crew', () {
-                              NahkodaRoutes.navigateToCrewAttendance(context);
+                            _buildActionItem(Icons.calendar_today, 'Jadwal Tugas', () {
+                              NahkodaRoutes.navigateToMySchedules(context);
                             }),
                             _buildActionItem(Icons.support_agent, 'WhatsApp CS', () {
                               NahkodaRoutes.navigateToCustomerService(context);

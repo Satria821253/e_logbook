@@ -5,7 +5,7 @@ import 'dart:io';
 
 class DocumentService {
   static const String baseUrl = kIsWeb
-      ? 'http://elogbookipb.web.id:5000/api'
+      ? 'http://elogbookipb.web.id/api'
       : 'https://elogbookipb.web.id/api';
 
   static final Dio _dio = Dio(

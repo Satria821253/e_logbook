@@ -49,11 +49,12 @@ class _ProgressIndicatorWidgetState extends State<ProgressIndicatorWidget> with 
 
   void _updateLineAnimations() {
     for (int i = 0; i < widget.totalSteps - 1; i++) {
-      int step = i + 1;
-      String? status = widget.documentStatuses?[step];
+      int currentStepNum = i + 1;
       
-      // Jika step sudah approved atau pending, tampilkan garis penuh
-      if (status == 'approved' || status == 'pending') {
+      String? currentStatus = widget.documentStatuses?[currentStepNum];
+      
+      // Garis akan penuh jika step saat ini sudah approved/pending
+      if (currentStatus == 'approved' || currentStatus == 'pending') {
         _lineControllers[i].value = 1.0;
       } else {
         _lineControllers[i].value = 0.0;
@@ -69,16 +70,23 @@ class _ProgressIndicatorWidgetState extends State<ProgressIndicatorWidget> with 
     if (oldWidget.currentStep != widget.currentStep || 
         oldWidget.documentStatuses != widget.documentStatuses) {
       
-      // Cek apakah ada step yang baru selesai
+      // Cek setiap garis apakah perlu dianimasikan
       for (int i = 0; i < widget.totalSteps - 1; i++) {
-        int step = i + 1;
-        String? oldStatus = oldWidget.documentStatuses?[step];
-        String? newStatus = widget.documentStatuses?[step];
+        int currentStepNum = i + 1;
         
-        // Jika status berubah menjadi approved/pending, animate garis
-        if ((oldStatus == null || oldStatus == 'rejected') && 
-            (newStatus == 'approved' || newStatus == 'pending')) {
+        String? oldStatus = oldWidget.documentStatuses?[currentStepNum];
+        String? newStatus = widget.documentStatuses?[currentStepNum];
+        
+        bool wasLineFull = (oldStatus == 'approved' || oldStatus == 'pending');
+        bool shouldBeLineFull = (newStatus == 'approved' || newStatus == 'pending');
+        
+        // Jika garis harus muncul (dari kosong ke penuh), animate
+        if (!wasLineFull && shouldBeLineFull) {
           _lineControllers[i].forward();
+        }
+        // Jika garis harus hilang (dari penuh ke kosong), reset
+        else if (wasLineFull && !shouldBeLineFull) {
+          _lineControllers[i].value = 0.0;
         }
       }
     }
@@ -156,14 +164,24 @@ class _ProgressIndicatorWidgetState extends State<ProgressIndicatorWidget> with 
                               child: AnimatedBuilder(
                                 animation: _lineAnimations[index],
                                 builder: (context, child) {
-                                  int step = index + 1;
-                                  String? status = widget.documentStatuses?[step];
-                                  Color stepColor = _getStepColor(step, false, status);
+                                  int currentStepNum = index + 1;
+                                  
+                                  String? currentStatus = widget.documentStatuses?[currentStepNum];
+                                  
+                                  // Tentukan warna garis berdasarkan status step saat ini
+                                  Color lineColor = Colors.grey[300]!;
+                                  if (currentStatus == 'approved') {
+                                    lineColor = Colors.green;
+                                  } else if (currentStatus == 'pending') {
+                                    lineColor = Colors.orange;
+                                  } else if (currentStatus == 'rejected') {
+                                    lineColor = Colors.red;
+                                  }
                                   
                                   return CustomPaint(
                                     painter: AnimatedLinePainter(
                                       progress: _lineAnimations[index].value,
-                                      color: stepColor,
+                                      color: lineColor,
                                     ),
                                     child: Container(height: 3),
                                   );

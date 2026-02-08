@@ -650,59 +650,6 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
           gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
           onTap: () => NavigationHelper.pushNoTransition(context, VesselDocumentsScreen()),
         ),
-        SizedBox(height: 12),
-        
-        // Menu untuk Nahkoda
-        if (isNahkoda) ...[
-          _buildMenuCard(
-            icon: Icons.upload_file_rounded,
-            title: 'Upload Sertifikat',
-            subtitle: 'Upload sertifikat jalan kapal',
-            gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-            onTap: () => NavigationHelper.pushNamedNoTransition(context, '/certificate-upload'),
-          ),
-          SizedBox(height: 12),
-          _buildMenuCard(
-            icon: Icons.local_gas_station_rounded,
-            title: 'Manajemen BBM',
-            subtitle: 'Input bahan bakar kapal',
-            gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-            onTap: () async {
-              final canAdd = await VesselService().canAddFuel();
-              if (!canAdd && mounted) {
-                _showFuelAlreadyFilledDialog();
-              } else if (mounted) {
-                NavigationHelper.pushNoTransition(context, FuelManagementScreen());
-              }
-            },
-          ),
-          SizedBox(height: 12),
-          _buildMenuCard(
-            icon: Icons.analytics_rounded,
-            title: 'Ringkasan BBM',
-            subtitle: 'Statistik konsumsi bahan bakar',
-            gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-            onTap: () => NavigationHelper.pushNoTransition(context, FuelSummaryScreen()),
-          ),
-        ],
-        
-        // Menu untuk ABK
-        if (!isNahkoda) ...[
-          _buildMenuCard(
-            icon: Icons.ac_unit_rounded,
-            title: 'Manajemen Es',
-            subtitle: 'Input data es kapal',
-            gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-            onTap: () async {
-              final canAdd = await VesselService().canAddIce();
-              if (!canAdd && mounted) {
-                _showIceAlreadyFilledDialog();
-              } else if (mounted) {
-                NavigationHelper.pushNoTransition(context, IceManagementScreen());
-              }
-            },
-          ),
-        ],
       ],
     );
   }

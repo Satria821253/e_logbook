@@ -1,6 +1,4 @@
-import 'dart:async';
-import 'package:e_logbook/screens/tracking/pre_tracking.dart';
-import 'package:e_logbook/screens/tracking/crew_edit_screen.dart';
+import 'package:e_logbook/screens/tracking/pre_trip_form_v2.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/widgets/custom_text_field.dart';
 import 'package:e_logbook/widgets/date_time_picker.dart';
@@ -42,14 +40,6 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
   // Harbor from admin data
   String? _departureHarbor;
 
-  // Trip approval states
-  bool _isSubmitting = false;
-  bool _isWaitingApproval = false;
-  bool _isApproved = false;
-
-  // Crew details from edit
-  Map<String, dynamic>? _crewDetails;
-
   // Tidak perlu API Key lagi - menggunakan Nominatim (OpenStreetMap) GRATIS!
 
   @override
@@ -71,7 +61,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
       _crewCountController.text = tripData['crewCount']?.toString() ?? '';
       _departureHarbor = tripData['departureHarbor'];
       _estimatedDuration = tripData['estimatedDuration'] ?? 1;
-      _departureDate = tripData['departureDate'] ?? DateTime.now(); // Use admin date or fallback to today
+      _departureDate = tripData['departureDate'] ?? DateTime.now();
       _estimatedReturnDate = tripData['estimatedReturnDate'];
       _fuelController.text = tripData['fuelSupply']?.toString() ?? '';
       _iceStorageController.text = tripData['iceSupply']?.toString() ?? '';
@@ -93,127 +83,42 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
     }
   }
 
-  void _submitTrip() async {
-    if (_formKey.currentState!.validate()) {
-      if (_departureHarbor == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data pelabuhan tidak tersedia')),
-        );
-        return;
-      }
-
-      setState(() {
-        _isSubmitting = true;
-      });
-
-      try {
-        // Simulate API call to submit trip data
-        await Future.delayed(const Duration(seconds: 2));
-
-        setState(() {
-          _isSubmitting = false;
-          _isWaitingApproval = true;
-        });
-
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Data trip berhasil dikirim, menunggu persetujuan admin',
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // Simulate admin approval after 5 seconds
-        Timer(const Duration(seconds: 5), () {
-          if (mounted) {
-            setState(() {
-              _isWaitingApproval = false;
-              _isApproved = true;
-            });
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Trip disetujui! Anda dapat memulai trip sekarang',
-                ),
-                backgroundColor: Colors.blue,
-              ),
-            );
-          }
-        });
-      } catch (e) {
-        setState(() {
-          _isSubmitting = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal mengirim data: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _startTrip() {
-    final crewCount = int.tryParse(_crewCountController.text) ?? 0;
-    if (crewCount == 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Jumlah ABK tidak valid')));
+  void _goToNextStep() {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // Navigate dengan data lengkap
-    NavigationHelper.pushReplacementNoTransition(
-      context,
-      PreTrackingScreen(
-        vesselName: _vesselNameController.text,
-        vesselNumber: _vesselNumberController.text,
-        captainName: _captainNameController.text,
-        crewCount: crewCount,
-        selectedHarbor: _departureHarbor!,
-        departureTime: DateTime.now(),
-        // Data tambahan
-        estimatedDuration: _estimatedDuration,
-        emergencyContact: _emergencyContactController.text,
-        fuelAmount: double.tryParse(_fuelController.text) ?? 0,
-        iceStorage: double.tryParse(_iceStorageController.text) ?? 0,
-        notes: _notesController.text.isEmpty ? null : _notesController.text,
-        harborCoordinates: null,
-      ),
-    );
-  }
-
-  void _editCrewCount() {
-    final currentCount = int.tryParse(_crewCountController.text) ?? 0;
-    if (currentCount == 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Jumlah ABK tidak valid')));
+    if (_departureHarbor == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data pelabuhan tidak tersedia')),
+      );
       return;
     }
 
+    // Navigate to PreTripFormV2 with trip data
     NavigationHelper.pushNoTransition(
       context,
-      CrewEditScreen(
-        currentCrewCount: currentCount,
-        adminCrewCount: widget.tripData?['crewCount'] ?? 8,
-        existingCrewDetails: _crewDetails,
-        onCrewUpdated: (newCount, crewDetails) {
-          setState(() {
-            _crewCountController.text = newCount.toString();
-            _crewDetails = crewDetails;
-          });
+      PreTripFormV2(
+        tripId: widget.tripData?['tripId'],
+        tripData: {
+          'vesselName': _vesselNameController.text,
+          'vesselNumber': _vesselNumberController.text,
+          'captainName': _captainNameController.text,
+          'crewCount': int.tryParse(_crewCountController.text) ?? 0,
+          'departureHarbor': _departureHarbor,
+          'departureDate': _departureDate,
+          'estimatedReturnDate': _estimatedReturnDate,
+          'estimatedDuration': _estimatedDuration,
+          'emergencyContact': _emergencyContactController.text,
+          'fuelAmount': double.tryParse(_fuelController.text) ?? 0,
+          'iceStorage': double.tryParse(_iceStorageController.text) ?? 0,
+          'notes': _notesController.text.isEmpty ? null : _notesController.text,
         },
       ),
     );
   }
 
-  @override
+@override
   void dispose() {
     _vesselNameController.dispose();
     _vesselNumberController.dispose();
@@ -516,101 +421,8 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                               if (number == null || number < 1) return 'Minimal 1 ABK';
                               return null;
                             },
-                            readOnly: false,
-                            suffixWidget: IconButton(
-                              icon: const Icon(
-                                Icons.edit,
-                                color: Color(0xFF1B4F9C),
-                              ),
-                              onPressed: () => _editCrewCount(),
-                            ),
+                            readOnly: true,
                           ),
-
-                          // Show crew details if edited
-                          if (_crewDetails != null) ...[
-                            SizedBox(height: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
-                            Container(
-                              padding: EdgeInsets.all(ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.people,
-                                        color: Colors.grey[700],
-                                      ),
-                                      SizedBox(width: ResponsiveHelper.spacing(context, mobile: 8, tablet: 6)),
-                                      Text(
-                                        'Detail Kehadiran ABK',
-                                        style: TextStyle(
-                                          fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 11),
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.grey[800],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                  ...(_crewDetails!['crewList'] as List).map((
-                                    crew,
-                                  ) {
-                                    final status = crew['status'];
-                                    return Padding(
-                                      padding: EdgeInsets.only(bottom: ResponsiveHelper.spacing(context, mobile: 4, tablet: 3)),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            status == 'present'
-                                                ? Icons.check_circle
-                                                : status == 'izin'
-                                                ? Icons.info
-                                                : Icons.cancel,
-                                            size: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
-                                            color: status == 'present'
-                                                ? Colors.green
-                                                : status == 'izin'
-                                                ? Colors.orange
-                                                : Colors.red,
-                                          ),
-                                          SizedBox(width: ResponsiveHelper.spacing(context, mobile: 8, tablet: 6)),
-                                          Expanded(
-                                            child: Text(
-                                              crew['name'],
-                                              style: TextStyle(
-                                                fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 10),
-                                              ),
-                                            ),
-                                          ),
-                                          Text(
-                                            status == 'present'
-                                                ? 'Hadir'
-                                                : status == 'izin'
-                                                ? 'Izin ${crew['reason']}'
-                                                : 'Tanpa Keterangan',
-                                            style: TextStyle(
-                                              fontSize: ResponsiveHelper.font(context, mobile: 11, tablet: 9),
-                                              color: status == 'present'
-                                                  ? Colors.green[700]
-                                                  : status == 'izin'
-                                                  ? Colors.orange[700]
-                                                  : Colors.red[700],
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ],
-                              ),
-                            ),
-                          ],
 
                           SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 19)),
 
@@ -767,17 +579,13 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
 
                           SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 19)),
 
-                          // Submit/Start button
+                          // Next button
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: _isSubmitting || _isWaitingApproval
-                                  ? null
-                                  : (_isApproved ? _startTrip : _submitTrip),
+                              onPressed: _goToNextStep,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _isApproved
-                                    ? Colors.green
-                                    : const Color(0xFF1B4F9C),
+                                backgroundColor: const Color(0xFF1B4F9C),
                                 foregroundColor: Colors.white,
                                 padding: EdgeInsets.symmetric(vertical: ResponsiveHelper.spacing(context, mobile: 18, tablet: 14)),
                                 shape: RoundedRectangleBorder(
@@ -785,187 +593,23 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                 ),
                                 elevation: 4,
                               ),
-                              child: _isSubmitting
-                                  ? Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: ResponsiveHelper.font(context, mobile: 20, tablet: 17),
-                                          height: ResponsiveHelper.font(context, mobile: 20, tablet: 17),
-                                          child:
-                                              const CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                        ),
-                                        SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                        Text(
-                                          'MENGIRIM...',
-                                          style: TextStyle(
-                                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : _isWaitingApproval
-                                  ? Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: ResponsiveHelper.font(context, mobile: 20, tablet: 17),
-                                          height: ResponsiveHelper.font(context, mobile: 20, tablet: 17),
-                                          child:
-                                              const CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                        ),
-                                        SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                        Text(
-                                          'MENUNGGU PERSETUJUAN ADMIN',
-                                          style: TextStyle(
-                                            fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 11),
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : _isApproved
-                                  ? Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.sailing, size: ResponsiveHelper.font(context, mobile: 24, tablet: 20)),
-                                        SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                        Text(
-                                          'MULAI TRIP SEKARANG',
-                                          style: TextStyle(
-                                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.send, size: ResponsiveHelper.font(context, mobile: 24, tablet: 20)),
-                                        SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                        Text(
-                                          'KIRIM',
-                                          style: TextStyle(
-                                            fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ],
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.arrow_forward, size: ResponsiveHelper.font(context, mobile: 24, tablet: 20)),
+                                  SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
+                                  Text(
+                                    'LANJUT',
+                                    style: TextStyle(
+                                      fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
                                     ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-
-                          // Status info when waiting for approval
-                          if (_isWaitingApproval) ...[
-                            SizedBox(height: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
-                            Container(
-                              padding: EdgeInsets.all(ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                border: Border.all(
-                                  color: Colors.orange.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.info_outline,
-                                    color: Colors.orange[700],
-                                  ),
-                                  SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Menunggu Persetujuan',
-                                          style: TextStyle(
-                                            fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 11),
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.orange[800],
-                                          ),
-                                        ),
-                                        SizedBox(height: ResponsiveHelper.spacing(context, mobile: 4, tablet: 3)),
-                                        Text(
-                                          'Data trip Anda sedang ditinjau oleh admin. Anda akan mendapat notifikasi setelah disetujui.',
-                                          style: TextStyle(
-                                            fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 10),
-                                            color: Colors.orange[700],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-
-                          // Success info when approved
-                          if (_isApproved) ...[
-                            SizedBox(height: ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
-                            Container(
-                              padding: EdgeInsets.all(ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                border: Border.all(
-                                  color: Colors.green.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green[700],
-                                  ),
-                                  SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Trip Disetujui!',
-                                          style: TextStyle(
-                                            fontSize: ResponsiveHelper.font(context, mobile: 14, tablet: 11),
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.green[800],
-                                          ),
-                                        ),
-                                        SizedBox(height: ResponsiveHelper.spacing(context, mobile: 4, tablet: 3)),
-                                        Text(
-                                          'Admin telah menyetujui trip Anda. Silakan mulai trip sekarang.',
-                                          style: TextStyle(
-                                            fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 10),
-                                            color: Colors.green[700],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
 
                           SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
 
@@ -973,9 +617,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton(
-                              onPressed: (_isSubmitting || _isWaitingApproval)
-                                  ? null
-                                  : () => Navigator.pop(context),
+                              onPressed: () => Navigator.pop(context),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.grey[700],
                                 side: BorderSide(color: Colors.grey[400]!),

@@ -1,58 +1,78 @@
 import 'package:flutter/material.dart';
-import 'step_sertifikat_jalan.dart';
 import 'step_surat_izin_berlayar.dart';
+import 'step_dokumen_kapal.dart';
 import 'step_asuransi_kapal.dart';
-import 'step_sertifikat_kelayakan.dart';
-import '../../../services/api/vessel_service.dart';
+import '../../../services/api/trip_service.dart';
 import '../../../services/realtime/realtime_update_service.dart';
 
 class CertificateStepperScreen extends StatefulWidget {
-  const CertificateStepperScreen({Key? key}) : super(key: key);
+  final int? tripId;
+  
+  const CertificateStepperScreen({Key? key, this.tripId}) : super(key: key);
 
   @override
   State<CertificateStepperScreen> createState() => _CertificateStepperScreenState();
 }
 
 class _CertificateStepperScreenState extends State<CertificateStepperScreen> {
-  int _currentStep = 0;
-  final int _totalSteps = 4;
-  PageController? _pageController;
-  Set<int> _uploadedSteps = {};
   bool _isLoading = true;
+  int _currentStep = 0;
+  Map<String, bool> _uploadedDocs = {
+    'izinMelaut': false,
+    'dokumenKapal': false,
+    'asuransi': false,
+  };
 
   @override
   void initState() {
     super.initState();
-    _loadUploadedCertificates();
+    _checkUploadedDocuments();
   }
 
-  Future<void> _loadUploadedCertificates() async {
+  Future<void> _checkUploadedDocuments() async {
+    if (widget.tripId == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
     try {
-      final vesselDocs = await VesselService().getVesselDocuments();
-      final sertifikatJalan = vesselDocs['sertifikatJalan'] as List? ?? [];
+      print('\n========== CHECK UPLOADED DOCUMENTS START ==========');
+      print('🔍 Trip ID: ${widget.tripId}');
       
-      if (sertifikatJalan.isNotEmpty) {
-        _showAlreadyUploadedDialog();
-        return;
-      }
-
-      _pageController = PageController();
-      _pageController?.addListener(() {
-        int newStep = _pageController?.page?.round() ?? 0;
-        if (newStep != _currentStep) {
-          setState(() => _currentStep = newStep);
+      final response = await TripService.getTripDocuments(widget.tripId!);
+      print('📦 Response: $response');
+      
+      if (response['success'] == true && response['data'] != null) {
+        final docs = response['data']['documents'] as Map<String, dynamic>?;
+        if (docs != null) {
+          setState(() {
+            _uploadedDocs['izinMelaut'] = docs['izinMelaut'] == true;
+            _uploadedDocs['dokumenKapal'] = docs['dokumenKapal'] == true;
+            _uploadedDocs['asuransi'] = docs['asuransi'] == true;
+          });
+          
+          print('✅ Izin Melaut: ${_uploadedDocs['izinMelaut']}');
+          print('✅ Dokumen Kapal: ${_uploadedDocs['dokumenKapal']}');
+          print('✅ Asuransi: ${_uploadedDocs['asuransi']}');
+          
+          if (_uploadedDocs.values.every((uploaded) => uploaded)) {
+            print('✅ All documents uploaded!');
+            _showAllDocumentsUploadedDialog();
+            return;
+          }
         }
-      });
-
+      }
+      
+      print('========== CHECK UPLOADED DOCUMENTS END ==========\n');
       setState(() => _isLoading = false);
     } catch (e) {
-      print('❌ Error loading certificates: $e');
-      _pageController = PageController();
+      print('❌ Error checking documents: $e');
+      print('========== CHECK UPLOADED DOCUMENTS END (ERROR) ==========\n');
       setState(() => _isLoading = false);
     }
   }
 
-  void _showAlreadyUploadedDialog() {
+  void _showAllDocumentsUploadedDialog() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
         context: context,
@@ -61,17 +81,19 @@ class _CertificateStepperScreenState extends State<CertificateStepperScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.blue, size: 28),
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
               SizedBox(width: 12),
-              Text('Sudah Upload'),
+              Text('Dokumen Lengkap'),
             ],
           ),
-          content: Text('Anda sudah mengupload sertifikat untuk trip ini.'),
+          content: Text(
+            'Semua dokumen perizinan sudah diupload.\n\nStatus trip: Menunggu persetujuan admin.',
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.pop(context);
+                Navigator.pop(context, true);
               },
               child: Text('OK'),
             ),
@@ -81,26 +103,31 @@ class _CertificateStepperScreenState extends State<CertificateStepperScreen> {
     });
   }
 
-  void _goToNextStep() async {
-    setState(() => _uploadedSteps.add(_currentStep));
-    
-    RealtimeUpdateService.notifyListeners('vessel');
-
-    if (_currentStep < _totalSteps - 1) {
-      _pageController?.animateToPage(
-        _currentStep + 1,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    } else {
-      Navigator.pop(context, true);
+  void _onStepContinue() {
+    if (_currentStep < 2) {
+      setState(() => _currentStep++);
     }
   }
 
-  @override
-  void dispose() {
-    _pageController?.dispose();
-    super.dispose();
+  void _onStepCancel() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
+    }
+  }
+
+  void _onUploadSuccess(String docType) {
+    print('\n🎉 [Upload Success] Document $docType uploaded!');
+    setState(() {
+      _uploadedDocs[docType] = true;
+    });
+    
+    if (_uploadedDocs.values.every((uploaded) => uploaded)) {
+      print('✅ All documents complete!');
+      RealtimeUpdateService.notifyListeners('trip');
+      _showAllDocumentsUploadedDialog();
+    } else {
+      _onStepContinue();
+    }
   }
 
   @override
@@ -128,69 +155,65 @@ class _CertificateStepperScreenState extends State<CertificateStepperScreen> {
           ),
         ),
         title: Text(
-          'Upload Sertifikat Kapal',
+          'Upload Dokumen Perizinan',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: NeverScrollableScrollPhysics(),
-              children: [
-                StepSertifikatJalan(onNext: _goToNextStep),
-                StepSuratIzinBerlayar(onNext: _goToNextStep),
-                StepAsuransiKapal(onNext: _goToNextStep),
-                StepSertifikatKelayakan(onNext: _goToNextStep),
-              ],
+      body: Stepper(
+        currentStep: _currentStep,
+        onStepContinue: _onStepContinue,
+        onStepCancel: _onStepCancel,
+        controlsBuilder: (context, details) => SizedBox.shrink(),
+        steps: [
+          Step(
+            title: Text('Surat Izin Melaut'),
+            subtitle: _uploadedDocs['izinMelaut']! 
+                ? Text('✅ Sudah diupload', style: TextStyle(color: Colors.green))
+                : null,
+            content: StepSuratIzinBerlayar(
+              tripId: widget.tripId,
+              onNext: () => _onUploadSuccess('izinMelaut'),
             ),
+            isActive: _currentStep >= 0,
+            state: _uploadedDocs['izinMelaut']! 
+                ? StepState.complete 
+                : _currentStep == 0 
+                    ? StepState.editing 
+                    : StepState.indexed,
           ),
-          _buildProgressIndicator(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressIndicator() {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, -2),
+          Step(
+            title: Text('Dokumen Kapal'),
+            subtitle: _uploadedDocs['dokumenKapal']! 
+                ? Text('✅ Sudah diupload', style: TextStyle(color: Colors.green))
+                : null,
+            content: StepDokumenKapal(
+              tripId: widget.tripId,
+              onNext: () => _onUploadSuccess('dokumenKapal'),
+            ),
+            isActive: _currentStep >= 1,
+            state: _uploadedDocs['dokumenKapal']! 
+                ? StepState.complete 
+                : _currentStep == 1 
+                    ? StepState.editing 
+                    : StepState.indexed,
+          ),
+          Step(
+            title: Text('Asuransi Kapal'),
+            subtitle: _uploadedDocs['asuransi']! 
+                ? Text('✅ Sudah diupload', style: TextStyle(color: Colors.green))
+                : null,
+            content: StepAsuransiKapal(
+              onNext: () => _onUploadSuccess('asuransi'),
+            ),
+            isActive: _currentStep >= 2,
+            state: _uploadedDocs['asuransi']! 
+                ? StepState.complete 
+                : _currentStep == 2 
+                    ? StepState.editing 
+                    : StepState.indexed,
           ),
         ],
-      ),
-      child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_totalSteps, (index) {
-            bool isActive = index == _currentStep;
-            bool isCompleted = _uploadedSteps.contains(index);
-            
-            return Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4),
-              child: Container(
-                width: isActive ? 32 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  gradient: isCompleted || isActive
-                      ? LinearGradient(
-                          colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                        )
-                      : null,
-                  color: !isCompleted && !isActive ? Colors.grey[300] : null,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            );
-          }),
-        ),
       ),
     );
   }

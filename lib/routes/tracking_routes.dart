@@ -1,7 +1,8 @@
+import 'package:e_logbook/screens/nahkoda/screens/aktif_tracking.dart';
+import 'package:e_logbook/screens/nahkoda/screens/pre_tracking.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
-import '../screens/tracking/pre_tracking.dart';
-import '../screens/tracking/aktif_tracking.dart';
+
 import '../screens/tracking/pre_trip_fromscreen.dart';
 
 class TrackingRoutes {

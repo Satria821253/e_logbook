@@ -4,10 +4,9 @@ import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';
 
 class VesselService {
-  static const String baseUrl = 'http://elogbookipb.web.id:5000';
+  static const String baseUrl = 'https://elogbookipb.web.id';
 
   Future<Map<String, dynamic>> checkAssignmentStatus() async {
     try {
@@ -131,20 +130,11 @@ class VesselService {
         }
       }
 
-      final isCrewRole =
-          actualRole == 'ABK' || actualRole == 'crew' || actualRole == 'Crew';
-      print(
-        '🎯 Role: $actualRole, Is crew? $isCrewRole, Force refresh? $forceRefresh',
-      );
+      print('🎯 Role: $actualRole, Force refresh? $forceRefresh');
 
-      // CREW: Gunakan endpoint assignment-status
-      if (isCrewRole) {
-        print('👥 [CREW] Using assignment-status endpoint...');
-        return await _getVesselDataForCrew(token, forceRefresh);
-      }
-
-      // NAHKODA: Gunakan endpoint my-vessel (existing logic)
-      return await _getVesselDataForNahkoda(token, forceRefresh);
+      // Gunakan endpoint /trip untuk semua role
+      print('🌐 Using /trip endpoint...');
+      return await _getVesselDataFromTrip(token, forceRefresh);
     } catch (e) {
       print('❌ Error in getVesselData: $e');
       print('========== getVesselData END (ERROR) ==========\n');
@@ -152,22 +142,19 @@ class VesselService {
     }
   }
 
-  // Get vessel data for CREW using assignment-status endpoint
-  Future<Map<String, dynamic>?> _getVesselDataForCrew(
+  // Get vessel data from /trip endpoint
+  Future<Map<String, dynamic>?> _getVesselDataFromTrip(
     String token,
     bool forceRefresh,
   ) async {
     try {
-      print('\n========== CREW VESSEL DATA FETCH START ==========');
-      print('👥 [CREW] Role: ABK/Crew detected');
-      print('🔑 [CREW] Token: ${token.substring(0, 30)}...');
-      print('🔄 [CREW] Force refresh: $forceRefresh');
-      print('🔍 [CREW] Fetching from assignment-status endpoint...');
-      print('🌐 [CREW] URL: $baseUrl/api/mobile/vessels/assignment-status');
+      print('\n========== VESSEL DATA FROM TRIP START ==========');
+      print('🔑 [TRIP] Token: ${token.substring(0, 30)}...');
+      print('🌐 [TRIP] URL: $baseUrl/api/trip');
 
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/mobile/vessels/assignment-status'),
+            Uri.parse('$baseUrl/api/trip'),
             headers: {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
@@ -175,78 +162,157 @@ class VesselService {
           )
           .timeout(const Duration(seconds: 30));
 
-      print('\n--- CREW API RESPONSE ---');
-      print('📥 [CREW] Response status: ${response.statusCode}');
-      print('📥 [CREW] Response body RAW: ${response.body}');
-      print('--- END RESPONSE ---\n');
+      print('📥 [TRIP] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print('📦 [CREW] Parsed response data:');
-        print('   - success: ${responseData['success']}');
-        print('   - message: ${responseData['message'] ?? "(no message)"}');
-        print('   - data type: ${responseData['data']?.runtimeType}');
-        print('   - data: ${responseData['data']}');
+        print('📦 [TRIP] success: ${responseData['success']}');
 
         if (responseData['success'] == true && responseData['data'] != null) {
-          final data = responseData['data'];
-          print('\n🔍 [CREW] Checking data structure...');
-          print('   - hasAssignment: ${data["hasAssignment"]}');
-          print('   - assignedVessels: ${data["assignedVessels"]}');
+          final trips = responseData['data'] as List;
+          print('🔍 [TRIP] Total trips: ${trips.length}');
 
-          if (data['hasAssignment'] == true &&
-              data['assignedVessels'] != null) {
-            final vessels = data['assignedVessels'] as List;
-            if (vessels.isNotEmpty) {
-              final firstVessel = vessels[0];
-              final vesselId = firstVessel['id'];
+          if (trips.isNotEmpty) {
+            // Ambil trip pertama yang aktif atau terbaru
+            final trip = trips[0];
+            final kapal = trip['kapal'];
+            final nahkoda = trip['nahkoda'];
 
-              print('🔍 [CREW] Fetching full vessel details for ID: $vesselId');
+            final vesselData = {
+              'kapal': {
+                'id': kapal['id'],
+                'namaKapal': kapal['namaKapal'],
+                'nomorRegistrasi': kapal['nomorRegistrasi'],
+              },
+              'nahkoda': nahkoda != null ? {
+                'id': nahkoda['id'],
+                'nama': nahkoda['nama'],
+                'username': nahkoda['username'],
+              } : null,
+            };
 
-              // Fetch full vessel data including nahkoda
-              final fullVesselData = await getVesselById(vesselId);
+            print('✅ [TRIP] Vessel data found');
+            print('🚢 [TRIP] Kapal: ${kapal['namaKapal']}');
+            print('👨✈️ [TRIP] Nahkoda: ${nahkoda?['nama'] ?? "null"}');
 
-              final vesselData = {
-                'kapal': {
-                  'id': firstVessel['id'],
-                  'namaKapal': firstVessel['namaKapal'],
-                  'nomorRegistrasi': firstVessel['nomorRegistrasi'],
-                },
-                'nahkoda': fullVesselData?['nahkoda'],
-              };
-
-              print('✅ [CREW] Vessel data found');
-              print('🚢 [CREW] Kapal: ${firstVessel["namaKapal"]}');
-              print(
-                '👨✈️ [CREW] Nahkoda: ${fullVesselData?['nahkoda']?['nama'] ?? "null"}',
-              );
-              print('📋 [CREW] Total vessels: ${vessels.length}');
-
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('vessel_data', json.encode(vesselData));
-              await prefs.setInt(
-                'vessel_data_timestamp',
-                DateTime.now().millisecondsSinceEpoch,
-              );
-              print('========== getVesselData END (CREW-SUCCESS) ==========\n');
-              return vesselData;
-            }
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('vessel_data', json.encode(vesselData));
+            await prefs.setInt(
+              'vessel_data_timestamp',
+              DateTime.now().millisecondsSinceEpoch,
+            );
+            print('========== VESSEL DATA FROM TRIP END (SUCCESS) ==========\n');
+            return vesselData;
           }
         }
       }
 
-      print('❌ [CREW] No vessel data found from assignment-status');
-      print(
-        'ℹ️ [CREW] Backend response indicates: hasAssignment=false, assignedVessels=[]',
-      );
-      print(
-        'ℹ️ [CREW] This means crew is NOT assigned to any vessel in database',
-      );
-      print('========== getVesselData END (CREW-NULL) ==========\n');
+      print('❌ [TRIP] No vessel data found');
+      print('========== VESSEL DATA FROM TRIP END (NULL) ==========\n');
       return null;
     } catch (e) {
-      print('❌ [CREW] Error: $e');
-      print('========== getVesselData END (CREW-ERROR) ==========\n');
+      print('❌ [TRIP] Error: $e');
+      print('========== VESSEL DATA FROM TRIP END (ERROR) ==========\n');
+      return null;
+    }
+  }
+
+  // Get vessel data from API (untuk semua role)
+  Future<Map<String, dynamic>?> _getVesselDataFromAPI(
+    String token,
+    bool forceRefresh,
+  ) async {
+    try {
+      print('\n========== VESSEL DATA FETCH START ==========');
+      print('🔑 [API] Token: ${token.substring(0, 30)}...');
+      print('🔄 [API] Force refresh: $forceRefresh');
+      print('🔍 [API] Fetching from my-vessel endpoint...');
+      print('🌐 [API] URL: $baseUrl/api/mobile/vessel/my-vessel');
+
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/mobile/vessel/my-vessel'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('\n--- API RESPONSE ---');
+      print('📥 [API] Response status: ${response.statusCode}');
+      print('📥 [API] Response body RAW: ${response.body}');
+      print('--- END RESPONSE ---\n');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('📦 [API] Parsed response data:');
+        print('   - success: ${responseData['success']}');
+        print('   - message: ${responseData['message'] ?? "(no message)"}');
+        print('   - data type: ${responseData['data']?.runtimeType}');
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final data = responseData['data'];
+          
+          // Handle both array and single object response
+          List vessels;
+          if (data is List) {
+            vessels = data;
+            print('\n🔍 [API] Data is List, vessels count: ${vessels.length}');
+          } else if (data is Map) {
+            vessels = [data];
+            print('\n🔍 [API] Data is Map (single vessel), converting to List');
+          } else {
+            print('❌ [API] Unexpected data type: ${data.runtimeType}');
+            throw Exception('Data kapal tidak ditemukan');
+          }
+
+          if (vessels.isNotEmpty) {
+            final firstVessel = vessels[0];
+            final vesselId = firstVessel['id'];
+
+            print('🔍 [API] Fetching full vessel details for ID: $vesselId');
+
+            // Fetch full vessel data including nahkoda
+            final fullVesselData = await getVesselById(vesselId);
+
+            final vesselData = {
+              'kapal': {
+                'id': firstVessel['id'],
+                'namaKapal': firstVessel['namaKapal'],
+                'nomorRegistrasi': firstVessel['nomorRegistrasi'],
+              },
+              'nahkoda': fullVesselData?['nahkoda'],
+            };
+
+            print('✅ [API] Vessel data found');
+            print('🚢 [API] Kapal: ${firstVessel["namaKapal"]}');
+            print(
+              '👨✈️ [API] Nahkoda: ${fullVesselData?['nahkoda']?['nama'] ?? "null"}',
+            );
+            print('📋 [API] Total vessels: ${vessels.length}');
+
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('vessel_data', json.encode(vesselData));
+            await prefs.setInt(
+              'vessel_data_timestamp',
+              DateTime.now().millisecondsSinceEpoch,
+            );
+            print('========== getVesselData END (SUCCESS) ==========\n');
+            return vesselData;
+          }
+        }
+      }
+
+      print('❌ [API] No vessel data found from my-vessel');
+      print(
+        'ℹ️ [API] User is NOT assigned to any vessel in database',
+      );
+      print('========== getVesselData END (NULL) ==========\n');
+      return null;
+    } catch (e) {
+      print('❌ [API] Error: $e');
+      print('========== getVesselData END (ERROR) ==========\n');
       return null;
     }
   }
@@ -486,11 +552,11 @@ class VesselService {
 
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/bahan-bakar'),
+        Uri.parse('$baseUrl/mobile/vessel/$kapalId/fuel-data'),
       );
 
       print(
-        '🌐 [uploadBahanBakar] URL: $baseUrl/api/mobile/vessel/$kapalId/bahan-bakar',
+        '🌐 [uploadBahanBakar] URL: $baseUrl/mobile/vessel/$kapalId/fuel-data',
       );
 
       request.headers['Authorization'] = 'Bearer $token';
@@ -1072,20 +1138,7 @@ class VesselService {
         '🚢 [getFuelSummary] Kapal Name: ${vesselData['kapal']['namaKapal']}',
       );
 
-      String url = '$baseUrl/api/mobile/vessel/$kapalId/fuel-summary';
-
-      if (startDate != null && endDate != null) {
-        final dateFormat = DateFormat('yyyy-MM-dd');
-        final startStr = dateFormat.format(startDate);
-        final endStr = dateFormat.format(endDate);
-        url += '?startDate=$startStr&endDate=$endStr';
-        print('📅 [getFuelSummary] Filter applied:');
-        print('   Start Date: $startStr');
-        print('   End Date: $endStr');
-      } else {
-        print('📅 [getFuelSummary] No date filter (all data)');
-      }
-
+      final url = '$baseUrl/mobile/vessel/$kapalId/fuel-summary';
       print('🌐 [getFuelSummary] Calling API: $url');
 
       final response = await http
@@ -1162,14 +1215,6 @@ class VesselService {
     required String filePath,
   }) async {
     try {
-      print('📄 Uploading sertifikat jalan...');
-      print('   Input nama: "$nama" (length: ${nama.length})');
-      print(
-        '   Input nomorSertifikat: "$nomorSertifikat" (length: ${nomorSertifikat.length})',
-      );
-      print('   Input tanggalBerlaku: "$tanggalBerlaku"');
-      print('   Input filePath: "$filePath"');
-
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
 
@@ -1183,27 +1228,16 @@ class VesselService {
       }
 
       final kapalId = vesselData['kapal']['id'];
-      print('🚢 Kapal ID: $kapalId');
 
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/sertifikat-jalan'),
       );
 
-      // Convert date to ISO 8601 datetime format
-      final dateTime = DateTime.parse(tanggalBerlaku);
-      final isoDateTime = dateTime.toUtc().toIso8601String();
-      print('   Converted to ISO: "$isoDateTime"');
-
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['nama'] = nama;
-      request.fields['nomor_sertifikat'] = nomorSertifikat;
-      request.fields['tanggal_berlaku'] = isoDateTime;
-
-      print('📤 Request fields:');
-      print('   nama: "${request.fields['nama']}"');
-      print('   nomor_sertifikat: "${request.fields['nomor_sertifikat']}"');
-      print('   tanggal_berlaku: "${request.fields['tanggal_berlaku']}"');
+      request.fields['nomorSertifikat'] = nomorSertifikat;
+      request.fields['tanggalBerlaku'] = tanggalBerlaku; // Format: YYYY-MM-DD
 
       final file = File(filePath);
       if (await file.exists()) {
@@ -1229,18 +1263,13 @@ class VesselService {
       );
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('📊 Response status: ${response.statusCode}');
-      print('📊 Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        print('✅ Sertifikat uploaded successfully');
         return result;
       } else {
         throw Exception('Gagal upload sertifikat: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error uploading sertifikat: $e');
       throw Exception('Error: $e');
     }
   }

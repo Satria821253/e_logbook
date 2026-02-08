@@ -17,18 +17,18 @@ class CrewMenuItems extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Daftar Hadir
+        // Customer Service (WhatsApp) - paling bawah
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
           bottom: ResponsiveHelper.height(context, mobile: 150, tablet: 190),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
-              icon: Icons.check_circle_outline,
-              color: Colors.orange,
+              icon: Icons.support_agent,
+              color: Colors.blue,
               onTap: () {
                 onMenuToggle();
-                CrewRoutes.navigateToMarkAttendance(context);
+                CrewRoutes.navigateToCustomerService(context);
               },
             ),
           ),
@@ -49,18 +49,18 @@ class CrewMenuItems extends StatelessWidget {
             ),
           ),
         ),
-        // Customer Service (WhatsApp)
+        // Jadwal Tugas
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
           bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
-              icon: Icons.support_agent,
-              color: Colors.blue,
+              icon: Icons.calendar_today,
+              color: Colors.purple,
               onTap: () {
                 onMenuToggle();
-                CrewRoutes.navigateToCustomerService(context);
+                CrewRoutes.navigateToMySchedules(context);
               },
             ),
           ),

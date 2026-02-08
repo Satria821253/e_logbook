@@ -1,4 +1,4 @@
-import 'package:e_logbook/screens/tracking/aktif_tracking.dart';
+import 'aktif_tracking.dart';
 import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';

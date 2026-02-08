@@ -1,11 +1,14 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'vessel_service.dart';
 
 class SosService {
   static final Dio _dio = Dio();
-  static const String baseUrl = 'http://elogbookipb.web.id:5000';
+  static const String baseUrl = kIsWeb
+      ? 'http://elogbookipb.web.id'
+      : 'https://elogbookipb.web.id';
 
   /// Send SOS alert to backend
   ///

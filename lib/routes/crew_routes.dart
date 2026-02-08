@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
-import '../screens/crew/screens/abk_attendance_mark_screen.dart';
 import '../screens/data_raw_screen.dart';
 import '../screens/crew/screens/fish_photo_tips_screen.dart';
+import '../screens/crew/screens/crew_my_trips_screen.dart';
+import '../screens/schedules/my_schedules_screen.dart';
 import 'common_routes.dart';
 
 class CrewRoutes {
-  static void navigateToMarkAttendance(BuildContext context) {
-    NavigationHelper.pushNoTransition(
-      context,
-      ABKAttendanceMarkScreen(),
-    );
-  }
-
   static void navigateToDataRaw(BuildContext context) {
     NavigationHelper.pushNoTransition(
       context,
       const DataRawScreen(),
+    );
+  }
+
+  static void navigateToMySchedules(BuildContext context) {
+    NavigationHelper.pushNoTransition(
+      context,
+      const MySchedulesScreen(),
+    );
+  }
+
+  static void navigateToMyTrips(BuildContext context) {
+    NavigationHelper.pushNoTransition(
+      context,
+      const CrewMyTripsScreen(),
     );
   }
 
