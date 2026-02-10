@@ -196,5 +196,11 @@ class AuthService {
     await prefs.remove('user_data');
     await prefs.remove('vessel_data');
     await prefs.remove('popup_shown_this_session');
+    
+    // Clear profile photo cache
+    await prefs.remove('cached_profile_photo_url');
+    await prefs.remove('cached_profile_photo_path');
+    
+    debugPrint('✅ Logout complete - all data cleared');
   }
 }

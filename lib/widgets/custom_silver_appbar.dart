@@ -765,6 +765,7 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                         shape: BoxShape.circle,
                         border: Border.all(color: const Color(0xFF1B4F9C), width: 2),
                       ),
+                      clipBehavior: Clip.antiAlias,
                       child: Consumer<UserProvider>(
                         builder: (context, userProvider, child) {
                           final user = userProvider.user;

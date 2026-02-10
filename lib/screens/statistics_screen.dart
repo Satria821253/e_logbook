@@ -732,16 +732,34 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildTripAnalysis(CatchProvider provider) {
-    final avgDuration = provider.catches.isEmpty
+    final now = DateTime.now();
+    
+    // Filter catches berdasarkan periode yang dipilih
+    final filteredCatches = _selectedPeriod == 'Bulanan'
+        ? provider.catches.where((c) {
+            return c.departureDate.year == now.year && 
+                   c.departureDate.month == now.month;
+          }).toList()
+        : provider.catches.where((c) {
+            return c.departureDate.year == now.year;
+          }).toList();
+    
+    final totalTrips = filteredCatches.length;
+    
+    final avgDuration = filteredCatches.isEmpty
         ? 0.0
-        : provider.catches.fold<double>(
+        : filteredCatches.fold<double>(
                 0, (sum, c) => sum + c.tripDurationHours + (c.tripDurationMinutes / 60)) /
-            provider.catches.length;
+            filteredCatches.length;
 
-    final avgWeight = provider.catches.isEmpty
+    final avgWeight = filteredCatches.isEmpty
         ? 0.0
-        : provider.catches.fold<double>(0, (sum, c) => sum + c.weight) /
-            provider.catches.length;
+        : filteredCatches.fold<double>(0, (sum, c) => sum + c.weight) /
+            filteredCatches.length;
+    
+    final totalWeight = filteredCatches.fold<double>(0, (sum, c) => sum + c.weight);
+    
+    final periodLabel = _selectedPeriod == 'Bulanan' ? 'Bulan Ini' : 'Tahun Ini';
 
     return Container(
       padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
@@ -768,8 +786,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
           SizedBox(height: ResponsiveHelper.height(context, mobile: 16, tablet: 20)),
           _buildTripItem(
-            'Total Trip Bulan Ini',
-            '${provider.totalTripsThisMonth} Trip',
+            'Total Trip $periodLabel',
+            '$totalTrips Trip',
             Icons.directions_boat,
             Colors.blue,
           ),
@@ -786,8 +804,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             Colors.purple,
           ),
           _buildTripItem(
-            'Total Berat Bulan Ini',
-            '${provider.totalWeightThisMonth.toStringAsFixed(1)} kg',
+            'Total Berat $periodLabel',
+            '${totalWeight.toStringAsFixed(1)} kg',
             Icons.scale,
             Colors.orange,
           ),

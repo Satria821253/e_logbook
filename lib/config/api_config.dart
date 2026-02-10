@@ -14,7 +14,7 @@ class ApiConfig {
       'https://generativelanguage.googleapis.com/v1beta/models';
 
   // Model terbaru dan terbaik: Gemini 1.5 Flash
-  static String get geminiModel => dotenv.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash';
+  static String get geminiModel => dotenv.env['GEMINI_MODEL'] ?? 'gemini-1.5-flash';
 
   // Timeout yang cukup untuk processing gambar
   static const Duration requestTimeout = Duration(seconds: 60);

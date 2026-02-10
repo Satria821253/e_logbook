@@ -639,7 +639,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           icon: Icons.info_outline_rounded,
           title: 'Tentang Aplikasi',
           subtitle: 'Versi 1.0',
-          onTap: () {},
+          onTap: () => _showAboutDialog(),
         ),
         const SizedBox(height: 24),
         _buildMenuItem(
@@ -695,7 +695,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             icon: Icons.info_outline_rounded,
             title: 'Tentang Aplikasi',
             subtitle: 'Versi 1.0',
-            onTap: () {},
+            onTap: () => _showAboutDialog(),
           ),
         ]);
 
@@ -760,6 +760,108 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
       }
     }
+  }
+
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.sailing, color: Colors.white, size: 40),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'E-Logbook',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1B4F9C),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sistem Manajemen Logbook Digital\nuntuk Penangkapan Ikan',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    _buildInfoRow('Versi', '1.0.0+1'),
+                    const Divider(height: 20),
+                    _buildInfoRow('copyright', '2026 IPB University \nAll rights reserved'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                '© 2026 IPB University. All rights reserved.',
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1B4F9C),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Tutup',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1B4F9C),
+          ),
+        ),
+      ],
+    );
   }
 
   void _showPhotoPreview(String photoUrl) {
