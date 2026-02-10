@@ -24,15 +24,23 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserRole();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _loadUserRole();
     _startPolling();
   }
 
   Future<void> _loadUserRole() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userRole = prefs.getString('role');
-    });
+    final role = prefs.getString('role') ?? widget.tripData['role'];
+    if (mounted) {
+      setState(() {
+        _userRole = role;
+      });
+    }
+    print('👤 [WaitingApproval] User role loaded: $_userRole');
   }
 
   void _startPolling() {
