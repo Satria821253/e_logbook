@@ -1,6 +1,7 @@
 import 'package:e_logbook/screens/splash_screen.dart';
 import 'package:e_logbook/screens/page/edit_profile_screen.dart';
 import 'package:e_logbook/screens/settings/settings_screen.dart';
+import 'package:e_logbook/screens/settings/change_password_screen.dart';
 import 'package:e_logbook/screens/help_screen.dart';
 import 'package:e_logbook/screens/vessel/vessel_info_screen.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
@@ -620,6 +621,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
         SizedBox(height: 12),
         _buildMenuItem(
+          icon: Icons.lock_outline,
+          title: 'Ganti Password',
+          subtitle: 'Ubah password akun Anda',
+          onTap: () => NavigationHelper.pushNoTransition(context, const ChangePasswordScreen()),
+        ),
+        SizedBox(height: 12),
+        _buildMenuItem(
           icon: Icons.assessment_outlined,
           title: 'Laporan',
           subtitle: 'Lihat laporan statistik lengkap',
@@ -668,6 +676,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
 
         menuItems.addAll([
+          _buildMenuItem(
+            icon: Icons.lock_outline,
+            title: 'Ganti Password',
+            subtitle: 'Ubah password akun Anda',
+            onTap: () => NavigationHelper.pushNoTransition(context, const ChangePasswordScreen()),
+          ),
           _buildMenuItem(
             icon: Icons.settings,
             title: 'Pengaturan',

@@ -89,11 +89,6 @@ class _StepDokumenKapalState extends State<StepDokumenKapal> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     
-    if (widget.tripId == null) {
-      _showSnackBar('Trip ID tidak ditemukan', Colors.red);
-      return;
-    }
-    
     if (_filePath == null) {
       _showSnackBar('File dokumen wajib diupload', Colors.orange);
       return;
@@ -103,10 +98,20 @@ class _StepDokumenKapalState extends State<StepDokumenKapal> {
 
     try {
       print('\n========== UPLOAD DOKUMEN KAPAL START ==========');
-      print('📤 [Upload] Trip ID: ${widget.tripId}');
+      print('📤 [Upload] Trip ID: ${widget.tripId ?? "(general vessel doc)"}');
       print('📤 [Upload] Jenis Dokumen: dokumenKapal');
       print('📤 [Upload] File Path: $_filePath');
       print('📤 [Upload] Keterangan: ${_keteranganController.text.trim()}');
+      
+      // Jika tidak ada tripId, upload sebagai dokumen kapal umum
+      if (widget.tripId == null) {
+        _showSnackBar(
+          'Upload dokumen perizinan hanya untuk trip yang sudah diterima. Silakan terima trip terlebih dahulu.',
+          Colors.orange,
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
       
       final response = await TripService.uploadTripDocument(
         tripId: widget.tripId!,

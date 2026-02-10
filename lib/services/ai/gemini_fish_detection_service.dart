@@ -36,8 +36,10 @@ class FishDetectionResult {
 }
 
 class GeminiFishDetectionService {
-  static final String _baseUrl =
-      '${ApiConfig.geminiBaseUrl}/${ApiConfig.geminiModel}:generateContent';
+  static String get _baseUrl {
+    // Format: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent
+    return '${ApiConfig.geminiBaseUrl}/models/${ApiConfig.geminiModel}:generateContent';
+  }
 
   static Future<FishDetectionResult> detectFish(File image) async {
     try {

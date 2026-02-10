@@ -104,8 +104,9 @@ class RouteGenerator {
         );
       
       case AppRoutes.certificateUpload:
+        final args = settings.arguments as Map<String, dynamic>?;
         return _noTransitionRoute(
-          const CertificateStepperScreen(),
+          CertificateStepperScreen(tripId: args?['tripId']),
         );
       
       case AppRoutes.iceManagement:

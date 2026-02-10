@@ -161,7 +161,7 @@ class TripService {
         throw Exception('Token tidak ditemukan');
       }
 
-      final url = '$baseUrl/api/mobile/trip/$tripId/upload-document';
+      final url = '$baseUrl/api/trip/$tripId/upload-document';
       print('🌐 [DOC] URL: $url');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
@@ -206,7 +206,7 @@ class TripService {
       print('📥 [DOC] Response status: ${response.statusCode}');
       print('📥 [DOC] Response body: ${response.body}');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final result = json.decode(response.body);
         print('✅ [DOC] Upload successful!');
         print('📊 [DOC] All documents complete: ${result['data']?['allDocumentsComplete']}');
