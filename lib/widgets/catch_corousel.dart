@@ -71,12 +71,12 @@ class _CatchCarouselState extends State<CatchCarousel> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth > 600;
+    final isLandscape = screenWidth > screenHeight;
     
-    // Poco F4: 1080x2400 (aspect ratio 9:20)
-    // Carousel height: 20-22% dari screen height untuk aspect ratio 16:9
+    // Adaptive height: landscape tablet lebih besar untuk tampilkan gambar penuh
     final carouselHeight = isTablet 
-        ? screenHeight * 0.35 
-        : screenHeight * 0.22; // Lebih pendek untuk mobile
+        ? (isLandscape ? screenHeight * 0.40 : screenHeight * 0.35)
+        : screenHeight * 0.22;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -123,7 +123,7 @@ class _CatchCarouselState extends State<CatchCarousel> {
                       borderRadius: BorderRadius.circular(20),
                       child: Image.asset(
                         dummyImages[imageIndex],
-                        fit: BoxFit.cover,
+                        fit: BoxFit.contain,
                         width: double.infinity,
                         height: double.infinity,
                         alignment: Alignment.center,

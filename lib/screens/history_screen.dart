@@ -2,15 +2,61 @@ import 'dart:io';
 import 'package:e_logbook/provider/catch_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/catch_model.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
   @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _lockLandscapeForTablet();
+  }
+
+  @override
+  void dispose() {
+    _resetOrientation();
+    super.dispose();
+  }
+
+  void _lockLandscapeForTablet() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final isTablet = ResponsiveHelper.isTablet(context);
+        if (isTablet) {
+          SystemChrome.setPreferredOrientations([
+            DeviceOrientation.landscapeLeft,
+            DeviceOrientation.landscapeRight,
+          ]);
+        }
+      }
+    });
+  }
+
+  void _resetOrientation() {
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    if (isTablet) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
+  }
+
   Widget build(BuildContext context) {
     final isTablet = ResponsiveHelper.isTablet(context);
     

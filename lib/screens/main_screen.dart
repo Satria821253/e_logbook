@@ -717,24 +717,44 @@ class _MainScreenState extends State<MainScreen> {
           ),
           const SizedBox(width: 12),
           
-          // Avatar - Compact
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF1B4F9C), width: 1.5),
-            ),
-            child: CircleAvatar(
-              radius: avatarRadius,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: _cachedImageProvider,
-              child: _cachedImageProvider == null
-                  ? Icon(
-                      Icons.person_rounded,
-                      color: const Color(0xFF1B4F9C),
-                      size: avatarRadius * 1.2,
-                    )
-                  : null,
+          // Avatar - Compact with click functionality
+          GestureDetector(
+            onTap: () {
+              // Navigate to profile screen
+              final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+              navProvider.setIndex(3); // Profile screen index
+            },
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF1B4F9C), width: 1.5),
+              ),
+              child: Consumer<UserProvider>(
+                builder: (context, userProvider, child) {
+                  final profilePicture = userProvider.user?.profilePicture;
+                  ImageProvider? imageProvider;
+                  
+                  if (profilePicture != null && profilePicture.isNotEmpty) {
+                    imageProvider = NetworkImage(profilePicture);
+                  } else if (_cachedImageProvider != null) {
+                    imageProvider = _cachedImageProvider;
+                  }
+                  
+                  return CircleAvatar(
+                    radius: avatarRadius,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: imageProvider,
+                    child: imageProvider == null
+                        ? Icon(
+                            Icons.person_rounded,
+                            color: const Color(0xFF1B4F9C),
+                            size: avatarRadius * 1.2,
+                          )
+                        : null,
+                  );
+                },
+              ),
             ),
           ),
         ],

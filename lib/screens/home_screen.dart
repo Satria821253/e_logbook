@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen>
   int _rejectedCount = 0;
   bool _hasShownPopup = false;
   bool _hasLoggedInit = false;
+  bool _isMonthlyView = true; // true = bulanan, false = tahunan
 
   // Cache provider reference
   UserProvider? _userProvider;
@@ -535,7 +536,7 @@ class _HomeScreenState extends State<HomeScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Statistik Hari Ini',
+                        _isMonthlyView ? 'Statistik Bulan Ini' : 'Statistik Tahun Ini',
                         style: TextStyle(
                           fontSize: MediaQuery.of(context).size.width < 800
                               ? 14
@@ -708,7 +709,7 @@ class _HomeScreenState extends State<HomeScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Statistik Hari Ini',
+                              _isMonthlyView ? 'Statistik Bulan Ini' : 'Statistik Tahun Ini',
                               style: TextStyle(
                                 fontSize: ResponsiveHelper.font(
                                   context,
@@ -791,19 +792,31 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildStatisticsCards() {
     final provider = Provider.of<CatchProvider>(context);
-    final todayCatches = provider.todayCatches;
-    final totalWeight = todayCatches.fold<double>(
+    final now = DateTime.now();
+    
+    // Filter catches berdasarkan view yang dipilih
+    final filteredCatches = _isMonthlyView
+        ? provider.catches.where((catch_) {
+            final catchDate = catch_.departureDate;
+            return catchDate.year == now.year && catchDate.month == now.month;
+          }).toList()
+        : provider.catches.where((catch_) {
+            final catchDate = catch_.departureDate;
+            return catchDate.year == now.year;
+          }).toList();
+    
+    final totalWeight = filteredCatches.fold<double>(
       0,
       (sum, catch_) => sum + catch_.weight,
     );
-    final totalRevenue = todayCatches.fold<double>(
+    final totalRevenue = filteredCatches.fold<double>(
       0,
       (sum, catch_) => sum + catch_.totalRevenue,
     );
 
-    final averageWeight = todayCatches.isEmpty
+    final averageWeight = filteredCatches.isEmpty
         ? 0.0
-        : totalWeight / todayCatches.length;
+        : totalWeight / filteredCatches.length;
 
     return Column(
       children: [
@@ -813,7 +826,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: _buildModernStatCard(
                 icon: Icons.phishing_rounded,
                 label: 'Tangkapan',
-                value: '${todayCatches.length}',
+                value: '${filteredCatches.length}',
                 subtitle: 'ikan',
                 gradientColors: [Color(0xFF4A90E2), Color(0xFF357ABD)],
               ),
@@ -976,8 +989,10 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildWeeklyActivity() {
     final provider = Provider.of<CatchProvider>(context);
 
-    // Generate data untuk 30 hari terakhir
-    List<Map<String, dynamic>> monthlyData = _getMonthlyData(provider);
+    // Generate data berdasarkan view yang dipilih
+    List<Map<String, dynamic>> chartData = _isMonthlyView 
+        ? _getMonthlyData(provider) 
+        : _getYearlyData(provider);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -999,30 +1014,29 @@ class _HomeScreenState extends State<HomeScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Aktivitas Bulanan',
+                'Aktivitas Trip',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1A1A1A),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  '30 Hari Terakhir',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF4A90E2),
-                    fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  // Toggle Button
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildToggleButton('Bulanan', _isMonthlyView),
+                        _buildToggleButton('Tahunan', !_isMonthlyView),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -1056,22 +1070,34 @@ class _HomeScreenState extends State<HomeScreen>
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 30,
-                      interval: 5,
+                      interval: _isMonthlyView ? 5 : 1,
                       getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 &&
-                            value.toInt() < monthlyData.length &&
-                            value.toInt() % 5 == 0) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              monthlyData[value.toInt()]['day'],
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                        if (value.toInt() >= 0 && value.toInt() < chartData.length) {
+                          if (_isMonthlyView && value.toInt() % 5 == 0) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                chartData[value.toInt()]['day'],
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          } else if (!_isMonthlyView) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                chartData[value.toInt()]['day'],
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
+                          }
                         }
                         return const Text('');
                       },
@@ -1096,12 +1122,12 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 borderData: FlBorderData(show: false),
                 minX: 0,
-                maxX: (monthlyData.length - 1).toDouble(),
+                maxX: (chartData.length - 1).toDouble(),
                 minY: 0,
-                maxY: _getMaxY(monthlyData),
+                maxY: _getMaxY(chartData),
                 lineBarsData: [
                   LineChartBarData(
-                    spots: monthlyData.asMap().entries.map((entry) {
+                    spots: chartData.asMap().entries.map((entry) {
                       return FlSpot(
                         entry.key.toDouble(),
                         entry.value['weight'],
@@ -1133,6 +1159,31 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildToggleButton(String label, bool isActive) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isMonthlyView = label == 'Bulanan';
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? Color(0xFF4A90E2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: isActive ? Colors.white : Colors.grey[600],
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
   List<Map<String, dynamic>> _getMonthlyData(CatchProvider provider) {
     final now = DateTime.now();
     List<Map<String, dynamic>> data = [];
@@ -1152,6 +1203,39 @@ class _HomeScreenState extends State<HomeScreen>
           .fold<double>(0, (sum, catch_) => sum + catch_.weight);
 
       data.add({'day': dayLabel, 'weight': dayWeight});
+    }
+
+    return data;
+  }
+
+  List<Map<String, dynamic>> _getYearlyData(CatchProvider provider) {
+    final now = DateTime.now();
+    List<Map<String, dynamic>> data = [];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    for (int i = 11; i >= 0; i--) {
+      // Hitung bulan yang benar dengan mengurangi dari bulan sekarang
+      int targetYear = now.year;
+      int targetMonth = now.month - i;
+      
+      // Jika bulan negatif, mundur ke tahun sebelumnya
+      while (targetMonth <= 0) {
+        targetMonth += 12;
+        targetYear -= 1;
+      }
+      
+      final monthLabel = months[targetMonth - 1];
+
+      // Hitung total berat tangkapan untuk bulan ini
+      final monthWeight = provider.catches
+          .where((catch_) {
+            final catchDate = catch_.departureDate;
+            return catchDate.year == targetYear &&
+                catchDate.month == targetMonth;
+          })
+          .fold<double>(0, (sum, catch_) => sum + catch_.weight);
+
+      data.add({'day': monthLabel, 'weight': monthWeight});
     }
 
     return data;
@@ -1645,18 +1729,30 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildTabletStatisticsCards() {
     final provider = Provider.of<CatchProvider>(context);
-    final todayCatches = provider.todayCatches;
-    final totalWeight = todayCatches.fold<double>(
+    final now = DateTime.now();
+    
+    // Filter catches berdasarkan view yang dipilih
+    final filteredCatches = _isMonthlyView
+        ? provider.catches.where((catch_) {
+            final catchDate = catch_.departureDate;
+            return catchDate.year == now.year && catchDate.month == now.month;
+          }).toList()
+        : provider.catches.where((catch_) {
+            final catchDate = catch_.departureDate;
+            return catchDate.year == now.year;
+          }).toList();
+    
+    final totalWeight = filteredCatches.fold<double>(
       0,
       (sum, c) => sum + c.weight,
     );
-    final totalRevenue = todayCatches.fold<double>(
+    final totalRevenue = filteredCatches.fold<double>(
       0,
       (sum, c) => sum + c.totalRevenue,
     );
-    final averageWeight = todayCatches.isEmpty
+    final averageWeight = filteredCatches.isEmpty
         ? 0.0
-        : totalWeight / todayCatches.length;
+        : totalWeight / filteredCatches.length;
     final screenWidth = MediaQuery.of(context).size.width;
     final cardSpacing = screenWidth < 800 ? 10.0 : 12.0;
 
@@ -1666,7 +1762,7 @@ class _HomeScreenState extends State<HomeScreen>
           child: _buildCompactIconCard(
             icon: Icons.phishing_rounded,
             label: 'Tangkapan',
-            value: '${todayCatches.length}',
+            value: '${filteredCatches.length}',
             subtitle: 'ikan',
             gradientColors: [Color(0xFF4A90E2), Color(0xFF357ABD)],
           ),
@@ -1799,7 +1895,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildCompactWeeklyActivity() {
     final provider = Provider.of<CatchProvider>(context);
-    List<Map<String, dynamic>> monthlyData = _getMonthlyData(provider);
+    List<Map<String, dynamic>> chartData = _isMonthlyView 
+        ? _getMonthlyData(provider) 
+        : _getYearlyData(provider);
     final screenWidth = MediaQuery.of(context).size.width;
     final titleSize = screenWidth < 800 ? 14.0 : 16.0;
     final badgeSize = screenWidth < 800 ? 10.0 : 11.0;
@@ -1816,7 +1914,7 @@ class _HomeScreenState extends State<HomeScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Aktivitas Bulanan',
+              'Aktivitas Trip',
               style: TextStyle(
                 fontSize: titleSize,
                 fontWeight: FontWeight.bold,
@@ -1824,18 +1922,15 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Text(
-                '30 Hari Terakhir',
-                style: TextStyle(
-                  fontSize: badgeSize,
-                  color: Color(0xFF4A90E2),
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Row(
+                children: [
+                  _buildCompactToggleButton('Bulanan', _isMonthlyView, badgeSize),
+                  _buildCompactToggleButton('Tahunan', !_isMonthlyView, badgeSize),
+                ],
               ),
             ),
           ],
@@ -1870,22 +1965,34 @@ class _HomeScreenState extends State<HomeScreen>
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: reservedSizeBottom,
-                    interval: 5,
+                    interval: _isMonthlyView ? 5 : 1,
                     getTitlesWidget: (value, meta) {
-                      if (value.toInt() >= 0 &&
-                          value.toInt() < monthlyData.length &&
-                          value.toInt() % 5 == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            monthlyData[value.toInt()]['day'],
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: axisLabelSize,
-                              fontWeight: FontWeight.w500,
+                      if (value.toInt() >= 0 && value.toInt() < chartData.length) {
+                        if (_isMonthlyView && value.toInt() % 5 == 0) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              chartData[value.toInt()]['day'],
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: axisLabelSize,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } else if (!_isMonthlyView) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              chartData[value.toInt()]['day'],
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: axisLabelSize,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }
                       }
                       return const Text('');
                     },
@@ -1910,12 +2017,12 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               borderData: FlBorderData(show: false),
               minX: 0,
-              maxX: (monthlyData.length - 1).toDouble(),
+              maxX: (chartData.length - 1).toDouble(),
               minY: 0,
-              maxY: _getMaxY(monthlyData),
+              maxY: _getMaxY(chartData),
               lineBarsData: [
                 LineChartBarData(
-                  spots: monthlyData.asMap().entries.map((entry) {
+                  spots: chartData.asMap().entries.map((entry) {
                     return FlSpot(entry.key.toDouble(), entry.value['weight']);
                   }).toList(),
                   isCurved: true,
@@ -1940,6 +2047,31 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCompactToggleButton(String label, bool isActive, double fontSize) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isMonthlyView = label == 'Bulanan';
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive ? Color(0xFF4A90E2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: fontSize,
+            color: isActive ? Colors.white : Colors.grey[600],
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
     );
   }
 }
