@@ -190,6 +190,98 @@ class AuthService {
     return {'success': false, 'message': e.response?.data['message'] ?? 'Login gagal. Coba lagi'};
   }
 
+  static Future<Map<String, dynamic>> forgotPassword(String email) async {
+    try {
+      final response = await _dio.post(
+        '/auth/forgot-password',
+        data: {'email': email},
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return {
+          'success': true,
+          'message': response.data['message'] ?? 'Link reset password telah dikirim ke email Anda',
+        };
+      }
+
+      return {
+        'success': false,
+        'message': response.data['message'] ?? 'Gagal mengirim link reset password',
+      };
+    } on DioException catch (e) {
+      return _handleForgotPasswordError(e);
+    } catch (e) {
+      return {'success': false, 'message': 'Terjadi kesalahan tidak terduga'};
+    }
+  }
+
+  static Map<String, dynamic> _handleForgotPasswordError(DioException e) {
+    if (e.response?.statusCode == 404) {
+      return {'success': false, 'message': 'Email tidak terdaftar'};
+    } else if (e.response?.statusCode == 400) {
+      return {'success': false, 'message': e.response?.data['message'] ?? 'Email tidak valid'};
+    } else if (e.type == DioExceptionType.connectionTimeout) {
+      return {'success': false, 'message': 'Koneksi timeout'};
+    } else if (e.type == DioExceptionType.connectionError) {
+      return {'success': false, 'message': 'Tidak dapat terhubung ke server'};
+    }
+    return {'success': false, 'message': e.response?.data['message'] ?? 'Gagal mengirim link reset password'};
+  }
+
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return {'success': false, 'message': 'Token tidak ditemukan'};
+      }
+
+      final response = await _dio.post(
+        '/mobile/change-password',
+        data:{
+          'current_password': currentPassword,
+          'new_password': newPassword,
+          'new_password_confirmation': confirmPassword,
+        },
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return {
+          'success': true,
+          'message': response.data['message'] ?? 'Password berhasil diubah',
+        };
+      }
+
+      return {
+        'success': false,
+        'message': response.data['message'] ?? 'Gagal mengubah password',
+      };
+    } on DioException catch (e) {
+      return _handleChangePasswordError(e);
+    } catch (e) {
+      return {'success': false, 'message': 'Terjadi kesalahan tidak terduga'};
+    }
+  }
+
+  static Map<String, dynamic> _handleChangePasswordError(DioException e) {
+    if (e.response?.statusCode == 400) {
+      return {'success': false, 'message': e.response?.data['message'] ?? 'Data tidak valid'};
+    } else if (e.response?.statusCode == 401) {
+      return {'success': false, 'message': 'Password lama tidak sesuai'};
+    } else if (e.type == DioExceptionType.connectionTimeout) {
+      return {'success': false, 'message': 'Koneksi timeout'};
+    } else if (e.type == DioExceptionType.connectionError) {
+      return {'success': false, 'message': 'Tidak dapat terhubung ke server'};
+    }
+    return {'success': false, 'message': e.response?.data['message'] ?? 'Gagal mengubah password'};
+  }
+
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');

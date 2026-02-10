@@ -402,6 +402,26 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
     }
   }
 
+  // ==================== NAVIGATION ====================
+
+  void _navigateToCatchScreen() async {
+    try {
+      final result = await Navigator.pushNamed(
+        context,
+        '/create-catch',
+      );
+
+      // Jika berhasil submit tangkapan, tampilkan notifikasi
+      if (result == true && mounted) {
+        _showSuccess('Tangkapan berhasil dicatat!');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Gagal membuka form tangkapan: $e');
+      }
+    }
+  }
+
   // ==================== TRIP COMPLETION ====================
 
   Future<void> _stopTracking() async {
@@ -646,7 +666,23 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
           children: [
             _buildBody(sp),
 
-            // Emergency Button Mengambang
+            // Catch Button (Catat Tangkapan) - Kiri bawah
+            Positioned(
+              left: 20,
+              bottom: 100,
+              child: FloatingActionButton.extended(
+                onPressed: _navigateToCatchScreen,
+                backgroundColor: const Color(0xFF5CB85C),
+                icon: const Icon(Icons.phishing_rounded, color: Colors.white),
+                label: const Text(
+                  'Catat Tangkapan',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                heroTag: 'catch_button',
+              ),
+            ),
+
+            // Emergency Button Mengambang - Kanan bawah
             Positioned(
               right: 20,
               bottom: 100,

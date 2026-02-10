@@ -102,7 +102,16 @@ class LocationTrackingService {
 
     if (_selectedHarborName == null || _vesselName == null) return;
 
-    // Cek zona
+    // 🚨 CEK ZONA TERLARANG DULU (PRIORITAS UTAMA)
+    final restrictedCheck = ZoneCheckerService.checkRestrictedZones(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      vesselName: _vesselName!,
+    );
+
+    bool isInRestrictedZone = restrictedCheck['isInRestrictedZone'] == true;
+
+    // Cek zona pelabuhan (untuk info saja)
     final zoneCheck = ZoneCheckerService.checkZone(
       selectedHarborName: _selectedHarborName!,
       latitude: position.latitude,
@@ -110,27 +119,33 @@ class LocationTrackingService {
       vesselName: _vesselName!,
     );
 
-    bool isViolation = zoneCheck['isViolation'] == true;
+    // Gabungkan info zona
+    final combinedZoneInfo = {
+      ...zoneCheck,
+      'isInRestrictedZone': isInRestrictedZone,
+      'restrictedZoneName': restrictedCheck['zoneName'],
+      'restrictedZoneDistance': restrictedCheck['distance'],
+    };
 
     // Callback location update (untuk update UI map)
-    _onLocationUpdate?.call(position, zoneCheck);
+    _onLocationUpdate?.call(position, combinedZoneInfo);
 
-    // Deteksi perubahan status violation
-    if (isViolation && !_isCurrentlyViolating) {
-      // Baru keluar zona - TRIGGER ALARM
+    // 🚨 DETEKSI MASUK ZONA TERLARANG
+    if (isInRestrictedZone && !_isCurrentlyViolating) {
+      // MASUK ZONA TERLARANG - TRIGGER ALARM!
       _isCurrentlyViolating = true;
       _onViolationDetected?.call();
       
-      debugPrint('🚨 VIOLATION DETECTED!');
-      debugPrint('   Distance: ${zoneCheck['distance']} km');
-      debugPrint('   Zone Radius: ${zoneCheck['zoneRadius']} km');
-      debugPrint('   Excess: ${zoneCheck['excessDistance']} km');
+      debugPrint('🚨 ENTERED RESTRICTED ZONE!');
+      debugPrint('   Zone: ${restrictedCheck['zoneName']}');
+      debugPrint('   Distance from center: ${restrictedCheck['distance']} km');
+      debugPrint('   Zone Radius: ${restrictedCheck['zoneRadius']} km');
       
-    } else if (!isViolation && _isCurrentlyViolating) {
-      // Kembali ke zona aman
+    } else if (!isInRestrictedZone && _isCurrentlyViolating) {
+      // KELUAR DARI ZONA TERLARANG - STOP ALARM
       _isCurrentlyViolating = false;
       _onBackToSafeZone?.call();
-      debugPrint('✅ Back to safe zone');
+      debugPrint('✅ Exited restricted zone - Back to safe area');
     }
   }
 
@@ -198,6 +213,9 @@ class LocationTrackingService {
   }
 
   bool wasViolating = false;
+  _vesselName = vesselName;
+  _selectedHarborName = harborName;
+  _isTracking = true;
 
   // Start tracking
   _positionStream = Geolocator.getPositionStream(
@@ -206,7 +224,18 @@ class LocationTrackingService {
       distanceFilter: 10, // Update setiap 10 meter
     ),
   ).listen((Position position) {
-    // Hitung jarak dari pelabuhan
+    _lastPosition = position;
+
+    // 🚨 CEK ZONA TERLARANG DULU (PRIORITAS UTAMA)
+    final restrictedCheck = ZoneCheckerService.checkRestrictedZones(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      vesselName: vesselName,
+    );
+
+    bool isInRestrictedZone = restrictedCheck['isInRestrictedZone'] == true;
+
+    // Hitung jarak dari pelabuhan (untuk info saja)
     final distance = Geolocator.distanceBetween(
           harborLat,
           harborLng,
@@ -215,27 +244,34 @@ class LocationTrackingService {
         ) /
         1000; // Convert ke km
 
-    final isViolating = distance > zoneRadius;
-    final excessDistance = isViolating ? distance - zoneRadius : 0.0;
-
+    // ✅ PERBAIKAN: Kapal di luar zona pelabuhan = NORMAL (bukan pelanggaran)
+    // Pelanggaran hanya jika masuk ZONA TERLARANG
     final zoneInfo = {
       'distance': distance,
       'zoneRadius': zoneRadius,
-      'isViolating': isViolating,
-      'excessDistance': excessDistance,
+      'isViolating': isInRestrictedZone, // ✅ Hanya zona terlarang yang dianggap pelanggaran
+      'isInRestrictedZone': isInRestrictedZone,
+      'restrictedZoneName': restrictedCheck['zoneName'],
+      'restrictedZoneDistance': restrictedCheck['distance'],
+      'excessDistance': isInRestrictedZone ? restrictedCheck['distance'] : 0.0,
       'harborName': harborName,
     };
 
     // Update callback
     onLocationUpdate(position, zoneInfo);
 
-    // Check violation
-    if (isViolating && !wasViolating) {
+    // 🚨 DETEKSI MASUK ZONA TERLARANG
+    if (isInRestrictedZone && !wasViolating) {
       wasViolating = true;
+      _isCurrentlyViolating = true;
       onViolationDetected();
-    } else if (!isViolating && wasViolating) {
+      debugPrint('🚨 ENTERED RESTRICTED ZONE!');
+      debugPrint('   Zone: ${restrictedCheck['zoneName']}');
+    } else if (!isInRestrictedZone && wasViolating) {
       wasViolating = false;
+      _isCurrentlyViolating = false;
       onBackToSafeZone();
+      debugPrint('✅ Exited restricted zone - Back to safe area');
     }
   });
 }

@@ -1,6 +1,10 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'offline_sync_service.dart';
 
 class CatchSubmissionService {
@@ -65,15 +69,33 @@ class CatchSubmissionService {
     }
   }
 
-  // Kirim ke server (implementasi sesuai API)
+  // Kirim ke server (implementasi real API)
   static Future<bool> _sendToServer(
     Map<String, dynamic> catchData,
     File imageFile,
   ) async {
     try {
-      // TODO: Implementasi real API call
-      // Format data sesuai API spec (data mentah, perhitungan di backend)
-      final apiData = {
+      // Get API base URL from .env
+      final apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000/api';
+      final uri = Uri.parse('$apiBaseUrl/mobile/catches');
+      
+      // Get auth token
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      debugPrint('🌐 Sending to API: $uri');
+      debugPrint('📦 Fish: ${catchData['fish_name']}');
+      
+      // Create multipart request
+      final request = http.MultipartRequest('POST', uri);
+      
+      // Add authorization header if token exists
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      
+      // Add form fields
+      request.fields.addAll({
         'fish_name': catchData['fish_name'],
         'fish_type': catchData['fish_type'],
         'weight': catchData['weight'].toString(),
@@ -94,27 +116,39 @@ class CatchSubmissionService {
         'weather_condition': catchData['weather_condition'],
         'notes': catchData['notes'] ?? '',
         'kapalId': catchData['kapalId'].toString(),
-      };
+      });
       
-      debugPrint('🌐 Sending to API: ${apiData['fish_name']}');
-      debugPrint('📦 API Data: $apiData');
+      // Add image file
+      request.files.add(
+        await http.MultipartFile.fromPath('photo', imageFile.path),
+      );
       
-      // Contoh implementasi dengan http.MultipartRequest:
-      // final request = http.MultipartRequest(
-      //   'POST', 
-      //   Uri.parse('http://your-api/mobile/catches')
-      // );
-      // request.fields.addAll(apiData);
-      // request.files.add(
-      //   await http.MultipartFile.fromPath('photo', imageFile.path)
-      // );
-      // final response = await request.send();
-      // return response.statusCode == 201;
+      debugPrint('📤 Sending request...');
       
-      await Future.delayed(Duration(seconds: 2)); // Simulasi
-      return true; // Ganti dengan logic sebenarnya
+      // Send request with timeout
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Request timeout after 30 seconds');
+        },
+      );
+      
+      // Get response
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      debugPrint('📥 Response status: ${response.statusCode}');
+      debugPrint('📥 Response body: ${response.body}');
+      
+      // Check if successful (201 Created or 200 OK)
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        debugPrint('✅ Catch data sent successfully');
+        return true;
+      } else {
+        debugPrint('❌ Server error: ${response.statusCode} - ${response.body}');
+        return false;
+      }
     } catch (e) {
-      debugPrint('❌ Server error: $e');
+      debugPrint('❌ Network error: $e');
       return false;
     }
   }

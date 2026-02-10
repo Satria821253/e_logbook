@@ -1,8 +1,10 @@
 import 'package:e_logbook/constants/indonesia_harbors.dart';
+import 'package:e_logbook/constants/zones.dart';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../models/zone_alert.dart';
 
 
@@ -11,6 +13,50 @@ class ZoneCheckerService {
 
   static final AudioPlayer _audioPlayer = AudioPlayer();
   static bool _isAlarmPlaying = false;
+
+  /// Cek apakah lokasi dalam zona terlarang (RESTRICTED ZONE)
+  static Map<String, dynamic> checkRestrictedZones({
+    required double latitude,
+    required double longitude,
+    required String vesselName,
+  }) {
+    for (var zone in restrictedZones) {
+      final distance = Geolocator.distanceBetween(
+        latitude,
+        longitude,
+        zone['lat'],
+        zone['lng'],
+      );
+
+      // Jika dalam radius zona terlarang
+      if (distance <= zone['radius']) {
+        final alert = ZoneAlert(
+          id: 'restricted_${DateTime.now().millisecondsSinceEpoch}',
+          timestamp: DateTime.now(),
+          harborZoneId: zone['name'],
+          harborZoneName: zone['name'],
+          currentDistance: distance / 1000, // convert to km
+          zoneRadius: zone['radius'] / 1000, // convert to km
+          violationLocation: LatLng(latitude, longitude),
+          vesselName: vesselName,
+          alertType: 'critical',
+          isRead: false,
+        );
+
+        return {
+          'isInRestrictedZone': true,
+          'zoneName': zone['name'],
+          'distance': distance / 1000,
+          'zoneRadius': zone['radius'] / 1000,
+          'alert': alert,
+        };
+      }
+    }
+
+    return {
+      'isInRestrictedZone': false,
+    };
+  }
 
   /// Cek apakah lokasi tangkapan dalam zona yang sesuai
   static Map<String, dynamic> checkZone({
