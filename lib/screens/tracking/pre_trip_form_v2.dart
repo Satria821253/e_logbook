@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
+import 'dart:convert';
 import '../../services/api/trip_service.dart';
-import 'waiting_approval_screen.dart';
+import '../../provider/user_provider.dart';
+import 'upload_fuel_screen.dart';
+import 'upload_ice_screen.dart';
 import '../../utils/navigation_helper.dart';
+import 'pre_tracking_simple.dart';
 
 class PreTripFormV2 extends StatefulWidget {
   final int? tripId;
@@ -17,15 +22,12 @@ class PreTripFormV2 extends StatefulWidget {
 
 class _PreTripFormV2State extends State<PreTripFormV2> {
   String? _userRole;
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   // Crew uploads - STEP BY STEP
   String? _fuelFilePath;
   String? _iceFilePath;
-  final _fuelAmountController = TextEditingController();
-  final _fuelPriceController = TextEditingController();
-  final _iceAmountController = TextEditingController();
-  final _icePriceController = TextEditingController();
+
 
   // Nahkoda uploads - STEP BY STEP
   String? _izinMelautPath;
@@ -35,18 +37,94 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   @override
   void initState() {
     super.initState();
-    _loadUserRole();
-  }
-
-  Future<void> _loadUserRole() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userRole = prefs.getString('role');
+    // Reset semua state ke null untuk mencegah tampilan state lama
+    _fuelFilePath = null;
+    _iceFilePath = null;
+    _izinMelautPath = null;
+    _dokumenKapalPath = null;
+    _asuransiPath = null;
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadUserRole();
+      await _loadTripOperationalData();
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     });
   }
 
-  bool get _isNahkoda => _userRole == 'nahkoda';
-  bool get _isCrew => _userRole == 'crew' || _userRole == 'abk';
+  Future<void> _loadTripOperationalData() async {
+    if (widget.tripId == null) return;
+    
+    try {
+      print('\n🔄 [LOAD] Fetching trip detail...');
+      final response = await TripService.getTripDetail(widget.tripId!);
+      
+      if (response['success'] == true) {
+        final tripData = response['data'];
+        final perizinan = tripData?['perizinan'];
+        
+        final fuelDataList = perizinan?['fuelData'] as List?;
+        final iceDataList = perizinan?['iceData'] as List?;
+        final dokumen = perizinan?['dokumen'];
+        
+        print('📊 [LOAD] Fuel uploaded: ${fuelDataList != null && fuelDataList.isNotEmpty}');
+        print('📊 [LOAD] Ice uploaded: ${iceDataList != null && iceDataList.isNotEmpty}');
+        print('📊 [LOAD] Izin Melaut: ${dokumen?['izinMelaut'] == true}');
+        print('📊 [LOAD] Dokumen Kapal: ${dokumen?['dokumenKapal'] == true}');
+        print('📊 [LOAD] Asuransi: ${dokumen?['asuransi'] == true}');
+        
+        setState(() {
+          if (fuelDataList != null && fuelDataList.isNotEmpty) _fuelFilePath = 'uploaded';
+          if (iceDataList != null && iceDataList.isNotEmpty) _iceFilePath = 'uploaded';
+          if (dokumen?['izinMelaut'] == true) _izinMelautPath = 'uploaded';
+          if (dokumen?['dokumenKapal'] == true) _dokumenKapalPath = 'uploaded';
+          if (dokumen?['asuransi'] == true) _asuransiPath = 'uploaded';
+        });
+        
+        print('✅ [LOAD] Trip data loaded successfully');
+      }
+    } catch (e) {
+      print('⚠️ [LOAD] Failed to load trip data: $e');
+    }
+  }
+
+  Future<void> _loadUserRole() async {
+    // Coba dari UserProvider dulu
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    if (userProvider.user != null) {
+      setState(() {
+        _userRole = userProvider.user!.role;
+      });
+      print('🔑 [LOAD ROLE] From UserProvider: $_userRole');
+      return;
+    }
+    
+    // Fallback ke SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    
+    print('🔑 [LOAD ROLE] From SharedPreferences:');
+    print('   user_data string: $userDataString');
+    
+    if (userDataString != null) {
+      try {
+        final userData = jsonDecode(userDataString);
+        final role = userData['role'];
+        print('   Parsed role: $role');
+        setState(() {
+          _userRole = role;
+        });
+      } catch (e) {
+        print('   ❌ Error parsing user_data: $e');
+      }
+    }
+    
+    print('   Final _userRole: $_userRole');
+  }
+
+  bool get _isNahkoda => _userRole?.toLowerCase() == 'nahkoda';
+  bool get _isCrew => _userRole?.toLowerCase() == 'crew' || _userRole?.toLowerCase() == 'abk';
 
   // ONE BY ONE checks
   bool get _fuelUploaded => _fuelFilePath != null;
@@ -61,10 +139,59 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
 
   @override
   Widget build(BuildContext context) {
+    // Jika masih loading data dari server, tampilkan loading
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Color(0xFFF5F7FA),
+        appBar: AppBar(
+          title: Text('Persiapan Trip', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          iconTheme: IconThemeData(color: Colors.white),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)]),
+            ),
+          ),
+        ),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
+    // DEBUG CONSOLE
+    print('\n' + '='*60);
+    print('🔍 DEBUG PRE-TRIP FORM V2');
+    print('='*60);
+    print('🆔 TRIP ID: ${widget.tripId}');  // <-- TRIP ID
+    print('👤 POV: ${_isCrew ? "CREW" : _isNahkoda ? "NAHKODA" : "UNKNOWN"}');
+    print('   Role: $_userRole');
+    print('   isCrew: $_isCrew | isNahkoda: $_isNahkoda');
+    print('\n📁 Upload Status:');
+    print('   Fuel: ${_fuelFilePath != null ? "✓ Done" : "✗ Not Done"}');
+    print('   Ice: ${_iceFilePath != null ? "✓ Done" : "✗ Not Done"}');
+    print('   Izin: ${_izinMelautPath != null ? "✓ Done" : "✗ Not Done"}');
+    print('   Dokumen: ${_dokumenKapalPath != null ? "✓ Done" : "✗ Not Done"}');
+    print('   Asuransi: ${_asuransiPath != null ? "✓ Done" : "✗ Not Done"}');
+    print('\n✅ Complete Status:');
+    print('   Crew Complete: $_crewComplete');
+    print('   Nahkoda Complete: $_nahkodaComplete');
+    print('   Can Submit: $_canSubmit');
+    if (_isNahkoda) {
+      print('\n👁️ NAHKODA VIEW:');
+      print('   Step 1-2 (Crew): ${_crewComplete ? "HIJAU" : "KUNING (Waiting)"}');
+      print('   Step 3 (Izin): ${_crewComplete && !_izinMelautUploaded ? "KUNING" : "ABU"}');
+    }
+    if (_isCrew) {
+      print('\n👁️ CREW VIEW:');
+      print('   Step 1 (Fuel): ${!_fuelUploaded ? "BIRU" : "HIJAU"}');
+      print('   Step 2 (Ice): ${_fuelUploaded && !_iceUploaded ? "BIRU" : !_fuelUploaded ? "ABU" : "HIJAU"}');
+      print('   Step 3-5 (Nahkoda): ${_crewComplete && !_nahkodaComplete ? "KUNING (Waiting)" : _nahkodaComplete ? "HIJAU" : "ABU"}');
+    }
+    print('='*60 + '\n');
+    
     return Scaffold(
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: Text('Persiapan Trip', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Persiapan Trip', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        iconTheme: IconThemeData(color: Colors.white),
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)]),
@@ -157,48 +284,129 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   }
 
   Widget _buildStep(int num, String title, String subtitle, bool done, bool active, bool locked, IconData icon, Color color) {
+    Color circleColor;
+    IconData displayIcon;
+    String statusDebug = '';
+    
+    if (done) {
+      // HIJAU - sudah upload berhasil
+      circleColor = Colors.green;
+      displayIcon = Icons.check;
+      statusDebug = 'HIJAU (Done)';
+    } else if (_isCrew) {
+      // LOGIKA CREW
+      if (num == 1 && !_fuelUploaded) {
+        // Step 1 Fuel: BIRU jika belum upload
+        circleColor = Colors.blue;
+        displayIcon = icon;
+        statusDebug = 'BIRU (Step 1 Aktif)';
+      } else if (num == 2 && _fuelUploaded && !_iceUploaded) {
+        // Step 2 Ice: BIRU jika fuel sudah, ice belum
+        circleColor = Colors.blue;
+        displayIcon = icon;
+        statusDebug = 'BIRU (Step 2 Aktif)';
+      } else if (num == 3 && _crewComplete && !_izinMelautUploaded) {
+        // Step 3 Izin: KUNING jika crew selesai dan nahkoda sedang upload izin
+        circleColor = Colors.orange;
+        displayIcon = Icons.hourglass_empty;
+        statusDebug = 'KUNING (Nahkoda Upload Izin)';
+      } else if (num == 4 && _izinMelautUploaded && !_dokumenKapalUploaded) {
+        // Step 4 Dokumen: KUNING jika izin selesai, dokumen belum
+        circleColor = Colors.orange;
+        displayIcon = Icons.hourglass_empty;
+        statusDebug = 'KUNING (Nahkoda Upload Dokumen)';
+      } else if (num == 5 && _dokumenKapalUploaded && !_asuransiUploaded) {
+        // Step 5 Asuransi: KUNING jika dokumen selesai, asuransi belum
+        circleColor = Colors.orange;
+        displayIcon = Icons.hourglass_empty;
+        statusDebug = 'KUNING (Nahkoda Upload Asuransi)';
+      } else {
+        // Selain itu: ABU (locked)
+        circleColor = Colors.grey[300]!;
+        displayIcon = Icons.lock;
+        statusDebug = 'ABU (Locked)';
+      }
+    } else if (_isNahkoda) {
+      // LOGIKA NAHKODA
+      if (num == 1 && !_fuelUploaded) {
+        // Step 1 Fuel: KUNING jika crew sedang upload fuel
+        circleColor = Colors.orange;
+        displayIcon = Icons.hourglass_empty;
+        statusDebug = 'KUNING (Crew Upload Fuel)';
+      } else if (num == 2 && _fuelUploaded && !_iceUploaded) {
+        // Step 2 Ice: KUNING jika fuel selesai, ice belum
+        circleColor = Colors.orange;
+        displayIcon = Icons.hourglass_empty;
+        statusDebug = 'KUNING (Crew Upload Ice)';
+      } else if (num == 3 && _crewComplete && !_izinMelautUploaded) {
+        // Step 3 Izin: KUNING jika crew selesai dan izin belum
+        circleColor = Colors.orange;
+        displayIcon = Icons.edit;
+        statusDebug = 'KUNING (Ready - Izin)';
+      } else if (num == 4 && _izinMelautUploaded && !_dokumenKapalUploaded) {
+        // Step 4 Dokumen: KUNING jika izin selesai dan dokumen belum
+        circleColor = Colors.orange;
+        displayIcon = Icons.edit;
+        statusDebug = 'KUNING (Ready - Dokumen)';
+      } else if (num == 5 && _dokumenKapalUploaded && !_asuransiUploaded) {
+        // Step 5 Asuransi: KUNING jika dokumen selesai dan asuransi belum
+        circleColor = Colors.orange;
+        displayIcon = Icons.edit;
+        statusDebug = 'KUNING (Ready - Asuransi)';
+      } else {
+        // Selain itu: ABU (locked)
+        circleColor = Colors.grey[300]!;
+        displayIcon = Icons.lock;
+        statusDebug = 'ABU (Locked)';
+      }
+    } else {
+      // Default: ABU
+      circleColor = Colors.grey[300]!;
+      displayIcon = Icons.lock;
+      statusDebug = 'ABU (Default)';
+    }
+    
+    // Debug print
+    print('🎨 Step $num ($title): $statusDebug | done=$done, active=$active, locked=$locked');
+    
     return Row(
       children: [
         Container(
-          width: 50,
-          height: 50,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
-            color: done ? Colors.green : active ? color : locked ? Colors.grey[300] : Colors.grey[200],
+            color: circleColor,
             shape: BoxShape.circle,
-            boxShadow: done || active ? [BoxShadow(color: (done ? Colors.green : color).withOpacity(0.3), blurRadius: 8)] : [],
           ),
-          child: Icon(done ? Icons.check : locked ? Icons.lock : icon, color: Colors.white, size: 24),
+          child: Icon(displayIcon, color: Colors.white, size: 24),
         ),
         SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: done || active ? Colors.black87 : Colors.grey[500])),
-              Text(subtitle, style: TextStyle(fontSize: 13, color: done || active ? Colors.grey[600] : Colors.grey[400])),
+              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[800])),
+              Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
             ],
           ),
         ),
-        if (done)
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-            child: Text('Selesai', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green)),
-          ),
       ],
     );
   }
 
-  Widget _buildConnector(bool done) {
+  Widget _buildConnector(bool completed) {
     return Container(
-      margin: EdgeInsets.only(left: 24, top: 8, bottom: 8),
+      margin: EdgeInsets.only(left: 23, top: 4, bottom: 4),
       width: 2,
-      height: 30,
-      color: done ? Colors.green : Colors.grey[300],
+      height: 20,
+      color: completed ? Colors.green : Colors.grey[300],
     );
   }
 
   Widget _buildCrewSection() {
+    // Jika crew sudah complete, jangan tampilkan section ini
+    if (_crewComplete) return SizedBox.shrink();
+    
     return Container(
       margin: EdgeInsets.all(16),
       padding: EdgeInsets.all(20),
@@ -223,15 +431,18 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
           ),
           SizedBox(height: 20),
 
-          _buildUploadCard('Data Bahan Bakar', Icons.local_gas_station, Colors.blue, _fuelUploaded, () => _showFuelDialog(), _fuelFilePath, false),
+          _buildUploadCard('Data Bahan Bakar', Icons.local_gas_station, Colors.blue, _fuelUploaded, () => _navigateToFuelUpload(), _fuelFilePath, false),
           SizedBox(height: 16),
-          _buildUploadCard('Data Es', Icons.ac_unit, Colors.cyan, _iceUploaded, () => _showIceDialog(), _iceFilePath, !_fuelUploaded),
+          _buildUploadCard('Data Es', Icons.ac_unit, Colors.cyan, _iceUploaded, () => _navigateToIceUpload(), _iceFilePath, !_fuelUploaded),
         ],
       ),
     );
   }
 
   Widget _buildNahkodaSection() {
+    // Jika nahkoda sudah complete, jangan tampilkan section ini
+    if (_nahkodaComplete) return SizedBox.shrink();
+    
     if (!_crewComplete && _isNahkoda) {
       return Container(
         margin: EdgeInsets.all(16),
@@ -317,48 +528,16 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: locked ? Colors.grey[300]! : done ? Colors.green : color.withOpacity(0.3), width: 2),
         ),
-        child: Column(
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: locked ? Colors.grey[300] : done ? Colors.green : color, borderRadius: BorderRadius.circular(10)),
-                  child: Icon(locked ? Icons.lock : done ? Icons.check : icon, color: Colors.white, size: 20),
-                ),
-                SizedBox(width: 16),
-                Expanded(child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: locked ? Colors.grey[500] : done ? Colors.green[800] : Colors.grey[800]))),
-                Icon(locked ? Icons.lock : done ? Icons.check_circle : Icons.upload_file, color: locked ? Colors.grey[400] : done ? Colors.green : color, size: 24),
-              ],
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(color: locked ? Colors.grey[300] : done ? Colors.green : color, borderRadius: BorderRadius.circular(10)),
+              child: Icon(locked ? Icons.lock : done ? Icons.check : icon, color: Colors.white, size: 20),
             ),
-            if (locked) ...[
-              SizedBox(height: 12),
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
-                child: Row(
-                  children: [
-                    Icon(Icons.lock, size: 16, color: Colors.grey[600]),
-                    SizedBox(width: 8),
-                    Expanded(child: Text('Selesaikan upload sebelumnya', style: TextStyle(fontSize: 11, color: Colors.grey[600]))),
-                  ],
-                ),
-              ),
-            ],
-            if (done && path != null) ...[
-              SizedBox(height: 12),
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-                child: Row(
-                  children: [
-                    Icon(Icons.insert_drive_file, size: 16, color: Colors.grey[600]),
-                    SizedBox(width: 8),
-                    Expanded(child: Text(path.split('/').last, style: TextStyle(fontSize: 12, color: Colors.grey[700]), overflow: TextOverflow.ellipsis)),
-                  ],
-                ),
-              ),
-            ],
+            SizedBox(width: 16),
+            Expanded(child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: locked ? Colors.grey[500] : done ? Colors.green[800] : Colors.grey[800]))),
+            Icon(locked ? Icons.lock : done ? Icons.check_circle : Icons.upload_file, color: locked ? Colors.grey[400] : done ? Colors.green : color, size: 24),
           ],
         ),
       ),
@@ -366,9 +545,17 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   }
 
   Widget _buildSubmitButton() {
-    // Crew tidak bisa tekan KIRIM, hanya Nahkoda
+    // DEBUG
+    print('🔘 _buildSubmitButton called:');
+    print('   _isCrew: $_isCrew');
+    print('   _isNahkoda: $_isNahkoda');
+    print('   _crewComplete: $_crewComplete');
+    
+    // Crew: tombol SIMPAN DATA untuk upload BBM/Es
     if (_isCrew) {
+      print('   ✅ Masuk kondisi CREW');
       if (_crewComplete) {
+        print('   ✅ Crew Complete - Show success message');
         return Container(
           margin: EdgeInsets.all(16),
           padding: EdgeInsets.all(20),
@@ -395,17 +582,57 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
           ),
         );
       }
-      return SizedBox.shrink();
+      
+      // Crew bisa upload data BBM/Es
+      bool hasCrewData = _fuelFilePath != null || _iceFilePath != null;
+      print('   🔵 Crew belum complete - Show SIMPAN DATA button');
+      print('   hasCrewData: $hasCrewData');
+      return Container(
+        margin: EdgeInsets.all(16),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: hasCrewData ? LinearGradient(colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)]) : null,
+          color: hasCrewData ? null : Colors.grey,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ElevatedButton(
+          onPressed: hasCrewData && !_isLoading ? _submit : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            padding: EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: _isLoading
+              ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.save, size: 24, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('SIMPAN DATA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ],
+                ),
+        ),
+      );
     }
 
-    // Nahkoda bisa tekan KIRIM
+    // Nahkoda: tombol KIRIM & MULAI TRIP
+    print('   ❌ Bukan Crew - Show KIRIM & MULAI TRIP button');
+    print('   _canSubmit: $_canSubmit');
     return Container(
       margin: EdgeInsets.all(16),
       width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: _canSubmit ? LinearGradient(colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)]) : null,
+        color: _canSubmit ? null : Colors.grey,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ElevatedButton(
         onPressed: _canSubmit && !_isLoading && _isNahkoda ? _submit : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _canSubmit ? Colors.green : Colors.grey,
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
           padding: EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -414,76 +641,49 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.send, size: 24),
+                  Icon(Icons.arrow_forward, size: 24, color: Colors.white),
                   SizedBox(width: 12),
-                  Text('KIRIM & MULAI TRIP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('LANJUTKAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                 ],
               ),
       ),
     );
   }
 
-  void _showFuelDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Upload Data BBM'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: _fuelAmountController, decoration: InputDecoration(labelText: 'Jumlah (Liter)'), keyboardType: TextInputType.number),
-            TextField(controller: _fuelPriceController, decoration: InputDecoration(labelText: 'Harga/Liter (Rp)'), keyboardType: TextInputType.number),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Batal')),
-          ElevatedButton(
-            onPressed: () async {
-              FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'jpeg', 'png']);
-              if (result != null) {
-                setState(() => _fuelFilePath = result.files.single.path);
-                Navigator.pop(context);
-              }
-            },
-            child: Text('Upload Bukti'),
-          ),
-        ],
+
+
+  Future<void> _navigateToFuelUpload() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UploadFuelScreen(tripId: widget.tripId!),
       ),
     );
+    
+    if (result == true) {
+      setState(() => _fuelFilePath = 'uploaded');
+      await _loadTripOperationalData();
+    }
   }
 
-  void _showIceDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Upload Data Es'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: _iceAmountController, decoration: InputDecoration(labelText: 'Jumlah (Kg)'), keyboardType: TextInputType.number),
-            TextField(controller: _icePriceController, decoration: InputDecoration(labelText: 'Harga/Kg (Rp)'), keyboardType: TextInputType.number),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Batal')),
-          ElevatedButton(
-            onPressed: () async {
-              FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'jpeg', 'png']);
-              if (result != null) {
-                setState(() => _iceFilePath = result.files.single.path);
-                Navigator.pop(context);
-              }
-            },
-            child: Text('Upload Bukti'),
-          ),
-        ],
+  Future<void> _navigateToIceUpload() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UploadIceScreen(tripId: widget.tripId!),
       ),
     );
+    
+    if (result == true) {
+      setState(() => _iceFilePath = 'uploaded');
+      await _loadTripOperationalData();
+    }
   }
 
   Future<void> _pickDoc(String type) async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png']);
+      
       if (result != null && result.files.single.path != null) {
         final file = result.files.single;
         if (file.size > 10 * 1024 * 1024) {
@@ -502,62 +702,62 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   }
 
   Future<void> _submit() async {
+    print('\n🔴 [SUBMIT] Button clicked!');
+    print('   _isCrew: $_isCrew');
+    print('   _isNahkoda: $_isNahkoda');
+    print('   _crewComplete: $_crewComplete');
+    print('   _nahkodaComplete: $_nahkodaComplete');
+    
+    // Crew sudah upload di halaman terpisah, langsung navigate ke PreTrackingScreen
+    if (_isCrew && _crewComplete) {
+      print('➡️ [SUBMIT] Crew complete, navigating to PreTrackingScreenSimple...');
+      NavigationHelper.pushNoTransition(
+        context,
+        PreTrackingScreenSimple(
+          tripId: widget.tripId!,
+          tripData: widget.tripData ?? {},
+        ),
+      );
+      return;
+    }
+
+    // Nahkoda upload documents
     setState(() => _isLoading = true);
     try {
       if (_isCrew && widget.tripId != null) {
-        if (_fuelFilePath != null) {
-          await TripService.uploadFuelData(
-            tripId: widget.tripId!,
-            jenisBahanBakar: 'Solar',
-            jumlahLiter: double.parse(_fuelAmountController.text),
-            hargaPerLiter: double.parse(_fuelPriceController.text),
-            totalHarga: double.parse(_fuelAmountController.text) * double.parse(_fuelPriceController.text),
-            tanggalPengisian: DateTime.now().toIso8601String(),
-            buktiFilePath: _fuelFilePath,
-          );
-        }
-        if (_iceFilePath != null) {
-          await TripService.uploadIceData(
-            tripId: widget.tripId!,
-            jenisEs: 'Es Balok',
-            jumlahKg: double.parse(_iceAmountController.text),
-            hargaPerKg: double.parse(_icePriceController.text),
-            totalHarga: double.parse(_iceAmountController.text) * double.parse(_icePriceController.text),
-            tanggalPembelian: DateTime.now().toIso8601String(),
-            buktiFilePath: _iceFilePath,
-          );
-        }
+        // Crew data already uploaded in separate screens
+        print('💾 [SUBMIT] Crew data already uploaded');
       }
 
       if (_isNahkoda && widget.tripId != null) {
-        if (_izinMelautPath != null) await TripService.uploadTripDocument(tripId: widget.tripId!, jenisDokumen: 'izinMelaut', filePath: _izinMelautPath!);
-        if (_dokumenKapalPath != null) await TripService.uploadTripDocument(tripId: widget.tripId!, jenisDokumen: 'dokumenKapal', filePath: _dokumenKapalPath!);
-        if (_asuransiPath != null) await TripService.uploadTripDocument(tripId: widget.tripId!, jenisDokumen: 'asuransi', filePath: _asuransiPath!);
+        print('💾 [SUBMIT] Uploading Nahkoda documents...');
+        if (_izinMelautPath != null && _izinMelautPath != 'uploaded') {
+          print('   Uploading Izin Melaut...');
+          await TripService.uploadTripDocument(tripId: widget.tripId!, jenisDokumen: 'izinMelaut', filePath: _izinMelautPath!);
+        }
+        if (_dokumenKapalPath != null && _dokumenKapalPath != 'uploaded') {
+          print('   Uploading Dokumen Kapal...');
+          await TripService.uploadTripDocument(tripId: widget.tripId!, jenisDokumen: 'dokumenKapal', filePath: _dokumenKapalPath!);
+        }
+        if (_asuransiPath != null && _asuransiPath != 'uploaded') {
+          print('   Uploading Asuransi...');
+          await TripService.uploadTripDocument(tripId: widget.tripId!, jenisDokumen: 'asuransi', filePath: _asuransiPath!);
+        }
       }
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Semua data berhasil dikirim!'), backgroundColor: Colors.green));
 
-      // Navigate to waiting approval screen for both Nahkoda and Crew
-      NavigationHelper.pushReplacementNoTransition(
+      // Navigate to PreTrackingScreen for both Nahkoda and Crew
+      print('➡️ [SUBMIT] Navigating to PreTrackingScreenSimple...');
+      NavigationHelper.pushNoTransition(
         context,
-        WaitingApprovalScreen(
-          tripData: {
-            'tripId': widget.tripId,
-            'vesselName': widget.tripData?['vesselName'] ?? '',
-            'vesselNumber': widget.tripData?['vesselNumber'] ?? '',
-            'captainName': widget.tripData?['captainName'] ?? '',
-            'crewCount': widget.tripData?['crewCount'] ?? 0,
-            'departureHarbor': widget.tripData?['departureHarbor'] ?? '',
-            'departureDate': widget.tripData?['departureDate'] ?? DateTime.now(),
-            'estimatedDuration': widget.tripData?['estimatedDuration'] ?? 1,
-            'emergencyContact': widget.tripData?['emergencyContact'] ?? '',
-            'fuelAmount': widget.tripData?['fuelAmount'] ?? 0.0,
-            'iceStorage': widget.tripData?['iceStorage'] ?? 0.0,
-            'notes': widget.tripData?['notes'],
-          },
+        PreTrackingScreenSimple(
+          tripId: widget.tripId!,
+          tripData: widget.tripData ?? {},
         ),
       );
     } catch (e) {
+      print('❌ [SUBMIT] Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
     } finally {
       setState(() => _isLoading = false);
@@ -566,10 +766,10 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
 
   @override
   void dispose() {
-    _fuelAmountController.dispose();
-    _fuelPriceController.dispose();
-    _iceAmountController.dispose();
-    _icePriceController.dispose();
     super.dispose();
   }
 }
+
+
+
+

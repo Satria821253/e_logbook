@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../services/api/trip_service.dart';
@@ -13,7 +12,6 @@ class MyTripsScreen extends StatefulWidget {
 
 class _MyTripsScreenState extends State<MyTripsScreen> {
   List<Map<String, dynamic>> _trips = [];
-  bool _isLoading = true;
 
   @override
   void initState() {
@@ -22,7 +20,6 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
   }
 
   Future<void> _loadTrips() async {
-    setState(() => _isLoading = true);
     try {
       // Ambil kapal ID dari profile
       final prefs = await SharedPreferences.getInstance();
@@ -50,22 +47,25 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
         
         print('🔍 [MyTrips] Filtered: ${filteredTrips.length}/${allTrips.length} trips');
         
-        setState(() {
-          _trips = filteredTrips;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _trips = filteredTrips;
+          });
+        }
       } else {
-        setState(() {
-          _trips = [];
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _trips = [];
+          });
+        }
       }
     } catch (e) {
       print('Error loading trips: $e');
-      setState(() {
-        _trips = [];
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _trips = [];
+        });
+      }
     }
   }
 
@@ -73,12 +73,16 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
     switch (status?.toLowerCase()) {
       case 'menunggu_dokumen':
         return Colors.orange;
+      case 'menunggu_izin':
+        return Colors.amber;
       case 'siap_berangkat':
         return Colors.blue;
       case 'berlangsung':
         return Colors.green;
       case 'selesai':
-        return Colors.grey;
+        return Colors.green;
+      case 'ditolak':
+        return Colors.red;
       default:
         return Colors.grey;
     }
@@ -88,6 +92,8 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
     switch (status?.toLowerCase()) {
       case 'menunggu_dokumen':
         return 'Menunggu Dokumen';
+      case 'menunggu_izin':
+        return 'Menunggu Izin';
       case 'siap_berangkat':
         return 'Siap Berangkat';
       case 'berlangsung':
@@ -137,17 +143,15 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadTrips,
-        child: _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : _trips.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: _trips.length,
-                    itemBuilder: (context, index) {
-                      return _buildTripCard(_trips[index]);
-                    },
-                  ),
+        child: _trips.isEmpty
+            ? _buildEmptyState()
+            : ListView.builder(
+                padding: EdgeInsets.all(16),
+                itemCount: _trips.length,
+                itemBuilder: (context, index) {
+                  return _buildTripCard(_trips[index]);
+                },
+              ),
       ),
     );
   }
@@ -169,8 +173,6 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
   }
 
   Widget _buildTripCard(Map<String, dynamic> trip) {
-    final dateFormat = DateFormat('dd MMM yyyy');
-    
     // Debug: Print trip data
     print('\n========== TRIP CARD DATA ==========');
     print('Trip ID: ${trip['id']}');
@@ -180,20 +182,6 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
     print('targetIkan: ${trip['targetIkan']}');
     print('estimasiBerat: ${trip['estimasiBerat']}');
     print('====================================\n');
-    
-    DateTime? tanggalBerangkat;
-    DateTime? estimasiPulang;
-    try {
-      tanggalBerangkat = trip['tanggalBerangkat'] != null 
-          ? DateTime.parse(trip['tanggalBerangkat']) 
-          : null;
-      estimasiPulang = trip['estimasiPulang'] != null 
-          ? DateTime.parse(trip['estimasiPulang']) 
-          : null;
-    } catch (e) {
-      tanggalBerangkat = null;
-      estimasiPulang = null;
-    }
 
     return Container(
       margin: EdgeInsets.only(bottom: 16),
@@ -289,29 +277,6 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
                   _getCrewCount(trip['awakKapal']),
                   Colors.orange,
                 ),
-                SizedBox(height: 12),
-                _buildInfoRow(
-                  Icons.calendar_today,
-                  'Tanggal Berangkat',
-                  tanggalBerangkat != null ? dateFormat.format(tanggalBerangkat) : '-',
-                  Colors.green,
-                ),
-                SizedBox(height: 12),
-                _buildInfoRow(
-                  Icons.event_available,
-                  'Estimasi Pulang',
-                  estimasiPulang != null ? dateFormat.format(estimasiPulang) : '-',
-                  Colors.blue,
-                ),
-                if (trip['durasi'] != null) ...[
-                  SizedBox(height: 12),
-                  _buildInfoRow(
-                    Icons.access_time,
-                    'Durasi',
-                    '${trip['durasi']} hari',
-                    Colors.red,
-                  ),
-                ],
                 if (trip['targetIkan'] != null) ...[
                   SizedBox(height: 12),
                   _buildInfoRow(

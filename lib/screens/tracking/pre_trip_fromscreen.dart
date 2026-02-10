@@ -148,34 +148,31 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
             children: [
               // Header
               Padding(
-                padding: EdgeInsets.all(ResponsiveHelper.appBarPadding(context)),
-                child: SizedBox(
-                  height: ResponsiveHelper.appBarHeight(context),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(
-                          Icons.arrow_back,
+                padding: EdgeInsets.all(ResponsiveHelper.spacing(context, mobile: 16, tablet: 12)),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: ResponsiveHelper.font(context, mobile: 24, tablet: 20),
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 10)),
+                    Expanded(
+                      child: Text(
+                        'Persiapan Trip Melaut',
+                        style: TextStyle(
+                          fontSize: ResponsiveHelper.font(context, mobile: 20, tablet: 18),
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
-                          size: ResponsiveHelper.appBarIconSize(context),
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      SizedBox(width: ResponsiveHelper.spacing(context, mobile: 12, tablet: 8)),
-                      Expanded(
-                        child: Text(
-                          'Persiapan Trip Melaut',
-                          style: TextStyle(
-                            fontSize: ResponsiveHelper.appBarTitleSize(context),
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -544,41 +541,6 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
 
                           SizedBox(height: 24),
 
-                          // ===== SECTION 5: PERSEDIAAN =====
-                          _buildSectionHeader('5. Persediaan'),
-                          SizedBox(height: 12),
-
-                          CustomTextField(
-                            controller: _fuelController,
-                            label: 'Persediaan BBM (Liter)',
-                            hint: 'Contoh: 500',
-                            icon: Icons.local_gas_station,
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value?.isEmpty ?? true) return 'Wajib diisi';
-                              final number = double.tryParse(value!);
-                              if (number == null || number <= 0) return 'Harus lebih dari 0';
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 16),
-
-                          CustomTextField(
-                            controller: _iceStorageController,
-                            label: 'Kapasitas Penyimpanan Es (Kg)',
-                            hint: 'Contoh: 1000',
-                            icon: Icons.ac_unit,
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value?.isEmpty ?? true) return 'Wajib diisi';
-                              final number = double.tryParse(value!);
-                              if (number == null || number <= 0) return 'Harus lebih dari 0';
-                              return null;
-                            },
-                          ),
-
-                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 24, tablet: 19)),
-
                           // Next button
                           SizedBox(
                             width: double.infinity,
@@ -607,31 +569,6 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
                                     ),
                                   ),
                                 ],
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-
-                          // Cancel button
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.grey[700],
-                                side: BorderSide(color: Colors.grey[400]!),
-                                padding: EdgeInsets.symmetric(vertical: ResponsiveHelper.spacing(context, mobile: 18, tablet: 14)),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(ResponsiveHelper.spacing(context, mobile: 12, tablet: 9)),
-                                ),
-                              ),
-                              child: Text(
-                                'Batal',
-                                style: TextStyle(
-                                  fontSize: ResponsiveHelper.font(context, mobile: 16, tablet: 13),
-                                  fontWeight: FontWeight.w600,
-                                ),
                               ),
                             ),
                           ),

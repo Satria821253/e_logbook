@@ -20,7 +20,6 @@ class _CrewActiveTrackingScreenState extends State<CrewActiveTrackingScreen> {
   Position? _currentPosition;
   String _tripStatus = 'Berlayar';
   Timer? _locationTimer;
-  bool _isTracking = true;
   bool _isSendingSOS = false;
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};

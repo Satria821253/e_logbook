@@ -5,6 +5,7 @@ import '../screens/data_raw_screen.dart';
 import '../screens/crew/screens/fish_photo_tips_screen.dart';
 import '../screens/crew/screens/crew_my_trips_screen.dart';
 import '../screens/schedules/my_schedules_screen.dart';
+import '../screens/schedules/trip_history_screen.dart';
 import 'common_routes.dart';
 
 class CrewRoutes {
@@ -19,6 +20,13 @@ class CrewRoutes {
     NavigationHelper.pushNoTransition(
       context,
       const MySchedulesScreen(),
+    );
+  }
+
+  static void navigateToMyTripsHistory(BuildContext context) {
+    NavigationHelper.pushNoTransition(
+      context,
+      const TripHistoryScreen(),
     );
   }
 

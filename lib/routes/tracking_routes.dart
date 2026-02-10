@@ -1,5 +1,4 @@
 import 'package:e_logbook/screens/nahkoda/screens/aktif_tracking.dart';
-import 'package:e_logbook/screens/nahkoda/screens/pre_tracking.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 
@@ -14,36 +13,6 @@ class TrackingRoutes {
     );
   }
 
-  static void navigateToPreTracking(BuildContext context, {
-    required String vesselName,
-    required String vesselNumber,
-    required String captainName,
-    required int crewCount,
-    required String selectedHarbor,
-    required DateTime departureTime,
-    required int estimatedDuration,
-    required String emergencyContact,
-    required double fuelAmount,
-    required double iceStorage,
-    required Map<String, dynamic> harborCoordinates,
-  }) {
-    NavigationHelper.pushNoTransition(
-      context,
-      PreTrackingScreen(
-        vesselName: vesselName,
-        vesselNumber: vesselNumber,
-        captainName: captainName,
-        crewCount: crewCount,
-        selectedHarbor: selectedHarbor,
-        departureTime: departureTime,
-        estimatedDuration: estimatedDuration,
-        emergencyContact: emergencyContact,
-        fuelAmount: fuelAmount,
-        iceStorage: iceStorage,
-        harborCoordinates: harborCoordinates,
-      ),
-    );
-  }
 
   static void navigateToActiveTracking(BuildContext context, {
     required String vesselName,

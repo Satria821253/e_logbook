@@ -1,26 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import '../../../models/trip_model.dart';
-import '../../../services/api/trip_service.dart';
-import '../../tracking/pre_trip_fromscreen.dart';
+import 'package:provider/provider.dart';
+import '../../models/trip_model.dart';
+import '../../services/api/trip_service.dart';
+import '../../provider/user_provider.dart';
 
-class CrewMyTripsScreen extends StatefulWidget {
-  const CrewMyTripsScreen({Key? key}) : super(key: key);
+class TripHistoryScreen extends StatefulWidget {
+  const TripHistoryScreen({Key? key}) : super(key: key);
 
   @override
-  State<CrewMyTripsScreen> createState() => _CrewMyTripsScreenState();
+  State<TripHistoryScreen> createState() => _TripHistoryScreenState();
 }
 
-class _CrewMyTripsScreenState extends State<CrewMyTripsScreen> {
+class _TripHistoryScreenState extends State<TripHistoryScreen> {
   bool _isLoading = true;
   List<TripModel> _trips = [];
   String? _errorMessage;
+  String? _userRole;
 
   @override
   void initState() {
     super.initState();
+    _loadUserRole();
     _loadTrips();
+  }
+
+  Future<void> _loadUserRole() async {
+    // Try SharedPreferences first
+    final prefs = await SharedPreferences.getInstance();
+    var role = prefs.getString('role')?.toLowerCase();
+    
+    // Fallback to UserProvider if SharedPreferences is empty
+    if (role == null && mounted) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      role = userProvider.user?.role?.toLowerCase();
+      print('🔍 [TripHistory] Using UserProvider role: $role');
+    }
+    
+    print('🔍 [TripHistory] Loading user role: $role');
+    setState(() {
+      _userRole = role;
+    });
   }
 
   Future<void> _loadTrips() async {
@@ -30,41 +51,101 @@ class _CrewMyTripsScreenState extends State<CrewMyTripsScreen> {
     });
 
     try {
-      // Ambil kapal ID dari profile
       final prefs = await SharedPreferences.getInstance();
-      final vesselDataString = prefs.getString('vessel_data');
-      int? userKapalId;
+      var userId = prefs.getInt('user_id');
+      var userRole = prefs.getString('role')?.toLowerCase();
+      var userName = prefs.getString('name');
       
-      if (vesselDataString != null) {
-        try {
-          final vesselData = json.decode(vesselDataString);
-          userKapalId = vesselData['kapal']?['id'];
-          print('🚢 [CrewTrips] User Kapal ID: $userKapalId');
-        } catch (e) {
-          print('❌ [CrewTrips] Error parsing vessel_data: $e');
-        }
+      // Fallback to UserProvider if SharedPreferences is empty
+      if ((userId == null || userRole == null) && mounted) {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        userId = userProvider.user?.id;
+        userRole = userProvider.user?.role?.toLowerCase();
+        userName = userProvider.user?.name;
+        print('🔍 [TripHistory] Using UserProvider data');
+      }
+      
+      print('👤 [TripHistory] User ID: $userId, Role: $userRole, Name: $userName');
+      
+      // Validasi: Jika data user tidak ada, tampilkan error
+      if (userId == null || userRole == null) {
+        print('❌ [TripHistory] User data not found');
+        setState(() {
+          _errorMessage = 'Data pengguna tidak ditemukan. Silakan login kembali.';
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      // Pastikan role sudah di-set di state
+      if (_userRole == null) {
+        setState(() {
+          _userRole = userRole;
+        });
       }
       
       final response = await TripService.getAllTrips();
       if (response['success'] == true) {
         final List<dynamic> tripsData = response['data'] ?? [];
         
-        // Filter berdasarkan kapal DAN status bukan selesai/ditolak
+        // Filter berdasarkan role dan user, HANYA status selesai
         final filteredTrips = tripsData.where((trip) {
-          final tripKapalId = trip['kapal']?['id'];
           final status = trip['status']?.toLowerCase();
-          final isMatchingKapal = userKapalId == null || tripKapalId == userKapalId;
-          final isActive = status != 'selesai' && status != 'ditolak';
-          return isMatchingKapal && isActive;
+          
+          // Harus status selesai
+          if (status != 'selesai') return false;
+          
+          // Filter berdasarkan role
+          if (userRole == 'nahkoda') {
+            // Nahkoda: cek apakah dia nahkoda di trip ini
+            final nahkoda = trip['nahkoda'];
+            if (nahkoda == null) return false;
+            
+            // Jika nahkoda adalah object
+            if (nahkoda is Map) {
+              final nahkodaId = nahkoda['id'];
+              final nahkodaNama = nahkoda['nama'];
+              final isMyTrip = nahkodaId == userId || nahkodaNama == userName;
+              print('🔍 [TripHistory-Nahkoda] Trip ${trip['id']}: nahkodaId=$nahkodaId, userId=$userId, match=$isMyTrip');
+              return isMyTrip;
+            }
+            // Jika nahkoda adalah ID langsung
+            else if (nahkoda is int) {
+              final isMyTrip = nahkoda == userId;
+              print('🔍 [TripHistory-Nahkoda] Trip ${trip['id']}: nahkodaId=$nahkoda, userId=$userId, match=$isMyTrip');
+              return isMyTrip;
+            }
+            return false;
+          } else {
+            // Crew: cek apakah dia ada di awakKapal
+            final awakKapal = trip['awakKapal'];
+            if (awakKapal == null) return false;
+            
+            if (awakKapal is List) {
+              final isMyTrip = awakKapal.any((crew) {
+                // Jika crew adalah object
+                if (crew is Map) {
+                  final crewId = crew['id'];
+                  final crewNama = crew['nama'];
+                  return crewId == userId || crewNama == userName;
+                }
+                // Jika crew adalah ID langsung
+                else if (crew is int) {
+                  return crew == userId;
+                }
+                return false;
+              });
+              print('🔍 [TripHistory-Crew] Trip ${trip['id']}: isInCrew=$isMyTrip');
+              return isMyTrip;
+            }
+            return false;
+          }
         }).toList();
         
-        // Ambil hanya 1 trip pertama
-        final limitedTrips = filteredTrips.take(1).toList();
-        
-        print('🔍 [CrewTrips] Filtered: ${limitedTrips.length}/${tripsData.length} trips');
+        print('✅ [TripHistory] Found ${filteredTrips.length} completed trips');
         
         setState(() {
-          _trips = limitedTrips.map((json) => TripModel.fromJson(json)).toList();
+          _trips = filteredTrips.map((json) => TripModel.fromJson(json)).toList();
           _isLoading = false;
         });
       } else {
@@ -74,46 +155,11 @@ class _CrewMyTripsScreenState extends State<CrewMyTripsScreen> {
         });
       }
     } catch (e) {
+      print('❌ [TripHistory] Error: $e');
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
         _isLoading = false;
       });
-    }
-  }
-
-  String _getStatusText(String status) {
-    switch (status) {
-      case 'menunggu_dokumen':
-        return 'Menunggu Dokumen';
-      case 'menunggu_izin':
-        return 'Menunggu Izin';
-      case 'siap_berangkat':
-        return 'Siap Berangkat';
-      case 'berlayar':
-        return 'Berlayar';
-      case 'selesai':
-        return 'Selesai';
-      default:
-        return status;
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'menunggu_dokumen':
-        return Colors.orange;
-      case 'menunggu_izin':
-        return Colors.amber;
-      case 'siap_berangkat':
-        return Colors.blue;
-      case 'berlayar':
-        return Colors.green;
-      case 'selesai':
-        return Colors.green;
-      case 'ditolak':
-        return Colors.red;
-      default:
-        return Colors.grey;
     }
   }
 
@@ -122,7 +168,7 @@ class _CrewMyTripsScreenState extends State<CrewMyTripsScreen> {
     return Scaffold(
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: Text('Tugas Saya', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text('Riwayat Tugas Saya', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         iconTheme: IconThemeData(color: Colors.white),
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -187,15 +233,15 @@ class _CrewMyTripsScreenState extends State<CrewMyTripsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.assignment_outlined, size: 80, color: Colors.grey[400]),
+          Icon(Icons.history, size: 80, color: Colors.grey[400]),
           SizedBox(height: 16),
           Text(
-            'Belum Ada Tugas',
+            'Belum Ada Riwayat',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[700]),
           ),
           SizedBox(height: 8),
           Text(
-            'Anda belum memiliki trip yang ditugaskan',
+            'Belum ada trip yang selesai',
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
         ],
@@ -204,6 +250,7 @@ class _CrewMyTripsScreenState extends State<CrewMyTripsScreen> {
   }
 
   Widget _buildTripCard(TripModel trip) {
+    final dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
 
     return Container(
       margin: EdgeInsets.only(bottom: 16),
@@ -220,12 +267,11 @@ class _CrewMyTripsScreenState extends State<CrewMyTripsScreen> {
       ),
       child: Column(
         children: [
-          // Header
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                colors: [Colors.green, Colors.green.shade700],
               ),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16),
@@ -240,7 +286,7 @@ class _CrewMyTripsScreenState extends State<CrewMyTripsScreen> {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.directions_boat, color: Colors.white, size: 24),
+                  child: Icon(Icons.check_circle, color: Colors.white, size: 24),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -266,114 +312,45 @@ class _CrewMyTripsScreenState extends State<CrewMyTripsScreen> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(trip.status),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    _getStatusText(trip.status),
+                    'Selesai',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.green,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-
-          // Content - Simplified for crew
           Padding(
             padding: EdgeInsets.all(16),
             child: Column(
               children: [
-                if (trip.nahkoda.nama != '-')
+                _buildInfoRow(Icons.directions_boat, 'Kapal', trip.kapal.namaKapal),
+                SizedBox(height: 12),
+                _buildInfoRow(Icons.numbers, 'No. Registrasi', trip.kapal.nomorRegistrasi),
+                SizedBox(height: 12),
+                // Tampilkan nahkoda hanya jika user adalah crew
+                if (_userRole != null && _userRole != 'nahkoda' && trip.nahkoda.nama != '-') ...[
                   _buildInfoRow(Icons.person_outline, 'Nahkoda', trip.nahkoda.nama),
-                if (trip.nahkoda.nama != '-')
                   SizedBox(height: 12),
+                ],
                 _buildInfoRow(Icons.groups, 'Jumlah Crew', '${trip.awakKapal.length} orang'),
+                SizedBox(height: 12),
+                _buildInfoRow(Icons.calendar_today, 'Tanggal Berangkat', dateFormat.format(trip.tanggalBerangkat)),
+                SizedBox(height: 12),
+                _buildInfoRow(Icons.access_time, 'Durasi', '${trip.durasi} hari'),
+                SizedBox(height: 12),
+                _buildInfoRow(Icons.location_on, 'Area Tangkap', trip.areaTangkap.nama),
                 SizedBox(height: 12),
                 _buildInfoRow(Icons.phishing, 'Target Ikan', trip.targetIkan),
                 SizedBox(height: 12),
                 _buildInfoRow(Icons.scale, 'Estimasi Berat', '${trip.estimasiBerat.toStringAsFixed(0)} kg'),
-                
-                if (trip.suratTugas != null) ...[
-                  SizedBox(height: 16),
-                  Divider(),
-                  SizedBox(height: 8),
-                  InkWell(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Membuka surat tugas...')),
-                      );
-                    },
-                    child: Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF1B4F9C).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Color(0xFF1B4F9C).withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.description, color: Color(0xFF1B4F9C), size: 20),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Lihat Surat Tugas',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1B4F9C),
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.arrow_forward_ios, color: Color(0xFF1B4F9C), size: 16),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-
-                SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PreTripFormScreen(
-                            tripData: {
-                              'tripId': trip.id,
-                              'vesselName': trip.kapal.namaKapal,
-                              'vesselNumber': trip.kapal.nomorRegistrasi,
-                              'crewCount': trip.awakKapal.length,
-                              'departureHarbor': trip.areaTangkap.nama,
-                              'estimatedDuration': trip.durasi,
-                              'departureDate': trip.tanggalBerangkat,
-                              'estimatedReturnDate': trip.estimasiPulang,
-                              'fuelSupply': 0.0,
-                              'iceSupply': 0.0,
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF1B4F9C),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: Text(
-                      'Lanjut ke Persiapan Trip',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

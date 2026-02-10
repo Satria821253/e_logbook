@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../models/trip_model.dart';
@@ -50,15 +49,22 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
       if (response['success'] == true) {
         final List<dynamic> tripsData = response['data'] ?? [];
         
-        // Filter berdasarkan kapal
-        final filteredTrips = userKapalId != null
-            ? tripsData.where((trip) => trip['kapal']?['id'] == userKapalId).toList()
-            : tripsData;
+        // Filter berdasarkan kapal DAN status bukan selesai/ditolak
+        final filteredTrips = tripsData.where((trip) {
+          final tripKapalId = trip['kapal']?['id'];
+          final status = trip['status']?.toLowerCase();
+          final isMatchingKapal = userKapalId == null || tripKapalId == userKapalId;
+          final isActive = status != 'selesai' && status != 'ditolak';
+          return isMatchingKapal && isActive;
+        }).toList();
         
-        print('🔍 [NahkodaTrips] Filtered: ${filteredTrips.length}/${tripsData.length} trips');
+        // Ambil hanya 1 trip pertama
+        final limitedTrips = filteredTrips.take(1).toList();
+        
+        print('🔍 [NahkodaTrips] Filtered: ${limitedTrips.length}/${tripsData.length} trips');
         
         setState(() {
-          _trips = filteredTrips.map((json) => TripModel.fromJson(json)).toList();
+          _trips = limitedTrips.map((json) => TripModel.fromJson(json)).toList();
           _isLoading = false;
         });
       } else {
@@ -79,6 +85,8 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
     switch (status) {
       case 'menunggu_dokumen':
         return 'Menunggu Dokumen';
+      case 'menunggu_izin':
+        return 'Menunggu Izin';
       case 'siap_berangkat':
         return 'Siap Berangkat';
       case 'berlayar':
@@ -94,12 +102,16 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
     switch (status) {
       case 'menunggu_dokumen':
         return Colors.orange;
+      case 'menunggu_izin':
+        return Colors.amber;
       case 'siap_berangkat':
         return Colors.blue;
       case 'berlayar':
         return Colors.green;
       case 'selesai':
-        return Colors.grey;
+        return Colors.green;
+      case 'ditolak':
+        return Colors.red;
       default:
         return Colors.grey;
     }
@@ -192,9 +204,6 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
   }
 
   Widget _buildTripCard(TripModel trip) {
-    final dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
-    final timeFormat = DateFormat('HH:mm', 'id_ID');
-
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -285,16 +294,6 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
                 SizedBox(height: 12),
                 _buildInfoRow(Icons.numbers, 'No. Registrasi', trip.kapal.nomorRegistrasi),
                 SizedBox(height: 12),
-                _buildInfoRow(Icons.calendar_today, 'Tanggal Berangkat',
-                    '${dateFormat.format(trip.tanggalBerangkat)} ${timeFormat.format(trip.tanggalBerangkat)}'),
-                SizedBox(height: 12),
-                _buildInfoRow(Icons.event, 'Estimasi Pulang',
-                    '${dateFormat.format(trip.estimasiPulang)} ${timeFormat.format(trip.estimasiPulang)}'),
-                SizedBox(height: 12),
-                _buildInfoRow(Icons.access_time, 'Durasi', '${trip.durasi} hari'),
-                SizedBox(height: 12),
-                _buildInfoRow(Icons.location_on, 'Area Tangkap', trip.areaTangkap.nama),
-                SizedBox(height: 12),
                 _buildInfoRow(Icons.phishing, 'Target Ikan', trip.targetIkan),
                 SizedBox(height: 12),
                 _buildInfoRow(Icons.scale, 'Estimasi Berat', '${trip.estimasiBerat.toStringAsFixed(0)} kg'),
@@ -365,6 +364,7 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF1B4F9C),
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -372,7 +372,7 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
                     ),
                     child: Text(
                       'Lanjut ke Persiapan Trip',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ),
                 ),

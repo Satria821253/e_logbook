@@ -49,6 +49,22 @@ class NahkodaMenuItems extends StatelessWidget {
             ),
           ),
         ),
+        // Riwayat Tugas Saya
+        Positioned(
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
+          child: ScaleTransition(
+            scale: animation,
+            child: FloatingActionButtonWidget(
+              icon: Icons.history,
+              color: Colors.teal,
+              onTap: () {
+                onMenuToggle();
+                NahkodaRoutes.navigateToMyTripsHistory(context);
+              },
+            ),
+          ),
+        ),
       ],
     );
   }

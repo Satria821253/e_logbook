@@ -1,5 +1,6 @@
 import 'package:e_logbook/screens/crew/screens/crew_active_tracking_screen.dart';
-import 'package:e_logbook/screens/nahkoda/screens/pre_tracking.dart';
+import 'package:e_logbook/screens/nahkoda/screens/aktif_tracking.dart';
+import 'package:e_logbook/services/api/trip_service.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:async';
@@ -35,16 +36,48 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
   }
 
   void _startPolling() {
-    // Simulate polling - replace with actual API call
+    print('🔄 [WaitingApproval] Start polling for trip ${widget.tripData['tripId']}');
+    
     _pollTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
-      // TODO: Call API to check approval status
-      // final status = await TripService.checkApprovalStatus(widget.tripData['tripId']);
-      
-      // Simulate approval after 10 seconds for demo
-      if (timer.tick >= 2) {
-        setState(() => _isApproved = true);
+      if (!mounted) {
         timer.cancel();
-        _showApprovedDialog();
+        return;
+      }
+      
+      try {
+        print('🔍 [WaitingApproval] Polling tick ${timer.tick}...');
+        
+        final tripId = widget.tripData['tripId'];
+        if (tripId == null) {
+          print('❌ [WaitingApproval] Trip ID is null');
+          return;
+        }
+        
+        final response = await TripService.getTripDetail(tripId);
+        print('📊 [WaitingApproval] Response: $response');
+        
+        if (response['success'] == true) {
+          final status = response['data']?['status']?.toString().toLowerCase();
+          print('📌 [WaitingApproval] Current status: $status');
+          
+          // Crew menunggu status 'aktif' (Nahkoda sudah mulai)
+          // Nahkoda menunggu status 'disetujui' (Admin approve)
+          final isNahkoda = _userRole?.toLowerCase() == 'nahkoda';
+          final targetStatus = isNahkoda ? 'disetujui' : 'aktif';
+          
+          if (status == targetStatus) {
+            print('✅ [WaitingApproval] Trip ready! Status: $status');
+            setState(() => _isApproved = true);
+            timer.cancel();
+            _showApprovedDialog();
+          } else {
+            print('⏳ [WaitingApproval] Still waiting... Status: $status');
+          }
+        } else {
+          print('⚠️ [WaitingApproval] API returned success=false');
+        }
+      } catch (e) {
+        print('❌ [WaitingApproval] Error polling: $e');
       }
     });
   }
@@ -53,37 +86,118 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 32),
-            SizedBox(width: 12),
-            Text('Trip Disetujui!'),
-          ],
-        ),
-        content: Text('Admin telah menyetujui trip Anda. Silakan mulai tracking sekarang.'),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _navigateToPreTracking();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: Text('Mulai Tracking'),
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.green.shade50, Colors.white],
+            ),
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 64,
+                ),
+              ),
+              SizedBox(height: 24),
+              Text(
+                _userRole?.toLowerCase() == 'nahkoda' ? 'Trip Disetujui!' : 'Trip Dimulai!',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                _userRole?.toLowerCase() == 'nahkoda'
+                    ? 'Admin telah menyetujui trip Anda.\nSilakan mulai tracking sekarang.'
+                    : 'Nahkoda telah memulai trip.\nSilakan mulai tracking sekarang.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.5,
+                ),
+              ),
+              SizedBox(height: 24),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green, Colors.green.shade700],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _navigateToPreTracking();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.navigation, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        'Mulai Tracking',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   void _navigateToPreTracking() {
-    final isNahkoda = _userRole == 'nahkoda';
+    // Cek role dari SharedPreferences atau tripData
+    final role = _userRole ?? widget.tripData['role'];
+    final isNahkoda = role?.toLowerCase() == 'nahkoda';
     
     if (isNahkoda) {
-      // Nahkoda goes to PreTrackingScreen
+      // Nahkoda goes to ActiveTrackingScreen (title: "Tracking Aktif")
       NavigationHelper.pushReplacementNoTransition(
         context,
-        PreTrackingScreen(
+        ActiveTrackingScreen(
           vesselName: widget.tripData['vesselName'] ?? '',
           vesselNumber: widget.tripData['vesselNumber'] ?? '',
           captainName: widget.tripData['captainName'] ?? '',
@@ -95,10 +209,16 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
           fuelAmount: widget.tripData['fuelAmount'] ?? 0.0,
           iceStorage: widget.tripData['iceStorage'] ?? 0.0,
           notes: widget.tripData['notes'],
+          harborCoordinates: widget.tripData['harborCoordinates'] ?? {
+            'lat': -6.1944,
+            'lng': 106.8229,
+            'name': widget.tripData['departureHarbor'] ?? 'Unknown',
+          },
+          zoneRadius: 50.0,
         ),
       );
     } else {
-      // Crew goes to CrewActiveTrackingScreen
+      // Crew goes to CrewActiveTrackingScreen (title: "Tracking Trip")
       NavigationHelper.pushReplacementNoTransition(
         context,
         CrewActiveTrackingScreen(tripData: widget.tripData),
@@ -119,8 +239,12 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
       child: Scaffold(
         backgroundColor: Color(0xFFF5F7FA),
         appBar: AppBar(
-          title: Text('Menunggu Persetujuan', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(
+            'Menunggu Persetujuan',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          ),
           automaticallyImplyLeading: false,
+          iconTheme: IconThemeData(color: Colors.white),
           flexibleSpace: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)]),
@@ -140,7 +264,9 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
                 ),
                 SizedBox(height: 32),
                 Text(
-                  'Menunggu Persetujuan Admin',
+                  _userRole?.toLowerCase() == 'nahkoda'
+                      ? 'Menunggu Persetujuan Admin'
+                      : 'Menunggu Nahkoda Memulai Trip',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey[800]),
                   textAlign: TextAlign.center,
                 ),

@@ -516,4 +516,50 @@ class TripService {
       throw Exception('Error: $e');
     }
   }
+
+  /// Update trip status
+  static Future<Map<String, dynamic>> updateTripStatus(int tripId, String status) async {
+    try {
+      print('\n========== UPDATE TRIP STATUS START ==========');
+      print('🔄 [STATUS] Trip ID: $tripId');
+      print('🔄 [STATUS] New Status: $status');
+      
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        throw Exception('Token tidak ditemukan');
+      }
+
+      final url = '$baseUrl/api/mobile/trip/$tripId/status';
+      print('🌐 [STATUS] URL: $url');
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'status': status}),
+      ).timeout(const Duration(seconds: 30));
+
+      print('📥 [STATUS] Response status: ${response.statusCode}');
+      print('📥 [STATUS] Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        print('✅ [STATUS] Status updated successfully');
+        print('========== UPDATE TRIP STATUS END (SUCCESS) ==========\n');
+        return result;
+      } else {
+        print('❌ [STATUS] Failed: ${response.statusCode}');
+        print('========== UPDATE TRIP STATUS END (FAILED) ==========\n');
+        throw Exception('Gagal update status trip');
+      }
+    } catch (e) {
+      print('❌ [STATUS] Exception: $e');
+      print('========== UPDATE TRIP STATUS END (ERROR) ==========\n');
+      throw Exception('Error: $e');
+    }
+  }
 }

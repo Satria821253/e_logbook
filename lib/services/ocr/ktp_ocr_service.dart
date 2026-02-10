@@ -298,17 +298,6 @@ class KTPOCRService {
     return nikPattern.hasMatch(line);
   }
 
-  /// Extract value after colon (:)
-  static String _extractValue(String line) {
-    if (line.contains(':')) {
-      final parts = line.split(':');
-      if (parts.length > 1) {
-        return parts[1].trim();
-      }
-    }
-    return line.trim();
-  }
-
   /// Check if string matches date pattern (DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY)
   static bool _isDatePattern(String text) {
     final datePatterns = [

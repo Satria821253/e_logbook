@@ -656,7 +656,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildTabletMenuGrid() {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
-        final user = userProvider.user;
         final menuItems = <Widget>[];
 
         menuItems.add(

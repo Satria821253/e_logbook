@@ -87,27 +87,32 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         print('\n========== FILTER SCHEDULES START ==========');
         print('📋 [MySchedules] Total trips from API: ${allTrips.length}');
         
-        // Filter berdasarkan kapal dan status
+        // Filter berdasarkan kapal dan status (exclude selesai & ditolak)
         final filteredTrips = allTrips.where((trip) {
           final tripKapalId = trip['kapal']?['id'];
           final status = trip['status']?.toLowerCase();
           
-          // Filter: kapal sama DAN status aktif
+          // Filter: kapal sama
           final isMatchingKapal = userKapalId == null || tripKapalId == userKapalId;
-          final isActiveStatus = status != 'selesai' && status != 'ditolak';
           
-          final match = isMatchingKapal && isActiveStatus;
+          // Filter: BUKAN status selesai atau ditolak
+          final isActive = status != 'selesai' && status != 'ditolak';
+          
+          final match = isMatchingKapal && isActive;
           if (match) {
             print('✅ [MySchedules] Match: Trip ID ${trip['id']}, Kapal ID $tripKapalId, Status: $status');
           }
           return match;
         }).toList();
         
-        print('🔍 [MySchedules] Filtered trips: ${filteredTrips.length}');
+        // Ambil hanya 1 trip pertama
+        final limitedTrips = filteredTrips.take(1).toList();
+        
+        print('🔍 [MySchedules] Filtered trips: ${limitedTrips.length}');
         print('========== FILTER SCHEDULES END ==========\n');
         
         setState(() {
-          _schedules = filteredTrips;
+          _schedules = limitedTrips;
           _isLoading = false;
         });
       } else {
@@ -125,29 +130,19 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     }
   }
 
-  Color _getPriorityColor(String? priority) {
-    switch (priority?.toLowerCase()) {
-      case 'high':
-        return Colors.red;
-      case 'medium':
-        return Colors.orange;
-      case 'low':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
-  }
 
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
       case 'menunggu_dokumen':
         return Colors.orange;
+      case 'menunggu_izin':
+        return Colors.amber;
       case 'siap_berangkat':
         return Colors.blue;
       case 'berlayar':
         return Colors.green;
       case 'selesai':
-        return Colors.grey;
+        return Colors.green;
       case 'ditolak':
         return Colors.red;
       case 'darurat':
@@ -161,6 +156,8 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     switch (status?.toLowerCase()) {
       case 'menunggu_dokumen':
         return 'Menunggu Dokumen';
+      case 'menunggu_izin':
+        return 'Menunggu Izin';
       case 'siap_berangkat':
         return 'Siap Berangkat';
       case 'berlayar':
@@ -182,12 +179,6 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       return '${awakKapal.length} orang';
     }
     return '0 orang';
-  }
-
-  String _formatTargetIkan(String? targetIkan) {
-    if (targetIkan == null || targetIkan.isEmpty) return '-';
-    if (targetIkan.toLowerCase() == 'sesuai jadwal tugas') return 'Belum ditentukan';
-    return targetIkan;
   }
 
   @override

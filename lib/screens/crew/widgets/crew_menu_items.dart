@@ -65,6 +65,22 @@ class CrewMenuItems extends StatelessWidget {
             ),
           ),
         ),
+        // Riwayat Tugas Saya
+        Positioned(
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 360, tablet: 490),
+          child: ScaleTransition(
+            scale: animation,
+            child: CrewFloatingActionButton(
+              icon: Icons.history,
+              color: Colors.teal,
+              onTap: () {
+                onMenuToggle();
+                CrewRoutes.navigateToMyTripsHistory(context);
+              },
+            ),
+          ),
+        ),
       ],
     );
   }
