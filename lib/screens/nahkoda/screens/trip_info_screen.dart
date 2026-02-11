@@ -1,6 +1,7 @@
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../constants/tracking_constants.dart';
 
 class TripInfoScreen extends StatefulWidget {
   const TripInfoScreen({Key? key}) : super(key: key);
@@ -256,28 +257,7 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
 
           // Action Button
           if (data['status'] == 'scheduled')
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: () => _startTrip(),
-                icon: const Icon(Icons.sailing),
-                label: const Text(
-                  'Mulai Trip',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
+            _buildStartTripButton(departureDate),
         ],
       ),
     );
@@ -406,6 +386,123 @@ class _TripInfoScreenState extends State<TripInfoScreen> {
         return 'Selesai';
       default:
         return 'Unknown';
+    }
+  }
+
+  Widget _buildStartTripButton(DateTime departureDate) {
+    final now = DateTime.now();
+    // Nahkoda bisa mulai 2 jam sebelum, crew tepat waktu
+    final bufferMinutes = TrackingConstants.nahkodaBufferMinutes;
+    final bufferTime = departureDate.subtract(Duration(minutes: bufferMinutes));
+    final canStartTracking = now.isAfter(bufferTime) || now.isAtSameMomentAs(bufferTime);
+    final timeUntilCanStart = bufferTime.difference(now);
+
+    if (!canStartTracking) {
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.schedule, color: Colors.orange),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Belum Waktunya',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tracking dapat dimulai ${bufferMinutes ~/ 60} jam sebelum keberangkatan',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tersedia dalam: ${_formatDuration(timeUntilCanStart)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.sailing),
+              label: const Text(
+                'Mulai Trip',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: () => _startTrip(),
+        icon: const Icon(Icons.sailing),
+        label: const Text(
+          'Mulai Trip',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    if (duration.inDays > 0) {
+      return '${duration.inDays} hari ${duration.inHours % 24} jam';
+    } else if (duration.inHours > 0) {
+      return '${duration.inHours} jam ${duration.inMinutes % 60} menit';
+    } else {
+      return '${duration.inMinutes} menit';
     }
   }
 

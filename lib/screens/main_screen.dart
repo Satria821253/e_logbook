@@ -1,13 +1,14 @@
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_floating_menu.dart';
-import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_tracking_button.dart';
+import 'package:e_logbook/screens/tracking/animated/tracking.dart';
 import 'package:e_logbook/screens/crew/widgets/crew_floating_menu.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:e_logbook/utils/profile_photo_cache.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
+import 'package:e_logbook/services/nitification/local_notification_service.dart';
 import 'package:e_logbook/widgets/sos_alert_dialog.dart';
 import 'package:e_logbook/routes/crew_routes.dart';
 import 'package:e_logbook/routes/nahkoda_routes.dart';
@@ -46,11 +47,16 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _requestNotificationPermission();
     _getCurrentLocation();
     AuthService.addAccountStatusInterceptor(context);
     AuthService.addTokenInterceptor(context);
     _loadUserData();
     _initCachedPhoto();
+  }
+  
+  Future<void> _requestNotificationPermission() async {
+    await LocalNotificationService.requestPermissions();
   }
   
   Future<void> _initCachedPhoto() async {
@@ -140,9 +146,9 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     // Gunakan ResponsiveHelper untuk konsistensi
     double fabSize = ResponsiveHelper.width(context, mobile: 70, tablet: 90);
-    double navHeight = ResponsiveHelper.height(context, mobile: 65, tablet: 75);
-    double iconSize = ResponsiveHelper.width(context, mobile: 26, tablet: 30);
-    double fontSize = ResponsiveHelper.font(context, mobile: 11, tablet: 13);
+    double navHeight = 70;
+    double iconSize = ResponsiveHelper.width(context, mobile: 24, tablet: 28);
+    double fontSize = ResponsiveHelper.font(context, mobile: 10, tablet: 12);
 
     return Consumer2<UserProvider, NavigationProvider>(
       builder: (context, userProvider, navProvider, child) {
@@ -175,57 +181,53 @@ class _MainScreenState extends State<MainScreen> {
             ],
           ),
 
-          // FAB - role based
           floatingActionButton: isABK
               ? _buildCatchFAB(fabSize)
-              : const NahkodaTrackingButton(),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerDocked,
+              : const TrackingAnimationButton(),
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
           bottomNavigationBar: BottomAppBar(
             shape: const CircularNotchedRectangle(),
-            notchMargin: ResponsiveHelper.width(context, mobile: 10, tablet: 12),
+            notchMargin: 8,
             elevation: 10,
-            child: SizedBox(
-              height: navHeight,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavItem(
-                    Icons.home_rounded,
-                    'Beranda',
-                    0,
-                    iconSize,
-                    fontSize,
-                    navProvider,
-                  ),
-                  _buildNavItem(
-                    Icons.bar_chart_rounded,
-                    'Statistik',
-                    1,
-                    iconSize,
-                    fontSize,
-                    navProvider,
-                  ),
-                  SizedBox(width: ResponsiveHelper.width(context, mobile: 40, tablet: 50)),
-                  _buildNavItem(
-                    Icons.history_rounded,
-                    'Riwayat',
-                    2,
-                    iconSize,
-                    fontSize,
-                    navProvider,
-                  ),
-                  _buildNavItem(
-                    Icons.person_rounded,
-                    'Profil',
-                    3,
-                    iconSize,
-                    fontSize,
-                    navProvider,
-                  ),
-                ],
-              ),
+            height: navHeight,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(
+                  Icons.home_rounded,
+                  'Beranda',
+                  0,
+                  iconSize,
+                  fontSize,
+                  navProvider,
+                ),
+                _buildNavItem(
+                  Icons.bar_chart_rounded,
+                  'Statistik',
+                  1,
+                  iconSize,
+                  fontSize,
+                  navProvider,
+                ),
+                const SizedBox(width: 80),
+                _buildNavItem(
+                  Icons.history_rounded,
+                  'Riwayat',
+                  2,
+                  iconSize,
+                  fontSize,
+                  navProvider,
+                ),
+                _buildNavItem(
+                  Icons.person_rounded,
+                  'Profil',
+                  3,
+                  iconSize,
+                  fontSize,
+                  navProvider,
+                ),
+              ],
             ),
           ),
         );
@@ -244,29 +246,33 @@ class _MainScreenState extends State<MainScreen> {
   ) {
     final bool isSelected = navProvider.selectedIndex == index;
 
-    return InkWell(
-      onTap: () => navProvider.setIndex(index),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: iconSize,
-              color: isSelected ? const Color(0xFF1B4F9C) : Colors.grey[500],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+    return Expanded(
+      child: InkWell(
+        onTap: () => navProvider.setIndex(index),
+        child: SizedBox(
+          height: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: iconSize,
                 color: isSelected ? const Color(0xFF1B4F9C) : Colors.grey[500],
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  color: isSelected ? const Color(0xFF1B4F9C) : Colors.grey[500],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );

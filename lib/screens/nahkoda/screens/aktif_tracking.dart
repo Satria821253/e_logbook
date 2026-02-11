@@ -22,6 +22,7 @@ class ActiveTrackingScreen extends StatefulWidget {
   final int crewCount;
   final String selectedHarbor;
   final DateTime departureTime;
+  final DateTime? estimatedReturnDate; // ← BARU: Dari API estimasiPulang
   final int estimatedDuration;
   final String emergencyContact;
   final double fuelAmount;
@@ -29,6 +30,8 @@ class ActiveTrackingScreen extends StatefulWidget {
   final String? notes;
   final Map<String, dynamic>? harborCoordinates;
   final double zoneRadius;
+  final String userRole; // 'Nahkoda' or 'ABK'
+  final String userName; // Nama user yang login
 
   const ActiveTrackingScreen({
     super.key,
@@ -38,6 +41,7 @@ class ActiveTrackingScreen extends StatefulWidget {
     required this.crewCount,
     required this.selectedHarbor,
     required this.departureTime,
+    this.estimatedReturnDate, // ← BARU: Optional dari API
     required this.estimatedDuration,
     required this.emergencyContact,
     required this.fuelAmount,
@@ -45,6 +49,8 @@ class ActiveTrackingScreen extends StatefulWidget {
     this.notes,
     this.harborCoordinates,
     required this.zoneRadius,
+    this.userRole = 'Nahkoda',
+    this.userName = '',
   });
 
   @override
@@ -64,7 +70,7 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
   // Fuel management
   double _remainingFuel = 0;
   bool _hasShownFuelWarning = false;
-  static const double FUEL_CONSUMPTION_RATE = 10.0;
+  static const double FUEL_CONSUMPTION_RATE = 5.0; // 5 liter per jam (lebih realistis untuk kapal nelayan)
 
   // Alarm
   bool _isAlarmPlaying = false;
@@ -242,7 +248,9 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
       if (!mounted) return;
 
       setState(() {
+        // Durasi yang sudah berjalan
         _tripDuration = DateTime.now().difference(widget.departureTime);
+        
         _updateFuelConsumption();
       });
     });
@@ -510,6 +518,10 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
   // ==================== UI HELPERS ====================
 
   void _showTripSummary() {
+    // Hitung BBM terpakai berdasarkan konsumsi aktual
+    final fuelConsumed = widget.fuelAmount - _remainingFuel;
+    final fuelConsumedPercentage = (fuelConsumed / widget.fuelAmount * 100).clamp(0, 100);
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -542,26 +554,40 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
             const SizedBox(height: 20),
             _buildSummaryRow(
               Icons.access_time,
-              'Durasi',
+              'Durasi Trip',
               _formatDuration(_tripDuration),
+            ),
+            _buildSummaryRow(
+              Icons.calendar_today,
+              'Estimasi Durasi',
+              '${widget.estimatedDuration} hari',
+            ),
+            const Divider(height: 24),
+            _buildSummaryRow(
+              Icons.local_gas_station,
+              'BBM Awal',
+              '${widget.fuelAmount.toStringAsFixed(1)} L',
             ),
             _buildSummaryRow(
               Icons.local_gas_station,
               'BBM Tersisa',
-              '${_remainingFuel.toStringAsFixed(1)} L',
+              '${_remainingFuel.toStringAsFixed(1)} L (${((_remainingFuel / widget.fuelAmount * 100).clamp(0, 100)).toStringAsFixed(0)}%)',
             ),
             _buildSummaryRow(
               Icons.local_gas_station,
               'BBM Terpakai',
-              '${(widget.fuelAmount - _remainingFuel).toStringAsFixed(1)} L',
+              '${fuelConsumed.toStringAsFixed(1)} L (${fuelConsumedPercentage.toStringAsFixed(0)}%)',
             ),
+            const Divider(height: 24),
             _buildSummaryRow(
               Icons.ac_unit,
               'Kapasitas Es',
               '${widget.iceStorage.toStringAsFixed(0)} Kg',
             ),
-            if (widget.notes != null)
+            if (widget.notes != null) ...[
+              const Divider(height: 24),
               _buildSummaryRow(Icons.note, 'Catatan', widget.notes!),
+            ],
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -666,23 +692,20 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
           children: [
             _buildBody(sp),
 
-            // Catch Button (Catat Tangkapan) - Kiri bawah
-            Positioned(
-              left: 20,
-              bottom: 100,
-              child: FloatingActionButton.extended(
-                onPressed: _navigateToCatchScreen,
-                backgroundColor: const Color(0xFF5CB85C),
-                icon: const Icon(Icons.phishing_rounded, color: Colors.white),
-                label: const Text(
-                  'Catat Tangkapan',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            // Catch Button - Hanya untuk ABK (di atas emergency button)
+            if (widget.userRole == 'ABK')
+              Positioned(
+                right: 20,
+                bottom: 180,
+                child: FloatingActionButton(
+                  onPressed: _navigateToCatchScreen,
+                  backgroundColor: const Color(0xFF5CB85C),
+                  heroTag: 'catch_button',
+                  child: const Icon(Icons.phishing_rounded, color: Colors.white, size: 28),
                 ),
-                heroTag: 'catch_button',
               ),
-            ),
 
-            // Emergency Button Mengambang - Kanan bawah
+            // Emergency Button - Untuk semua role
             Positioned(
               right: 20,
               bottom: 100,
@@ -696,30 +719,22 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
 
   PreferredSizeWidget _buildAppBar(double Function(double) sp) {
     return AppBar(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Tracking Aktif',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
-            ),
-          ),
-          Text(
-            widget.vesselName,
-            style: TextStyle(
-              fontSize: ResponsiveHelper.font(context, mobile: 12, tablet: 14),
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-        ],
+      title: Text(
+        'Tracking Aktif',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+          fontSize: ResponsiveHelper.font(context, mobile: 18, tablet: 20),
+        ),
       ),
       backgroundColor: Colors.transparent,
       elevation: 0,
       automaticallyImplyLeading: false,
       iconTheme: const IconThemeData(color: Colors.white),
+      actions: [
+        _buildUserBadge(sp),
+        SizedBox(width: 16),
+      ],
       flexibleSpace: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -732,16 +747,60 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
     );
   }
 
+  Widget _buildUserBadge(double Function(double) sp) {
+    // Tentukan warna badge berdasarkan role
+    final badgeColor = widget.userRole == 'Nahkoda' 
+        ? Colors.amber.withOpacity(0.9)
+        : Colors.blue.withOpacity(0.9);
+    
+    final iconData = widget.userRole == 'Nahkoda'
+        ? Icons.anchor
+        : Icons.person;
+
+    // Gunakan userName jika ada, fallback ke captainName
+    final displayName = widget.userName.isNotEmpty 
+        ? widget.userName 
+        : widget.captainName;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: badgeColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(iconData, size: 14, color: Colors.white),
+          ),
+          SizedBox(width: 8),
+          Text(
+            '${widget.userRole}, $displayName',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody(double Function(double) sp) {
     final fuelPercentage = ((_remainingFuel / widget.fuelAmount) * 100).clamp(
       0,
       100,
     );
-    final estimatedEnd = widget.departureTime.add(
-      Duration(days: widget.estimatedDuration),
-    );
-    final remainingTime = estimatedEnd.difference(DateTime.now());
-    final isOvertime = remainingTime.isNegative;
 
     return Column(
       children: [
@@ -753,7 +812,6 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
 
                 // Warning Banners
                 if (fuelPercentage < 20) _buildFuelWarningBanner(sp),
-                if (isOvertime) _buildOvertimeBanner(sp),
 
                 VesselHeaderCard(
                   vesselName: widget.vesselName,
@@ -764,10 +822,21 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
                 SizedBox(height: sp(12)),
 
                 // Trip Statistics
-                TripStatisticsCard(
-                  tripDuration: _tripDuration,
-                  currentDistance: _currentZoneInfo?['distance'],
-                  isViolating: _isViolating,
+                Builder(
+                  builder: (context) {
+                    print('\n📦 PASSING DATA TO TripStatisticsCard:');
+                    print('   departureDate: ${widget.departureTime}');
+                    print('   estimatedReturnDate: ${widget.estimatedReturnDate}');
+                    print('   estimatedDurationDays: ${widget.estimatedDuration}');
+                    
+                    return TripStatisticsCard(
+                      departureDate: widget.departureTime,
+                      estimatedReturnDate: widget.estimatedReturnDate,
+                      estimatedDurationDays: widget.estimatedDuration,
+                      currentDistance: _currentZoneInfo?['distance'],
+                      isViolating: _isViolating,
+                    );
+                  },
                 ),
 
                 SizedBox(height: sp(16)),
@@ -826,30 +895,6 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
           Expanded(
             child: Text(
               'BBM Rendah: ${fuelPercentage.toStringAsFixed(0)}%',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOvertimeBanner(double Function(double) sp) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: sp(16), vertical: sp(8)),
-      padding: EdgeInsets.all(sp(12)),
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(sp(8)),
-        border: Border.all(color: Colors.blue),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.access_time, color: Colors.blue),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Trip melebihi estimasi ${widget.estimatedDuration} hari',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),

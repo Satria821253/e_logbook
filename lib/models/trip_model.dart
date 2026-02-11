@@ -33,6 +33,9 @@ class TripModel {
     required this.updatedAt,
   });
 
+  // Helper untuk get crew count
+  int getCrewCount() => awakKapal.length + 1; // +1 nahkoda
+
   factory TripModel.fromJson(Map<String, dynamic> json) {
     // Parse awakKapal - bisa array of int atau array of object
     List<int> parseAwakKapal(dynamic awakKapal) {
@@ -116,11 +119,26 @@ class NahkodaInfo {
 
 class AreaTangkap {
   final String nama;
+  final String? zona;
+  final List<int>? zoneIds; // IDs dari catch-polygons
 
-  AreaTangkap({required this.nama});
+  AreaTangkap({
+    required this.nama,
+    this.zona,
+    this.zoneIds,
+  });
 
   factory AreaTangkap.fromJson(Map<String, dynamic>? json) {
     if (json == null) return AreaTangkap(nama: '-');
-    return AreaTangkap(nama: json['nama'] ?? '-');
+    return AreaTangkap(
+      nama: json['nama'] ?? '-',
+      zona: json['zona'],
+      zoneIds: json['zoneIds'] != null ? List<int>.from(json['zoneIds']) : null,
+    );
+  }
+
+  // Helper untuk extract zone names dari string
+  List<String> getZoneNames() {
+    return nama.split(',').map((n) => n.trim()).where((n) => n.isNotEmpty).toList();
   }
 }

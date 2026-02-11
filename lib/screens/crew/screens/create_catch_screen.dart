@@ -5,11 +5,11 @@ import 'package:e_logbook/provider/catch_provider.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/services/local/catch_submission_service.dart';
 import 'package:e_logbook/services/ai/gemini_fish_detection_service.dart';
+import 'package:e_logbook/services/api/trip_service.dart';
 import 'package:e_logbook/widgets/ai_detection_loading_widget.dart';
 import 'package:e_logbook/widgets/ai_detection_result_widget.dart';
 import 'package:e_logbook/widgets/image_picker.dart';
 import 'package:e_logbook/widgets/section_title.dart';
-import 'package:e_logbook/widgets/vessel_info_display.dart';
 import 'package:e_logbook/widgets/sync_status_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -58,9 +58,96 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   FishDetectionResult? _detectionResult;
   bool _showDetectionResult = false;
 
+  // Trip Data
+  Map<String, dynamic>? _tripData;
+  bool _isLoadingTrip = true;
+
   @override
   void initState() {
     super.initState();
+    _loadTripData();
+  }
+
+  Future<void> _loadTripData() async {
+    try {
+      debugPrint('\n🚢 [CATCH_SCREEN] Loading trip data...');
+      final result = await TripService.getMyTrips();
+      
+      if (result['success'] == true && result['data'] != null) {
+        final trips = result['data'] as List;
+        debugPrint('📊 [CATCH_SCREEN] Total trips: ${trips.length}');
+        
+        if (trips.isNotEmpty) {
+          final trip = trips[0];
+          debugPrint('🎯 [CATCH_SCREEN] Trip ID: ${trip['id']}');
+          debugPrint('🆔 [CATCH_SCREEN] Kapal ID: ${trip['kapalId']}');
+          debugPrint('👨✈️ [CATCH_SCREEN] Nahkoda ID: ${trip['nahkodaId']}');
+          debugPrint('👥 [CATCH_SCREEN] Crew IDs: ${trip['awakKapal']}');
+          
+          // Fetch detail trip untuk mendapatkan data lengkap
+          debugPrint('🔍 [CATCH_SCREEN] Fetching trip detail...');
+          final detailResult = await TripService.getTripDetail(trip['id']);
+          
+          if (detailResult['success'] == true && detailResult['data'] != null) {
+            final tripDetail = detailResult['data'];
+            debugPrint('✅ [CATCH_SCREEN] Trip detail loaded');
+            debugPrint('⚓ [CATCH_SCREEN] Vessel: ${tripDetail['kapal']?['namaKapal']}');
+            debugPrint('👨✈️ [CATCH_SCREEN] Captain: ${tripDetail['nahkoda']?['nama']}');
+            debugPrint('📅 [CATCH_SCREEN] Departure: ${tripDetail['tanggalBerangkat']}');
+            debugPrint('📅 [CATCH_SCREEN] Return: ${tripDetail['estimasiPulang']}');
+            
+            safeSetState(() {
+              _tripData = tripDetail;
+              _isLoadingTrip = false;
+              
+              // Auto-fill waktu dari trip
+              if (tripDetail['tanggalBerangkat'] != null) {
+                try {
+                  final departureDateTime = DateTime.parse(tripDetail['tanggalBerangkat']);
+                  _departureDate = departureDateTime;
+                  _departureTime = TimeOfDay(hour: departureDateTime.hour, minute: departureDateTime.minute);
+                  debugPrint('✅ [CATCH_SCREEN] Auto-filled departure time:');
+                  debugPrint('   Date: ${_departureDate.day}/${_departureDate.month}/${_departureDate.year}');
+                  debugPrint('   Time: ${_departureTime.hour}:${_departureTime.minute}');
+                } catch (e) {
+                  debugPrint('❌ [CATCH_SCREEN] Failed to parse departure date: $e');
+                }
+              } else {
+                debugPrint('⚠️ [CATCH_SCREEN] No departure date in trip data');
+              }
+              
+              if (tripDetail['estimasiPulang'] != null) {
+                try {
+                  final returnDateTime = DateTime.parse(tripDetail['estimasiPulang']);
+                  _arrivalDate = returnDateTime;
+                  _arrivalTime = TimeOfDay(hour: returnDateTime.hour, minute: returnDateTime.minute);
+                  debugPrint('✅ [CATCH_SCREEN] Auto-filled return time:');
+                  debugPrint('   Date: ${_arrivalDate.day}/${_arrivalDate.month}/${_arrivalDate.year}');
+                  debugPrint('   Time: ${_arrivalTime.hour}:${_arrivalTime.minute}');
+                } catch (e) {
+                  debugPrint('❌ [CATCH_SCREEN] Failed to parse return date: $e');
+                }
+              } else {
+                debugPrint('⚠️ [CATCH_SCREEN] No return date in trip data');
+              }
+              
+              // Calculate duration
+              _calculateDuration();
+              debugPrint('⏱️ [CATCH_SCREEN] Calculated duration: $_calculatedHours hours $_calculatedMinutes minutes');
+            });
+          } else {
+            debugPrint('⚠️ [CATCH_SCREEN] Failed to load trip detail - will use UserProvider fallback');
+            safeSetState(() => _isLoadingTrip = false);
+          }
+        } else {
+          debugPrint('⚠️ [CATCH_SCREEN] No trips found - will use UserProvider fallback');
+          safeSetState(() => _isLoadingTrip = false);
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ [CATCH_SCREEN] Error: $e - will use UserProvider fallback');
+      safeSetState(() => _isLoadingTrip = false);
+    }
   }
 
   @override
@@ -241,16 +328,43 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   void _saveCatch() async {
     if (!_validateForm()) return;
 
-    // Get vessel info from UserProvider
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final user = userProvider.user;
+    String vesselName;
+    String vesselNumber;
+    String captainName;
+    int crewCount;
+    int kapalId;
 
-    if (user?.vesselName == null) {
-      _showSnackBar(
-        '⚠️ Silakan atur informasi kapal di profil terlebih dahulu!',
-      );
-      return;
+    if (_tripData != null) {
+      debugPrint('\n📦 [CATCH] Using trip data');
+      final kapal = _tripData!['kapal'];
+      final nahkoda = _tripData!['nahkoda'];
+      final awakKapal = _tripData!['awakKapal'] as List?;
+      
+      vesselName = kapal['namaKapal'] ?? 'Unknown';
+      vesselNumber = kapal['nomorRegistrasi'] ?? kapal['nomorKapal'] ?? 'Unknown';
+      captainName = nahkoda['nama'] ?? 'Unknown';
+      crewCount = awakKapal?.length ?? 0;
+      kapalId = _tripData!['kapalId'] ?? 1;
+    } else {
+      debugPrint('\n⚠️ [CATCH] Using UserProvider fallback');
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final user = userProvider.user;
+
+      if (user?.vesselName == null) {
+        _showSnackBar('⚠️ Silakan lengkapi data kapal di profil!');
+        return;
+      }
+      
+      vesselName = user!.vesselName!;
+      vesselNumber = user.vesselNumber!;
+      captainName = user.captainName!;
+      crewCount = user.crewCount ?? 0;
+      kapalId = 1;
     }
+    
+    debugPrint('⚓ [CATCH] Vessel: $vesselName');
+    debugPrint('🆔 [CATCH] Kapal ID: $kapalId');
+    debugPrint('👥 [CATCH] Crew: $crewCount');
 
     // Show loading
     showDialog(
@@ -286,7 +400,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
         'weight': weight,
         'quantity': int.tryParse(_quantityController.text) ?? 0,
         'condition': _selectedCondition,
-        'crew_count': user!.crewCount ?? 0,
+        'crew_count': crewCount,
         'departure_date': _departureDate.toIso8601String().split('T')[0],
         'departure_time': _departureTime.format(context),
         'arrival_date': _arrivalDate.toIso8601String().split('T')[0],
@@ -300,11 +414,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
         'water_depth': double.tryParse(_waterDepthController.text) ?? 0,
         'weather_condition': _selectedWeatherCondition,
         'notes': _notesController.text.isEmpty ? null : _notesController.text,
-        'kapalId': 1, // DUMMY: Backend vessel error, nanti auto-fill dari user
+        'kapalId': kapalId,
+        'tripId': _tripData?['id'], // Add tripId if available
         // Extra fields for local storage
-        'vesselName': user.vesselName ?? 'Unknown',
-        'vesselNumber': user.vesselNumber ?? 'Unknown',
-        'captainName': user.captainName ?? 'Unknown',
+        'vesselName': vesselName,
+        'vesselNumber': vesselNumber,
+        'captainName': captainName,
         'createdAt': DateTime.now().toIso8601String(),
       };
 
@@ -338,10 +453,10 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           quantity: int.tryParse(_quantityController.text) ?? 0,
           condition: _selectedCondition,
           photoPath: _catchImages[0].path,
-          vesselName: user.vesselName!,
-          vesselNumber: user.vesselNumber!,
-          captainName: user.captainName!,
-          crewCount: user.crewCount!,
+          vesselName: vesselName,
+          vesselNumber: vesselNumber,
+          captainName: captainName,
+          crewCount: crewCount,
           pricePerKg: 0, // Dihitung di backend
           totalRevenue: 0, // Dihitung di backend
           departureDate: _departureDate,
@@ -645,17 +760,107 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     double Function(double) sp,
     double Function(double) fs,
   ) {
-    return Consumer<UserProvider>(
-      builder: (context, userProvider, child) {
-        final user = userProvider.user;
+    if (_isLoadingTrip) {
+      return Container(
+        padding: EdgeInsets.all(sp(16)),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(sp(12)),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: sp(12)),
+              Text('Memuat data trip...', style: TextStyle(color: Colors.grey[600])),
+            ],
+          ),
+        ),
+      );
+    }
 
-        // Jika data kapal belum ada, gunakan VesselInfoDisplay
-        if (user?.vesselName == null) {
-          return VesselInfoDisplay();
-        }
+    if (_tripData == null) {
+      return Consumer<UserProvider>(
+        builder: (context, userProvider, child) {
+          final user = userProvider.user;
+          
+          if (user?.vesselName == null) {
+            return Container(
+              padding: EdgeInsets.all(sp(16)),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(sp(12)),
+                border: Border.all(color: Colors.orange[300]!),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.orange[700], size: fs(40)),
+                  SizedBox(height: sp(12)),
+                  Text('Data kapal belum lengkap', style: TextStyle(color: Colors.orange[700], fontWeight: FontWeight.bold)),
+                  SizedBox(height: sp(8)),
+                  Text('Silakan lengkapi profil', style: TextStyle(color: Colors.orange[600], fontSize: fs(12))),
+                ],
+              ),
+            );
+          }
+          
+          return Container(
+            padding: EdgeInsets.all(sp(16)),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(sp(12)),
+              border: Border.all(color: Colors.blue[300]!),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[700]),
+                    SizedBox(width: sp(8)),
+                    Expanded(
+                      child: Text(
+                        'Menggunakan data profil (belum ada trip aktif)',
+                        style: TextStyle(color: Colors.blue[700], fontSize: fs(12)),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: sp(12)),
+                _buildVesselCardContent(sp, fs,
+                  vesselName: user!.vesselName!,
+                  vesselNumber: user.vesselNumber!,
+                  captainName: user.captainName!,
+                  crewCount: user.crewCount!,
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
 
-        // Jika data kapal sudah ada, tampilkan card custom
-        return Container(
+    final kapal = _tripData!['kapal'];
+    final nahkoda = _tripData!['nahkoda'];
+    final awakKapal = _tripData!['awakKapal'] as List?;
+
+    return _buildVesselCardContent(sp, fs,
+      vesselName: kapal['namaKapal'] ?? 'Unknown',
+      vesselNumber: kapal['nomorRegistrasi'] ?? kapal['nomorKapal'] ?? 'Unknown',
+      captainName: nahkoda['nama'] ?? 'Unknown',
+      crewCount: awakKapal?.length ?? 0,
+    );
+  }
+
+  Widget _buildVesselCardContent(
+    double Function(double) sp,
+    double Function(double) fs, {
+    required String vesselName,
+    required String vesselNumber,
+    required String captainName,
+    required int crewCount,
+  }) {
+    return Container(
           padding: EdgeInsets.all(sp(16)),
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -691,7 +896,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user!.vesselName!,
+                          vesselName,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: fs(16),
@@ -699,7 +904,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                           ),
                         ),
                         Text(
-                          'No. ${user.vesselNumber}',
+                          'No. $vesselNumber',
                           style: TextStyle(
                             fontSize: fs(12),
                             color: Colors.grey[600],
@@ -752,7 +957,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                     child: _buildInfoItem(
                       icon: Icons.person_outline,
                       label: 'Nahkoda',
-                      value: user.captainName!,
+                      value: captainName,
                       sp: sp,
                       fs: fs,
                     ),
@@ -762,7 +967,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                     child: _buildInfoItem(
                       icon: Icons.groups_outlined,
                       label: 'Jumlah ABK',
-                      value: '${user.crewCount} orang',
+                      value: '$crewCount orang',
                       sp: sp,
                       fs: fs,
                     ),
@@ -772,8 +977,6 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
             ],
           ),
         );
-      },
-    );
   }
 
   Widget _buildInfoItem({
@@ -1106,31 +1309,19 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           Row(
             children: [
               Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: _departureDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                    );
-                    if (date != null) {
-                      setState(() => _departureDate = date);
-                      _calculateDuration();
-                    }
-                  },
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: 'Tanggal Berangkat',
-                      prefixIcon: Icon(Icons.calendar_today, color: Color(0xFF1B4F9C)),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(sp(12)),
-                      ),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Tanggal Berangkat',
+                    prefixIcon: Icon(Icons.calendar_today, color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(sp(12)),
                     ),
-                    child: Text(
-                      '${_departureDate.day}/${_departureDate.month}/${_departureDate.year}',
-                      style: TextStyle(fontSize: fs(14)),
-                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
+                  child: Text(
+                    '${_departureDate.day}/${_departureDate.month}/${_departureDate.year}',
+                    style: TextStyle(fontSize: fs(14), color: Colors.grey[700]),
                   ),
                 ),
               ),
@@ -1173,8 +1364,8 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                     final date = await showDatePicker(
                       context: context,
                       initialDate: _arrivalDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
+                      firstDate: _departureDate,
+                      lastDate: DateTime.now().add(Duration(days: 365)),
                     );
                     if (date != null) {
                       setState(() => _arrivalDate = date);
@@ -1240,7 +1431,9 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   Icon(Icons.timer, color: Colors.blue[700], size: fs(18)),
                   SizedBox(width: sp(8)),
                   Text(
-                    'Durasi: $_calculatedHours jam $_calculatedMinutes menit',
+                    _calculatedHours >= 24
+                        ? 'Durasi: ${(_calculatedHours / 24).floor()} hari ${_calculatedHours % 24} jam ${_calculatedMinutes} menit'
+                        : 'Durasi: $_calculatedHours jam $_calculatedMinutes menit',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.blue[700],

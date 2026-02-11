@@ -1,9 +1,13 @@
-import 'package:e_logbook/screens/tracking/pre_trip_fromscreen.dart';
+import 'package:e_logbook/screens/schedules/my_schedules_screen.dart';
 import 'package:e_logbook/services/cuaca/weather_service.dart';
-import 'package:e_logbook/utils/navigation_helper.dart';
+import 'package:e_logbook/services/api/trip_service.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import '../waiting_schedule_screen.dart';
+import '../../nahkoda/screens/aktif_tracking.dart';
 
 class TrackingAnimationButton extends StatefulWidget {
   const TrackingAnimationButton({super.key});
@@ -113,6 +117,7 @@ class _TrackingAnimationButtonState extends State<TrackingAnimationButton> {
     try {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
       );
 
       final weather = await WeatherService.getWeatherByPosition(position);
@@ -136,7 +141,11 @@ class _TrackingAnimationButtonState extends State<TrackingAnimationButton> {
       if (isExtreme) {
         _showModernWeatherWarning(context, weather);
       } else {
-        _showModernConfirmation(context, weather);
+        // Cuaca aman, langsung navigasi ke schedule
+        await Future.delayed(Duration(milliseconds: 300));
+        if (context.mounted) {
+          await _navigateToSchedule(context);
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -325,244 +334,14 @@ class _TrackingAnimationButtonState extends State<TrackingAnimationButton> {
               ),
             ),
 
-            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+            const SizedBox(height: 16),
           ],
         ),
       ),
     );
   }
 
-  void _showModernConfirmation(BuildContext context, WeatherData weather) {
-    final isWarning = weather.windSpeed > 25 || weather.waveHeight > 1.5;
-    final bool isNight = DateTime.now().hour >= 18 || DateTime.now().hour < 6;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ICON / LOTTIE
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isWarning
-                      ? Colors.orange.shade600
-                      : const Color(0xFF1B4F9C),
-                  width: 6,
-                ),
-
-                /// ========== BACKGROUND SIANG VS MALAM ==========
-                gradient: isWarning
-                    ? null
-                    : isNight
-                    ? const LinearGradient(
-                        colors: [
-                          Color(0xFF0D1B2A), // navy gelap
-                          Color(0xFF1B263B), // biru malam
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : const LinearGradient(
-                        colors: [
-                          Color(0xFFD0E8FF), // biru pagi soft
-                          Color(0xFFBBD7FF),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-              ),
-
-              child: Padding(
-                padding: const EdgeInsets.all(6.0),
-                  child: Lottie.asset(
-                    isWarning
-                        ? 'assets/animations/emergecy.json'
-                        : isNight
-                        ? 'assets/animations/siapmelautmalam.json'
-                        : 'assets/animations/siapmelaut.json',
-                    fit: BoxFit.contain,
-                    repeat: true,
-                  ),
-
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            Text(
-              isWarning
-                  ? 'Kondisi Waspada'
-                  : (isNight ? 'Siap Melaut Malam' : 'Siap Melaut'),
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1B4F9C),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Text(
-              isWarning
-                  ? 'Cuaca dalam kondisi waspada, harap berhati-hati'
-                  : (isNight
-                        ? 'Kondisi malam hari, tetap perhatikan arah angin & visibilitas'
-                        : 'Kondisi cuaca mendukung untuk melaut'),
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Weather Info Cards
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade50, Colors.blue.shade100],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.blue.shade200, width: 2),
-              ),
-              child: Column(
-                children: [
-                  _buildModernWeatherRow(
-                    Icons.wb_cloudy_rounded,
-                    'Kondisi',
-                    weather.condition,
-                    Colors.blue,
-                  ),
-                  const Divider(height: 24),
-                  _buildModernWeatherRow(
-                    Icons.thermostat_rounded,
-                    'Suhu',
-                    '${weather.temperature.toStringAsFixed(1)}°C',
-                    Colors.blue,
-                  ),
-                  const Divider(height: 24),
-                  _buildModernWeatherRow(
-                    Icons.air_rounded,
-                    'Kecepatan Angin',
-                    '${weather.windSpeed.toStringAsFixed(1)} km/h',
-                    Colors.blue,
-                  ),
-                  const Divider(height: 24),
-                  _buildModernWeatherRow(
-                    Icons.waves_rounded,
-                    'Tinggi Ombak',
-                    '${weather.waveHeight.toStringAsFixed(1)} m',
-                    Colors.blue,
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 56,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(
-                          color: Color(0xFF1B4F9C),
-                          width: 2,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text(
-                        'Batal',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1B4F9C),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        NavigationHelper.pushNoTransition(
-                          context,
-                          const PreTripFormScreen(),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1B4F9C),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Lanjutkan',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Colors.white,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ========================= MODERN ERROR DIALOG =========================
+  // ========================= HELPER WIDGET =========================
 
   void _showModernErrorDialog(
     BuildContext context,
@@ -651,6 +430,276 @@ class _TrackingAnimationButtonState extends State<TrackingAnimationButton> {
     );
   }
 
+  Future<void> _navigateToSchedule(BuildContext context) async {
+    try {
+      print('🔍 Checking schedule...');
+      
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      int? currentUserId;
+      
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        currentUserId = userData['id'];
+        print('👤 Current User ID: $currentUserId');
+      }
+      
+      final response = await TripService.getAllTrips();
+      print('📋 Trip response: ${response['success']}');
+      
+      if (response['success'] == true && response['data'] != null) {
+        final allTrips = List<Map<String, dynamic>>.from(response['data']);
+        print('📊 Total trips: ${allTrips.length}');
+        
+        // Cari trip untuk user ini
+        final myTrip = allTrips.firstWhere(
+          (trip) {
+            final nahkodaId = trip['nahkodaId'];
+            final awakKapal = trip['awakKapal'] as List?;
+            final status = trip['status']?.toLowerCase();
+            
+            final isMyTrip = (currentUserId != null && nahkodaId == currentUserId) ||
+                             (currentUserId != null && awakKapal != null && awakKapal.contains(currentUserId));
+            
+            return isMyTrip && (status == 'disetujui' || status == 'aktif' || status == 'berlayar');
+          },
+          orElse: () => {},
+        );
+        
+        if (myTrip.isNotEmpty) {
+          final status = myTrip['status']?.toLowerCase();
+          print('✅ Found trip with status: $status');
+          
+          // Jika status berlayar, langsung ke ActiveTrackingScreen tanpa cek cuaca
+          if (status == 'berlayar') {
+            print('🚢 Status berlayar, navigating directly to ActiveTrackingScreen');
+            await _navigateToActiveTracking(context, myTrip);
+            return;
+          }
+          
+          // Untuk status disetujui/aktif, ke WaitingScheduleScreen tanpa cek cuaca
+          print('⏰ Navigating to WaitingScheduleScreen');
+          await _navigateToWaitingSchedule(context, myTrip);
+          return;
+        }
+        
+        // Cari trip menunggu izin
+        final pendingTrips = allTrips.where((trip) {
+          final nahkodaId = trip['nahkodaId'];
+          final awakKapal = trip['awakKapal'] as List?;
+          final status = trip['status']?.toLowerCase();
+          
+          final isMyTrip = (currentUserId != null && nahkodaId == currentUserId) ||
+                           (currentUserId != null && awakKapal != null && awakKapal.contains(currentUserId));
+          
+          return isMyTrip && status == 'menunggu_izin';
+        }).toList();
+        
+        if (pendingTrips.isEmpty) {
+          if (context.mounted) {
+            _showNoScheduleDialog(context);
+          }
+        } else {
+          if (context.mounted) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MySchedulesScreen(),
+              ),
+            );
+          }
+        }
+      } else {
+        if (context.mounted) {
+          _showNoScheduleDialog(context);
+        }
+      }
+    } catch (e) {
+      print('❌ Error checking schedule: $e');
+      if (context.mounted) {
+        _showNoScheduleDialog(context);
+      }
+    }
+  }
+
+  Future<void> _navigateToWaitingSchedule(BuildContext context, Map<String, dynamic> tripData) async {
+    final kapal = tripData['kapal'] ?? {};
+    final nahkoda = tripData['nahkoda'] ?? {};
+    final perizinan = tripData['perizinan'] ?? {};
+    
+    double totalFuel = 0;
+    double totalIce = 0;
+    
+    final fuelDataList = perizinan['fuelData'] as List? ?? [];
+    for (var fuel in fuelDataList) {
+      totalFuel += (fuel['jumlahLiter'] ?? 0).toDouble();
+    }
+    
+    final iceDataList = perizinan['iceData'] as List? ?? [];
+    for (var ice in iceDataList) {
+      totalIce += (ice['jumlahKg'] ?? 0).toDouble();
+    }
+    
+    DateTime departureTime = DateTime.now();
+    try {
+      if (tripData['tanggalBerangkat'] != null) {
+        final dateString = tripData['tanggalBerangkat'].toString();
+        final datePart = DateTime.parse(dateString);
+        departureTime = DateTime(datePart.year, datePart.month, datePart.day, 8, 0);
+      }
+    } catch (e) {
+      print('❌ Error parsing date: $e');
+    }
+    
+    final prefs = await SharedPreferences.getInstance();
+    final userRole = prefs.getString('role')?.toLowerCase();
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WaitingScheduleScreen(
+          scheduledDepartureTime: departureTime,
+          tripData: {
+            'vesselName': kapal['namaKapal'] ?? '-',
+            'vesselNumber': kapal['nomorRegistrasi'] ?? '-',
+            'captainName': nahkoda['nama'] ?? '-',
+            'crewCount': (tripData['awakKapal'] as List?)?.length ?? 0,
+            'selectedHarbor': tripData['pelabuhanAsal'] ?? '-',
+            'departureTime': departureTime,
+            'estimatedDuration': tripData['durasi'] ?? 1,
+            'fuelAmount': totalFuel,
+            'iceStorage': totalIce,
+            'userRole': userRole == 'nahkoda' ? 'Nahkoda' : 'ABK',
+            'userName': nahkoda['nama'] ?? '-',
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _navigateToActiveTracking(BuildContext context, Map<String, dynamic> tripData) async {
+    final kapal = tripData['kapal'] ?? {};
+    final nahkoda = tripData['nahkoda'] ?? {};
+    final perizinan = tripData['perizinan'] ?? {};
+    
+    double totalFuel = 0;
+    double totalIce = 0;
+    
+    final fuelDataList = perizinan['fuelData'] as List? ?? [];
+    for (var fuel in fuelDataList) {
+      totalFuel += (fuel['jumlahLiter'] ?? 0).toDouble();
+    }
+    
+    final iceDataList = perizinan['iceData'] as List? ?? [];
+    for (var ice in iceDataList) {
+      totalIce += (ice['jumlahKg'] ?? 0).toDouble();
+    }
+    
+    DateTime departureTime = DateTime.now();
+    try {
+      if (tripData['tanggalBerangkat'] != null) {
+        final dateString = tripData['tanggalBerangkat'].toString();
+        final datePart = DateTime.parse(dateString);
+        departureTime = DateTime(datePart.year, datePart.month, datePart.day, 8, 0);
+      }
+    } catch (e) {
+      print('❌ Error parsing date: $e');
+    }
+    
+    final prefs = await SharedPreferences.getInstance();
+    final userRole = prefs.getString('role')?.toLowerCase();
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ActiveTrackingScreen(
+          vesselName: kapal['namaKapal'] ?? '',
+          vesselNumber: kapal['nomorRegistrasi'] ?? '',
+          captainName: nahkoda['nama'] ?? '',
+          crewCount: (tripData['awakKapal'] as List?)?.length ?? 0,
+          selectedHarbor: tripData['pelabuhanAsal'] ?? '',
+          departureTime: departureTime,
+          estimatedReturnDate: null,
+          estimatedDuration: tripData['durasi'] ?? 1,
+          emergencyContact: '',
+          fuelAmount: totalFuel,
+          iceStorage: totalIce,
+          notes: null,
+          harborCoordinates: null,
+          zoneRadius: 50.0,
+          userRole: userRole == 'nahkoda' ? 'Nahkoda' : 'ABK',
+          userName: nahkoda['nama'] ?? '',
+        ),
+      ),
+    );
+  }
+
+  void _showNoScheduleDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.calendar_today_outlined,
+                color: Colors.orange,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Belum Ada Jadwal Trip',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Anda belum memiliki jadwal penugasan trip. Silakan hubungi admin untuk mendapatkan jadwal trip atau cek menu Jadwal Tugas untuk informasi lebih lanjut.',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MySchedulesScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B4F9C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              'Cek Jadwal',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ========================= HELPER WIDGET =========================
 
   Widget _buildModernWeatherRow(
@@ -709,45 +758,117 @@ class _TrackingAnimationButtonState extends State<TrackingAnimationButton> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _checkWeatherAndNavigate(context),
-      child: Center(
-        child: Container(
-          width: 70,
-          height: 70,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFF1B4F9C), width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF1B4F9C).withOpacity(0.5),
-                blurRadius: 20,
-                spreadRadius: 2,
+    return FutureBuilder<String?>(
+      future: _getTripStatus(),
+      builder: (context, snapshot) {
+        final isSailing = snapshot.data == 'berlayar';
+        
+        return GestureDetector(
+          onTap: () => _checkWeatherAndNavigate(context),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  border: Border.all(
+                    color: isSailing ? Colors.green : const Color(0xFF1B4F9C),
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isSailing ? Colors.green : const Color(0xFF1B4F9C)).withOpacity(0.5),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                    BoxShadow(
+                      color: (isSailing ? Colors.greenAccent : Colors.blueAccent).withOpacity(0.4),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 600),
+                    switchInCurve: Curves.easeInOut,
+                    switchOutCurve: Curves.easeInOut,
+                    child: Lottie.asset(
+                      _currentAnimation,
+                      key: ValueKey(_currentAnimation),
+                      fit: BoxFit.cover,
+                      repeat: true,
+                      animate: true,
+                    ),
+                  ),
+                ),
               ),
-              BoxShadow(
-                color: Colors.blueAccent.withOpacity(0.4),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
+              if (isSailing)
+                Positioned(
+                  right: -5,
+                  top: -5,
+                  child: Container(
+                    padding: EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.5),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.sailing,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
             ],
           ),
-          child: ClipOval(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 600),
-              switchInCurve: Curves.easeInOut,
-              switchOutCurve: Curves.easeInOut,
-              child: Lottie.asset(
-                _currentAnimation,
-                key: ValueKey(_currentAnimation),
-                fit: BoxFit.cover,
-                repeat: true,
-                animate: true,
-              ),
-            ),
-          ),
-        ),
-      ),
+        );
+      },
     );
+  }
+
+  Future<String?> _getTripStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString == null) return null;
+      
+      final userData = json.decode(userDataString);
+      final currentUserId = userData['id'];
+      
+      final response = await TripService.getAllTrips();
+      if (response['success'] == true && response['data'] != null) {
+        final allTrips = List<Map<String, dynamic>>.from(response['data']);
+        
+        final myTrip = allTrips.firstWhere(
+          (trip) {
+            final nahkodaId = trip['nahkodaId'];
+            final awakKapal = trip['awakKapal'] as List?;
+            final isMyTrip = (currentUserId != null && nahkodaId == currentUserId) ||
+                             (currentUserId != null && awakKapal != null && awakKapal.contains(currentUserId));
+            return isMyTrip;
+          },
+          orElse: () => {},
+        );
+        
+        if (myTrip.isNotEmpty) {
+          return myTrip['status']?.toString().toLowerCase();
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 }

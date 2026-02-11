@@ -118,6 +118,11 @@ class CatchSubmissionService {
         'kapalId': catchData['kapalId'].toString(),
       });
       
+      // Add tripId if available
+      if (catchData['tripId'] != null) {
+        request.fields['tripId'] = catchData['tripId'].toString();
+      }
+      
       // Add image file
       request.files.add(
         await http.MultipartFile.fromPath('photo', imageFile.path),

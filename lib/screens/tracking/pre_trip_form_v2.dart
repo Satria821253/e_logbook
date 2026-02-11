@@ -33,6 +33,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   String? _izinMelautPath;
   String? _dokumenKapalPath;
   String? _asuransiPath;
+  bool _isLocked = false; // Status lock untuk nahkoda
 
   @override
   void initState() {
@@ -440,8 +441,8 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   }
 
   Widget _buildNahkodaSection() {
-    // Jika nahkoda sudah complete, jangan tampilkan section ini
-    if (_nahkodaComplete) return SizedBox.shrink();
+    // Jika sudah lock, jangan tampilkan section ini
+    if (_isLocked) return SizedBox.shrink();
     
     if (!_crewComplete && _isNahkoda) {
       return Container(
@@ -507,11 +508,11 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
           ),
           SizedBox(height: 20),
 
-          _buildUploadCard('Izin Melaut', Icons.sailing, Colors.green, _izinMelautUploaded, () => _pickDoc('izinMelaut'), _izinMelautPath, false),
+          _buildUploadCard('Izin Melaut', Icons.sailing, Colors.green, _izinMelautPath != null, () => _pickDoc('izinMelaut'), _izinMelautPath, _isLocked),
           SizedBox(height: 16),
-          _buildUploadCard('Dokumen Kapal', Icons.description, Colors.blue, _dokumenKapalUploaded, () => _pickDoc('dokumenKapal'), _dokumenKapalPath, !_izinMelautUploaded),
+          _buildUploadCard('Dokumen Kapal', Icons.description, Colors.blue, _dokumenKapalPath != null, () => _pickDoc('dokumenKapal'), _dokumenKapalPath, _isLocked),
           SizedBox(height: 16),
-          _buildUploadCard('Asuransi', Icons.security, Colors.purple, _asuransiUploaded, () => _pickDoc('asuransi'), _asuransiPath, !_dokumenKapalUploaded),
+          _buildUploadCard('Asuransi', Icons.security, Colors.purple, _asuransiPath != null, () => _pickDoc('asuransi'), _asuransiPath, _isLocked),
         ],
       ),
     );
@@ -545,17 +546,55 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   }
 
   Widget _buildSubmitButton() {
-    // DEBUG
-    print('🔘 _buildSubmitButton called:');
-    print('   _isCrew: $_isCrew');
-    print('   _isNahkoda: $_isNahkoda');
-    print('   _crewComplete: $_crewComplete');
-    
-    // Crew: tombol SIMPAN DATA untuk upload BBM/Es
+    // Nahkoda: Tombol LOCK PILIHAN jika semua file sudah dipilih tapi belum lock
+    if (_isNahkoda && !_isLocked) {
+      bool allFilesPicked = _izinMelautPath != null && _dokumenKapalPath != null && _asuransiPath != null;
+      
+      return Container(
+        margin: EdgeInsets.all(16),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: allFilesPicked ? LinearGradient(colors: [Colors.orange, Colors.deepOrange]) : null,
+          color: allFilesPicked ? null : Colors.grey,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ElevatedButton(
+          onPressed: allFilesPicked && !_isLoading ? _lockAndUpload : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            padding: EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: _isLoading
+              ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock, size: 24, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('LOCK DATA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ],
+                ),
+        ),
+      );
+    }
+
+    // Crew: Cek apakah nahkoda sudah dapat izin (status disetujui)
     if (_isCrew) {
       print('   ✅ Masuk kondisi CREW');
       if (_crewComplete) {
-        print('   ✅ Crew Complete - Show success message');
+        print('   ✅ Crew Complete - Check if nahkoda got approval');
+        
+        // Jika nahkoda sudah dapat izin (semua dokumen nahkoda sudah upload), langsung navigasi
+        if (_nahkodaComplete) {
+          print('   ✅ Nahkoda complete - Auto navigate to waiting schedule');
+          // Auto navigate setelah delay singkat
+          Future.delayed(Duration(milliseconds: 500), () {
+            if (mounted) _submit();
+          });
+        }
+        
         return Container(
           margin: EdgeInsets.all(16),
           padding: EdgeInsets.all(20),
@@ -574,7 +613,12 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
                   children: [
                     Text('Upload Selesai!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[800])),
                     SizedBox(height: 4),
-                    Text('Menunggu Nahkoda menyelesaikan dokumen dan mengirim', style: TextStyle(fontSize: 13, color: Colors.green[700])),
+                    Text(
+                      _nahkodaComplete 
+                          ? 'Nahkoda sudah menyelesaikan dokumen. Menuju waiting schedule...'
+                          : 'Menunggu Nahkoda menyelesaikan dokumen',
+                      style: TextStyle(fontSize: 13, color: Colors.green[700]),
+                    ),
                   ],
                 ),
               ),
@@ -617,35 +661,32 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       );
     }
 
-    // Nahkoda: tombol KIRIM & MULAI TRIP
-    print('   ❌ Bukan Crew - Show KIRIM & MULAI TRIP button');
-    print('   _canSubmit: $_canSubmit');
+    // Nahkoda: tombol LANJUT jika sudah lock
+    bool canProceed = _isNahkoda && _isLocked && _crewComplete;
     return Container(
       margin: EdgeInsets.all(16),
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: _canSubmit ? LinearGradient(colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)]) : null,
-        color: _canSubmit ? null : Colors.grey,
+        gradient: canProceed ? LinearGradient(colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)]) : null,
+        color: canProceed ? null : Colors.grey,
         borderRadius: BorderRadius.circular(12),
       ),
       child: ElevatedButton(
-        onPressed: _canSubmit && !_isLoading && _isNahkoda ? _submit : null,
+        onPressed: canProceed ? _submit : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           padding: EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: _isLoading
-            ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.arrow_forward, size: 24, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('LANJUTKAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                ],
-              ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.arrow_forward, size: 24, color: Colors.white),
+            SizedBox(width: 12),
+            Text('LANJUT', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          ],
+        ),
       ),
     );
   }
@@ -681,6 +722,8 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   }
 
   Future<void> _pickDoc(String type) async {
+    if (_isLocked) return; // Tidak bisa pilih file jika sudah lock
+    
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png']);
       
@@ -701,67 +744,46 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
     }
   }
 
+  Future<void> _lockAndUpload() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Konfirmasi Data'),
+        content: Text('Pastikan semua dokumen sudah benar. Setelah dikunci, Anda tidak bisa mengubah pilihan.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Batal')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text('Ya, Lock')),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isLocked = true;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Dokumen terkunci. Klik LANJUT untuk melanjutkan.'), backgroundColor: Colors.green),
+    );
+  }
+
   Future<void> _submit() async {
-    print('\n🔴 [SUBMIT] Button clicked!');
-    print('   _isCrew: $_isCrew');
-    print('   _isNahkoda: $_isNahkoda');
-    print('   _crewComplete: $_crewComplete');
-    print('   _nahkodaComplete: $_nahkodaComplete');
-    
-    // Crew sudah upload di halaman terpisah, langsung navigate ke PreTrackingScreen
-    if (_isCrew && _crewComplete) {
-      print('➡️ [SUBMIT] Crew complete, navigating to PreTrackingScreenSimple...');
-      NavigationHelper.pushNoTransition(
-        context,
-        PreTrackingScreenSimple(
-          tripId: widget.tripId!,
-          tripData: widget.tripData ?? {},
-        ),
-      );
-      return;
-    }
-
-    // Nahkoda upload documents
-    setState(() => _isLoading = true);
-    try {
-      if (_isCrew && widget.tripId != null) {
-        // Crew data already uploaded in separate screens
-        print('💾 [SUBMIT] Crew data already uploaded');
-      }
-
-      if (_isNahkoda && widget.tripId != null) {
-        print('💾 [SUBMIT] Uploading Nahkoda documents...');
-        if (_izinMelautPath != null && _izinMelautPath != 'uploaded') {
-          print('   Uploading Izin Melaut...');
-          await TripService.uploadTripDocument(tripId: widget.tripId!, jenisDokumen: 'izinMelaut', filePath: _izinMelautPath!);
-        }
-        if (_dokumenKapalPath != null && _dokumenKapalPath != 'uploaded') {
-          print('   Uploading Dokumen Kapal...');
-          await TripService.uploadTripDocument(tripId: widget.tripId!, jenisDokumen: 'dokumenKapal', filePath: _dokumenKapalPath!);
-        }
-        if (_asuransiPath != null && _asuransiPath != 'uploaded') {
-          print('   Uploading Asuransi...');
-          await TripService.uploadTripDocument(tripId: widget.tripId!, jenisDokumen: 'asuransi', filePath: _asuransiPath!);
-        }
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Semua data berhasil dikirim!'), backgroundColor: Colors.green));
-
-      // Navigate to PreTrackingScreen for both Nahkoda and Crew
-      print('➡️ [SUBMIT] Navigating to PreTrackingScreenSimple...');
-      NavigationHelper.pushNoTransition(
-        context,
-        PreTrackingScreenSimple(
-          tripId: widget.tripId!,
-          tripData: widget.tripData ?? {},
-        ),
-      );
-    } catch (e) {
-      print('❌ [SUBMIT] Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
-    } finally {
-      setState(() => _isLoading = false);
-    }
+    // Navigate ke PreTrackingScreen dengan membawa path dokumen
+    NavigationHelper.pushNoTransition(
+      context,
+      PreTrackingScreenSimple(
+        tripId: widget.tripId!,
+        tripData: {
+          ...widget.tripData ?? {},
+          'pendingDocuments': _isNahkoda ? {
+            'izinMelaut': _izinMelautPath,
+            'dokumenKapal': _dokumenKapalPath,
+            'asuransi': _asuransiPath,
+          } : null,
+        },
+      ),
+    );
   }
 
   @override

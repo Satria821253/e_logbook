@@ -7,6 +7,9 @@ import 'package:provider/provider.dart';
 import '../models/document_requirement_model.dart';
 import '../provider/user_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class NotificationScreen extends StatefulWidget {
   @override
@@ -17,10 +20,12 @@ class _NotificationScreenState extends State<NotificationScreen>
     with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _adminNotifications = [];
   List<DocumentRequirementModel> _documentRequirements = [];
+  List<Map<String, dynamic>> _tripNotifications = [];
   bool _isLoading = true;
   late TabController _tabController;
   int _unreadSystemCount = 0;
   int _unreadAdminCount = 0;
+  int _unreadTripCount = 0;
   bool _isSelectionMode = false;
   Set<String> _selectedNotifications = {};
 
@@ -56,7 +61,7 @@ class _NotificationScreenState extends State<NotificationScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadNotifications();
   }
 
@@ -75,10 +80,14 @@ class _NotificationScreenState extends State<NotificationScreen>
       final adminNotifications = await AdminNotificationService.getAdminNotificationsForUser(user.email);
       final documentRequirements = await AdminNotificationService.getDocumentRequirementsForUser(user.email);
       
+      // Load trip notifications from API
+      final tripNotifications = await _fetchTripNotificationsFromAPI();
+      
       if (mounted) {
         setState(() {
           _adminNotifications = adminNotifications;
           _documentRequirements = documentRequirements;
+          _tripNotifications = tripNotifications;
           _isLoading = false;
         });
         await _updateUnreadCounts();
@@ -91,6 +100,41 @@ class _NotificationScreenState extends State<NotificationScreen>
     }
   }
 
+  Future<List<Map<String, dynamic>>> _fetchTripNotificationsFromAPI() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      final userDataString = prefs.getString('user_data');
+      
+      if (token == null || userDataString == null) return [];
+      
+      final userData = json.decode(userDataString);
+      final userId = userData['id'];
+
+      final response = await http.get(
+        Uri.parse('https://elogbookipb.web.id/api/mobile/notifications'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final notifications = List<Map<String, dynamic>>.from(data['data']);
+          
+          // Filter notifications by userId
+          return notifications.where((n) => n['userId'] == userId).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print('❌ [Notification] Error fetching: $e');
+      return [];
+    }
+  }
+
   Future<void> _updateUnreadCounts() async {
     final user = Provider.of<UserProvider>(context, listen: false).user;
     if (user != null) {
@@ -100,13 +144,35 @@ class _NotificationScreenState extends State<NotificationScreen>
 
       final sysCount = await NotificationService.getUnreadSystemCount(systemIds);
       final adminCount = await AdminNotificationService.getUnreadCountForUser(user.email);
+      final tripCount = _tripNotifications.where((n) => n['isRead'] == false).length;
 
       if (mounted) {
         setState(() {
           _unreadSystemCount = sysCount;
           _unreadAdminCount = adminCount;
+          _unreadTripCount = tripCount;
         });
       }
+    }
+  }
+
+  Future<void> _markNotificationAsRead(dynamic notificationId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) return;
+
+      await http.put(
+        Uri.parse('https://elogbookipb.web.id/api/mobile/notifications/$notificationId/read'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+      
+      await _loadNotifications();
+    } catch (e) {
+      print('❌ [Notification] Error marking as read: $e');
     }
   }
 
@@ -128,7 +194,7 @@ class _NotificationScreenState extends State<NotificationScreen>
   }
 
   int _getAllUnreadCount() {
-    return _unreadSystemCount + _unreadAdminCount;
+    return _unreadSystemCount + _unreadAdminCount + _unreadTripCount;
   }
 
   @override
@@ -294,6 +360,50 @@ class _NotificationScreenState extends State<NotificationScreen>
                         clipBehavior: Clip.none,
                         children: [
                           Icon(
+                            Icons.sailing,
+                            size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
+                          ),
+                          if (_unreadTripCount > 0)
+                            Positioned(
+                              right: -8,
+                              top: -4,
+                              child: Container(
+                                padding: EdgeInsets.all(ResponsiveHelper.width(context, mobile: 2, tablet: 3)),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: BoxConstraints(
+                                  minWidth: ResponsiveHelper.width(context, mobile: 16, tablet: 18),
+                                  minHeight: ResponsiveHelper.height(context, mobile: 16, tablet: 18),
+                                ),
+                                child: Text(
+                                  '$_unreadTripCount',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: ResponsiveHelper.font(context, mobile: 9, tablet: 10),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      SizedBox(width: ResponsiveHelper.width(context, mobile: 6, tablet: 8)),
+                      const Text('Trip'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  height: ResponsiveHelper.height(context, mobile: 60, tablet: 70),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(
                             Icons.info_outline,
                             size: ResponsiveHelper.width(context, mobile: 24, tablet: 28),
                           ),
@@ -343,6 +453,7 @@ class _NotificationScreenState extends State<NotificationScreen>
                         physics: const ClampingScrollPhysics(),
                         children: [
                           _buildAllNotificationsTab(userProvider.user),
+                          _buildTripTab(),
                           _buildSystemTab(),
                         ],
                       );
@@ -355,7 +466,7 @@ class _NotificationScreenState extends State<NotificationScreen>
   }
 
   Widget _buildAllNotificationsTab(user) {
-    // Gabungkan semua notifikasi (admin + system)
+    // Gabungkan semua notifikasi (admin + trip + system)
     final allNotifications = <Map<String, dynamic>>[];
 
     // Add admin notifications
@@ -364,6 +475,15 @@ class _NotificationScreenState extends State<NotificationScreen>
         'type': 'admin',
         'data': notification,
         'dateTime': DateTime.parse(notification['created_at']),
+      });
+    }
+
+    // Add trip notifications
+    for (var notification in _tripNotifications) {
+      allNotifications.add({
+        'type': 'trip',
+        'data': notification,
+        'dateTime': DateTime.parse(notification['createdAt']),
       });
     }
 
@@ -416,6 +536,8 @@ class _NotificationScreenState extends State<NotificationScreen>
                   case 'admin':
                     var buildAdminNotificationCard = _buildAdminNotificationCard;
                     return buildAdminNotificationCard(notification['data']);
+                  case 'trip':
+                    return _buildTripNotificationCard(notification['data']);
                   case 'document':
                     return _buildDocumentRequirementCard(notification['data']);
                   case 'system':
@@ -450,6 +572,165 @@ class _NotificationScreenState extends State<NotificationScreen>
               notification['dateTime'],
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTripTab() {
+    return RefreshIndicator(
+      onRefresh: _loadNotifications,
+      child: _tripNotifications.isEmpty
+          ? SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _buildEmptyState(
+                  'Belum Ada Notifikasi Trip',
+                  'Notifikasi persetujuan trip akan muncul di sini',
+                  Icons.sailing,
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _tripNotifications.length,
+              itemBuilder: (context, index) {
+                return _buildTripNotificationCard(_tripNotifications[index]);
+              },
+            ),
+    );
+  }
+
+  Widget _buildTripNotificationCard(Map<String, dynamic> notification) {
+    final notificationId = notification['id'];
+    final isRead = notification['isRead'] == true;
+    final dateTime = DateTime.parse(notification['createdAt']);
+    
+    String timeLeft = '';
+    if (notification['departureTime'] != null) {
+      final departureTime = DateTime.parse(notification['departureTime']);
+      final duration = departureTime.difference(DateTime.now());
+      
+      if (duration.isNegative) {
+        timeLeft = 'Trip sudah dimulai';
+      } else if (duration.inDays > 0) {
+        timeLeft = '${duration.inDays} hari lagi';
+      } else if (duration.inHours > 0) {
+        timeLeft = '${duration.inHours} jam ${duration.inMinutes.remainder(60)} menit lagi';
+      } else {
+        timeLeft = '${duration.inMinutes} menit lagi';
+      }
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isRead ? Colors.white : Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isRead ? Colors.grey.shade200 : Colors.blue.shade200,
+          width: isRead ? 1 : 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            await _markNotificationAsRead(notificationId);
+            await _updateUnreadCounts();
+            setState(() {});
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Center(
+                    child: Icon(Icons.check_circle, color: Colors.green, size: 24),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '✅ Trip Aktif!',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1B4F9C),
+                              ),
+                            ),
+                          ),
+                          if (!isRead)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        notification['message'] ?? '',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          height: 1.4,
+                        ),
+                      ),
+                      if (timeLeft.isNotEmpty) ...[
+                        SizedBox(height: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: timeLeft.contains('sudah') ? Colors.grey.shade200 : Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            timeLeft,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: timeLeft.contains('sudah') ? Colors.grey.shade700 : Colors.orange.shade900,
+                            ),
+                          ),
+                        ),
+                      ],
+                      SizedBox(height: 8),
+                      Text(
+                        _getTimeAgo(dateTime),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

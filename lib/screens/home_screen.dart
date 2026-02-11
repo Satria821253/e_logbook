@@ -5,6 +5,7 @@ import 'package:e_logbook/screens/documents/document_popup_helper.dart';
 import 'package:e_logbook/screens/documents/pending_popup_helper.dart';
 import 'package:e_logbook/services/api/document_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
+import 'package:e_logbook/services/monitoring/schedule_monitoring_service.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:provider/provider.dart';
@@ -107,6 +108,8 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       print('🚀 [HOME] addPostFrameCallback executing, mounted=$mounted');
       _loadAllData();
+      // Check for new schedules
+      ScheduleMonitoringService.checkForNewSchedules();
     });
     print('🚀 [HOME] initState END');
   }
