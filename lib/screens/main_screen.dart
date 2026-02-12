@@ -1,4 +1,5 @@
 import 'package:e_logbook/provider/user_provider.dart';
+import 'package:e_logbook/provider/notification_provider.dart';
 import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_floating_menu.dart';
 import 'package:e_logbook/screens/tracking/animated/tracking.dart';
@@ -655,6 +656,55 @@ class _MainScreenState extends State<MainScreen> {
           ),
           
           const Spacer(),
+          
+          // Notification Icon
+          Consumer<NotificationProvider>(
+            builder: (context, notifProvider, child) {
+              return IconButton(
+                icon: Stack(
+                  children: [
+                    Icon(
+                      Icons.notifications_outlined,
+                      size: ResponsiveHelper.width(context, mobile: 20, tablet: 22),
+                      color: const Color(0xFF1B4F9C),
+                    ),
+                    // Badge untuk unread notifications
+                    if (notifProvider.unreadCount > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: BoxConstraints(
+                            minWidth: ResponsiveHelper.width(context, mobile: 14, tablet: 16),
+                            minHeight: ResponsiveHelper.height(context, mobile: 14, tablet: 16),
+                          ),
+                          child: Center(
+                            child: Text(
+                              notifProvider.unreadCount > 99 ? '99+' : '${notifProvider.unreadCount}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: ResponsiveHelper.font(context, mobile: 7, tablet: 8),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/notification');
+                },
+                tooltip: 'Notifikasi',
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           
           // User Info - Compact
           Column(

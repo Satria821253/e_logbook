@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:e_logbook/screens/main_screen.dart';
-import 'package:e_logbook/widgets/button_radio.dart';
 import 'package:e_logbook/widgets/account_inactive_dialog.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
 import 'package:e_logbook/services/local/user_activity_service.dart';
@@ -9,7 +8,6 @@ import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/utils/vessel_cache_helper.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
@@ -22,7 +20,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final ButtonRadioController _loginMethodController = ButtonRadioController();
   final TextEditingController _emailPhoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -365,71 +362,43 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 15),
           
-          // Email/Phone Label yang berubah sesuai pilihan
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: ValueListenableBuilder<ButtonRadio>(
-                  valueListenable: _loginMethodController,
-                  builder: (context, value, _) {
-                    return Text(
-                      value == ButtonRadio.email ? "Email" : "No Telepon",
-                      style: TextStyle(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[800],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              ButtonRadioSelector(controller: _loginMethodController),
-            ],
+          // Email Label
+          Text(
+            "Email",
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
           ),
           
           const SizedBox(height: 10),
           
-          // Input Field
-          ValueListenableBuilder<ButtonRadio>(
-            valueListenable: _loginMethodController,
-            builder: (context, value, _) {
-              return TextField(
-                controller: _emailPhoneController,
-                keyboardType: value == ButtonRadio.phone
-                    ? TextInputType.number
-                    : TextInputType.emailAddress,
-                inputFormatters: value == ButtonRadio.phone
-                    ? [FilteringTextInputFormatter.digitsOnly]
-                    : [],
-                style: TextStyle(fontSize: inputFontSize),
-                decoration: InputDecoration(
-                  hintText: value == ButtonRadio.email
-                      ? "contoh@email.com"
-                      : "08123456789",
-                  hintStyle: TextStyle(fontSize: inputFontSize),
-                  prefixIcon: Icon(
-                    value == ButtonRadio.email ? Icons.email_outlined : Icons.phone_outlined,
-                    size: 18,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[400]!, width: 1.5),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[400]!, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              );
-            },
+          // Email Input Field
+          TextField(
+            controller: _emailPhoneController,
+            keyboardType: TextInputType.emailAddress,
+            style: TextStyle(fontSize: inputFontSize),
+            decoration: InputDecoration(
+              hintText: "contoh@email.com",
+              hintStyle: TextStyle(fontSize: inputFontSize),
+              prefixIcon: const Icon(Icons.email_outlined, size: 18),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[400]!, width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[400]!, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF1B4F9C), width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
           ),
           
           const SizedBox(height: 20),
