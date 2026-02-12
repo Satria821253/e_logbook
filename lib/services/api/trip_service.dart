@@ -65,7 +65,7 @@ class TripService {
         throw Exception('Token tidak ditemukan');
       }
 
-      final url = '$baseUrl/api/mobile/my-trips';
+      final url = '$baseUrl/api/trip';
       print('🌐 [TRIPS] URL: $url');
 
       final response = await http.get(

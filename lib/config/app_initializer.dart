@@ -7,6 +7,8 @@ import 'package:e_logbook/services/api/auth_service.dart';
 import 'package:e_logbook/services/local/offline_sync_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:e_logbook/services/local/crash_reporter.dart';
+import 'package:e_logbook/services/monitoring/schedule_monitoring_service.dart';
+import 'package:e_logbook/services/nitification/local_notification_service.dart';
 
 class AppInitializer {
   static Future<bool> initialize() async {
@@ -16,10 +18,14 @@ class AppInitializer {
       
       await dotenv.load(fileName: ".env");
 
-         // 🔴 VALIDASI DI SINI
-    if (ApiConfig.geminiApiKey.isEmpty) {
-      throw Exception('API Key Gemini belum dikonfigurasi');
-    }
+      // Validate API keys
+      if (ApiConfig.geminiApiKey.isEmpty) {
+        throw Exception('API Key Gemini belum dikonfigurasi');
+      }
+      
+      // Initialize notification service
+      await LocalNotificationService.initialize();
+      
       await _cleanupCache();
       AuthService.init();
       await initializeDateFormatting('id_ID', null);
@@ -49,5 +55,6 @@ class AppInitializer {
   static void _startBackgroundServices() {
     OfflineSyncService.startConnectivityMonitoring();
     RealtimeUpdateService.startPolling();
+    ScheduleMonitoringService.initialize();
   }
 }

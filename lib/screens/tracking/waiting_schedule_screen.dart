@@ -1,0 +1,680 @@
+import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
+import 'dart:async';
+import 'package:geolocator/geolocator.dart';
+import '../../utils/navigation_helper.dart';
+import '../../services/nitification/local_notification_service.dart';
+import '../../services/cuaca/weather_service.dart';
+import '../nahkoda/screens/aktif_tracking.dart';
+
+class WaitingScheduleScreen extends StatefulWidget {
+  final DateTime scheduledDepartureTime;
+  final Map<String, dynamic> tripData;
+
+  const WaitingScheduleScreen({
+    Key? key,
+    required this.scheduledDepartureTime,
+    required this.tripData,
+  }) : super(key: key);
+
+  @override
+  State<WaitingScheduleScreen> createState() => _WaitingScheduleScreenState();
+}
+
+class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
+  Timer? _countdownTimer;
+  Duration _remainingTime = Duration.zero;
+  bool _has2HourNotificationSent = false;
+  bool _hasStartNotificationSent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    _updateRemainingTime();
+    _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      _updateRemainingTime();
+      
+      // Check for 1-day reminder (24 hours before departure)
+      if (!_has2HourNotificationSent && _remainingTime.inHours <= 24 && _remainingTime.inHours > 23) {
+        _send1DayReminder();
+      }
+      
+      // Check for start notification (when time arrives)
+      if (!_hasStartNotificationSent && (_remainingTime.isNegative || _remainingTime.inSeconds <= 0)) {
+        _sendStartNotification();
+        timer.cancel();
+        _checkWeatherAndNavigate();
+      }
+    });
+  }
+
+  void _updateRemainingTime() {
+    setState(() {
+      _remainingTime = widget.scheduledDepartureTime.difference(DateTime.now());
+    });
+  }
+
+  Future<void> _send1DayReminder() async {
+    _has2HourNotificationSent = true;
+    try {
+      await LocalNotificationService.showTripStartingSoonNotification(
+        vesselName: widget.tripData['vesselName'] ?? 'Kapal',
+        minutesLeft: 1440, // 24 hours = 1440 minutes
+      );
+      print('📢 [Reminder] 1-day notification sent');
+      
+      // Show dialog untuk navigasi
+      if (mounted) {
+        _showPreparationDialog();
+      }
+    } catch (e) {
+      print('❌ [Reminder] Error sending 1-day notification: $e');
+    }
+  }
+
+  void _showPreparationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.notifications_active, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '⏰ Persiapan Trip',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Trip akan dimulai dalam 1 hari!',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Kapal ${widget.tripData['vesselName']} akan berangkat besok. Pastikan semua persiapan sudah dilakukan.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+            ),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Lakukan pengecekan akhir sebelum keberangkatan',
+                      style: TextStyle(fontSize: 12, color: Colors.blue[900]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Nanti Saja'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _checkWeatherBeforeWaiting();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF1B4F9C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'Lihat Countdown',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _checkWeatherBeforeWaiting() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Memeriksa Cuaca...'),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+      );
+
+      final weather = await WeatherService.getWeatherByPosition(position);
+      
+      if (mounted) Navigator.pop(context);
+
+      if (weather == null) {
+        return;
+      }
+
+      final isExtreme = _isWeatherExtreme(weather);
+
+      if (!mounted) return;
+
+      if (isExtreme) {
+        _showWeatherWarning(weather);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  Future<void> _sendStartNotification() async {
+    _hasStartNotificationSent = true;
+    try {
+      await LocalNotificationService.showTripStartingNowNotification(
+        vesselName: widget.tripData['vesselName'] ?? 'Kapal',
+      );
+      print('🚢 [Start] Trip starting notification sent');
+    } catch (e) {
+      print('❌ [Start] Error sending start notification: $e');
+    }
+  }
+
+  Future<void> _checkWeatherAndNavigate() async {
+    try {
+      print('🌦️ [Weather] Checking weather before starting...');
+      
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+      );
+
+      final weather = await WeatherService.getWeatherByPosition(position);
+
+      if (weather == null) {
+        print('⚠️ [Weather] Could not get weather data, proceeding anyway');
+        _navigateToTracking();
+        return;
+      }
+
+      final isExtreme = _isWeatherExtreme(weather);
+
+      if (!mounted) return;
+
+      if (isExtreme) {
+        _showWeatherWarning(weather);
+      } else {
+        _navigateToTracking();
+      }
+    } catch (e) {
+      print('❌ [Weather] Error checking weather: $e');
+      if (mounted) {
+        _navigateToTracking();
+      }
+    }
+  }
+
+  bool _isWeatherExtreme(WeatherData weather) {
+    final condition = weather.condition.toLowerCase();
+    if (condition.contains('petir') ||
+        condition.contains('thunder') ||
+        condition.contains('storm') ||
+        condition.contains('badai')) {
+      return true;
+    }
+    if (weather.windSpeed > 40) return true;
+    if (weather.waveHeight > 2.5) return true;
+    return false;
+  }
+
+  void _showWeatherWarning(WeatherData weather) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.red, size: 32),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Cuaca Tidak Aman',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Kondisi cuaca saat ini tidak mendukung untuk melaut:'),
+            SizedBox(height: 12),
+            Text('• Kondisi: ${weather.condition}'),
+            Text('• Kecepatan Angin: ${weather.windSpeed.toStringAsFixed(1)} km/h'),
+            Text('• Tinggi Ombak: ${weather.waveHeight.toStringAsFixed(1)} m'),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange),
+              ),
+              child: Text(
+                'Demi keselamatan, disarankan untuk menunda trip.',
+                style: TextStyle(fontSize: 13, color: Colors.orange.shade900),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text('Tunda Trip'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _navigateToTracking();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Tetap Lanjutkan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToTracking() {
+    NavigationHelper.pushReplacementNoTransition(
+      context,
+      ActiveTrackingScreen(
+        vesselName: widget.tripData['vesselName'] ?? '',
+        vesselNumber: widget.tripData['vesselNumber'] ?? '',
+        captainName: widget.tripData['captainName'] ?? '',
+        crewCount: widget.tripData['crewCount'] ?? 0,
+        selectedHarbor: widget.tripData['selectedHarbor'] ?? '',
+        departureTime: widget.tripData['departureTime'],
+        estimatedReturnDate: widget.tripData['estimatedReturnDate'],
+        estimatedDuration: widget.tripData['estimatedDuration'] ?? 1,
+        emergencyContact: widget.tripData['emergencyContact'] ?? '',
+        fuelAmount: widget.tripData['fuelAmount'] ?? 0.0,
+        iceStorage: widget.tripData['iceStorage'] ?? 0.0,
+        notes: widget.tripData['notes'],
+        harborCoordinates: widget.tripData['harborCoordinates'],
+        zoneRadius: widget.tripData['zoneRadius'] ?? 50.0,
+        userRole: widget.tripData['userRole'] ?? 'Nahkoda',
+        userName: widget.tripData['userName'] ?? '',
+      ),
+    );
+  }
+
+  String _formatCountdown() {
+    if (_remainingTime.isNegative) return '00:00:00';
+    
+    final days = _remainingTime.inDays;
+    final hours = _remainingTime.inHours.remainder(24);
+    final minutes = _remainingTime.inMinutes.remainder(60);
+    final seconds = _remainingTime.inSeconds.remainder(60);
+    
+    if (days > 0) {
+      return '$days hari ${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        backgroundColor: Color(0xFFF5F7FA),
+        appBar: AppBar(
+          title: Text(
+            'Menunggu Jadwal',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.close, color: Colors.white),
+              onPressed: () {
+                // Kembali ke home screen (MainScreen)
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+              tooltip: 'Tutup',
+            ),
+          ],
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+              ),
+            ),
+          ),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Header Card dengan Badge Role & Info Kapal
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 15,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Badge Role & Nama
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: widget.tripData['userRole'] == 'Nahkoda'
+                                ? [Color(0xFF1B4F9C), Color(0xFF2563EB)]
+                                : [Color(0xFF2563EB), Color(0xFF1B4F9C)],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              widget.tripData['userRole'] == 'Nahkoda' ? Icons.sailing : Icons.person,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Role: ${widget.tripData['userRole'] ?? '-'}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              '•',
+                              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Nama: ${widget.tripData['userName'] ?? '-'}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Divider(height: 1),
+                      SizedBox(height: 16),
+                      // Info Kapal
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF1B4F9C).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.directions_boat,
+                              color: Color(0xFF1B4F9C),
+                              size: 28,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.tripData['vesselName'] ?? '-',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'No. Reg: ${widget.tripData['vesselNumber'] ?? '-'}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Khusus Crew: Tampilkan Nama Nahkoda
+                      if (widget.tripData['userRole'] != 'Nahkoda') ...[
+                        SizedBox(height: 12),
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.person_outline, color: Colors.blue, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Nahkoda: ',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                widget.tripData['captainName'] ?? '-',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[900],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                
+                SizedBox(height: 20),
+                
+                // Lottie Animation
+                Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF1B4F9C).withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Lottie.asset(
+                    'assets/animations/clock.json',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                
+                SizedBox(height: 32),
+                
+                // Title
+                Text(
+                  'Tracking Akan Dimulai Dalam',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                SizedBox(height: 20),
+                
+                // Countdown Timer
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF1B4F9C).withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    _formatCountdown(),
+                    style: TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 3,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+                
+                SizedBox(height: 32),
+                
+                // Info Banner
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.blue.shade200,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.info_outline,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Tracking akan dimulai otomatis saat waktu keberangkatan tiba',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.blue[900],
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

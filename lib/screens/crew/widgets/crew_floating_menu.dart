@@ -3,8 +3,14 @@ import 'package:e_logbook/widgets/sos_alert_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:async';
 import '../../../screens/nahkoda/widgets/menu_toggle_button.dart';
+import '../../../services/api/trip_service.dart';
 import 'crew_menu_items.dart';
+import 'crew_tracking_button.dart';
+import '../screens/create_catch_screen.dart';
 
 class CrewFloatingMenu extends StatefulWidget {
   const CrewFloatingMenu({super.key});
@@ -16,6 +22,7 @@ class CrewFloatingMenu extends StatefulWidget {
 class _CrewFloatingMenuState extends State<CrewFloatingMenu>
     with TickerProviderStateMixin {
   bool _isMenuOpen = false;
+  bool _isBerlayar = false;
   late AnimationController _animationController;
   late Animation<double> _animation;
 
@@ -30,6 +37,58 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
       parent: _animationController,
       curve: Curves.easeInOut,
     );
+    _checkTripStatus();
+    _startPeriodicCheck();
+  }
+  
+  void _startPeriodicCheck() {
+    // Cek status trip setiap 30 detik untuk update FAB
+    Timer.periodic(Duration(seconds: 30), (timer) {
+      if (mounted) {
+        _checkTripStatus();
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _checkTripStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      int? currentUserId;
+      
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        currentUserId = userData['id'];
+      }
+      
+      if (currentUserId == null) return;
+      
+      final response = await TripService.getAllTrips();
+      if (response['success'] == true && response['data'] != null) {
+        final allTrips = List<Map<String, dynamic>>.from(response['data']);
+        
+        final hasBerlayar = allTrips.any((trip) {
+          final nahkodaId = trip['nahkodaId'];
+          final awakKapal = trip['awakKapal'] as List?;
+          final status = trip['status']?.toLowerCase();
+          
+          final isMyTrip = (nahkodaId == currentUserId) ||
+                           (awakKapal != null && awakKapal.contains(currentUserId));
+          
+          return isMyTrip && status == 'berlayar';
+        });
+        
+        if (mounted) {
+          setState(() {
+            _isBerlayar = hasBerlayar;
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ [CrewMenu] Error checking trip status: $e');
+    }
   }
 
   @override
@@ -177,11 +236,51 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Alert Button (always visible, hides when menu opens)
+        // Main FAB - Bergantian antara Tracking (saat berlayar) dan Create Catch (saat tidak berlayar)
         if (!_isMenuOpen)
           Positioned(
             right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
             bottom: ResponsiveHelper.height(context, mobile: 153, tablet: 183),
+            child: _isBerlayar
+                ? const CrewTrackingButton()
+                : GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CreateCatchScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: ResponsiveHelper.width(context, mobile: 56, tablet: 70),
+                      height: ResponsiveHelper.height(context, mobile: 56, tablet: 70),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF1565C0).withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.add_photo_alternate,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+          ),
+        // Alert Button (always visible, hides when menu opens)
+        if (!_isMenuOpen)
+          Positioned(
+            right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+            bottom: ResponsiveHelper.height(context, mobile: 80, tablet: 96),
             child: GestureDetector(
               onTap: () async {
                 await _handleSosAlert(context);
@@ -215,7 +314,7 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
           ),
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 80, tablet: 96),
+          bottom: ResponsiveHelper.height(context, mobile: 16, tablet: 20),
           child: MenuToggleButton(
             isMenuOpen: _isMenuOpen,
             onToggle: _toggleMenu,

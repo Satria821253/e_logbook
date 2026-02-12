@@ -1,10 +1,13 @@
-import 'package:e_logbook/screens/crew/screens/crew_active_tracking_screen.dart';
-import 'package:e_logbook/screens/nahkoda/screens/aktif_tracking.dart';
+import 'package:e_logbook/screens/tracking/waiting_schedule_screen.dart';
 import 'package:e_logbook/services/api/trip_service.dart';
+import 'package:e_logbook/services/nitification/notification_service.dart';
+import 'package:e_logbook/services/nitification/local_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../../provider/user_provider.dart';
 import '../../utils/navigation_helper.dart';
 
 class WaitingApprovalScreen extends StatefulWidget {
@@ -68,16 +71,16 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
           final status = response['data']?['status']?.toString().toLowerCase();
           print('📌 [WaitingApproval] Current status: $status');
           
-          // Crew menunggu status 'aktif' (Nahkoda sudah mulai)
-          // Nahkoda menunggu status 'disetujui' (Admin approve)
-          final isNahkoda = _userRole?.toLowerCase() == 'nahkoda';
-          final targetStatus = isNahkoda ? 'disetujui' : 'aktif';
-          
-          if (status == targetStatus) {
-            print('✅ [WaitingApproval] Trip ready! Status: $status');
+          // Notifikasi ketika status 'disetujui' atau 'aktif'
+          if (status == 'disetujui' || status == 'aktif') {
+            print('✅ [WaitingApproval] Trip disetujui!');
             setState(() => _isApproved = true);
             timer.cancel();
-            _showApprovedDialog();
+            
+            // Send notification
+            await _sendApprovalNotification(response['data']);
+            
+            _navigateToWaitingSchedule();
           } else {
             print('⏳ [WaitingApproval] Still waiting... Status: $status');
           }
@@ -90,148 +93,131 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
     });
   }
 
-  void _showApprovedDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.7),
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Container(
-          padding: EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Colors.green.shade50, Colors.white],
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 64,
-                ),
-              ),
-              SizedBox(height: 24),
-              Text(
-                _userRole?.toLowerCase() == 'nahkoda' ? 'Trip Disetujui!' : 'Trip Dimulai!',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-              SizedBox(height: 12),
-              Text(
-                _userRole?.toLowerCase() == 'nahkoda'
-                    ? 'Admin telah menyetujui trip Anda.\nSilakan mulai tracking sekarang.'
-                    : 'Nahkoda telah memulai trip.\nSilakan mulai tracking sekarang.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                  height: 1.5,
-                ),
-              ),
-              SizedBox(height: 24),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.green, Colors.green.shade700],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _navigateToPreTracking();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.navigation, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text(
-                        'Mulai Tracking',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> _sendApprovalNotification(Map<String, dynamic> tripData) async {
+    try {
+      final kapal = tripData['kapal'] ?? {};
+      final vesselName = kapal['namaKapal'] ?? widget.tripData['vesselName'] ?? 'Kapal';
+      
+      DateTime departureTime = DateTime.now();
+      if (tripData['waktuMulai'] != null) {
+        departureTime = DateTime.parse(tripData['waktuMulai']);
+      } else if (tripData['tanggalBerangkat'] != null) {
+        departureTime = DateTime.parse(tripData['tanggalBerangkat']);
+      }
+      
+      final duration = departureTime.difference(DateTime.now());
+      final hours = duration.inHours;
+      final minutes = duration.inMinutes.remainder(60);
+      
+      String timeText;
+      if (hours > 24) {
+        final days = duration.inDays;
+        timeText = '$days hari lagi';
+      } else if (hours > 0) {
+        timeText = '$hours jam $minutes menit lagi';
+      } else {
+        timeText = '$minutes menit lagi';
+      }
+      
+      // Save to notification history
+      await NotificationService.addTripNotification(
+        tripId: widget.tripData['tripId'].toString(),
+        vesselName: vesselName,
+        departureTime: departureTime,
+        message: 'Trip Anda telah aktif! Kapal $vesselName akan berangkat $timeText',
+      );
+      
+      // Show local notification
+      await LocalNotificationService.showTripApprovedNotification(
+        vesselName: vesselName,
+        departureTime: departureTime,
+      );
+      
+      print('📬 [Notification] Trip aktif notification sent');
+    } catch (e) {
+      print('❌ [Notification] Error sending notification: $e');
+    }
   }
 
-  void _navigateToPreTracking() {
-    // Cek role dari SharedPreferences atau tripData
-    final role = _userRole ?? widget.tripData['role'];
-    final isNahkoda = role?.toLowerCase() == 'nahkoda';
+  void _navigateToWaitingSchedule() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final prefs = await SharedPreferences.getInstance();
     
-    if (isNahkoda) {
-      // Nahkoda goes to ActiveTrackingScreen (title: "Tracking Aktif")
-      NavigationHelper.pushReplacementNoTransition(
-        context,
-        ActiveTrackingScreen(
-          vesselName: widget.tripData['vesselName'] ?? '',
-          vesselNumber: widget.tripData['vesselNumber'] ?? '',
-          captainName: widget.tripData['captainName'] ?? '',
-          crewCount: widget.tripData['crewCount'] ?? 0,
-          selectedHarbor: widget.tripData['departureHarbor'] ?? '',
-          departureTime: widget.tripData['departureDate'] ?? DateTime.now(),
-          estimatedDuration: widget.tripData['estimatedDuration'] ?? 1,
-          emergencyContact: widget.tripData['emergencyContact'] ?? '',
-          fuelAmount: widget.tripData['fuelAmount'] ?? 0.0,
-          iceStorage: widget.tripData['iceStorage'] ?? 0.0,
-          notes: widget.tripData['notes'],
-          harborCoordinates: widget.tripData['harborCoordinates'] ?? {
-            'lat': -6.1944,
-            'lng': 106.8229,
-            'name': widget.tripData['departureHarbor'] ?? 'Unknown',
-          },
-          zoneRadius: 50.0,
-        ),
-      );
-    } else {
-      // Crew goes to CrewActiveTrackingScreen (title: "Tracking Trip")
-      NavigationHelper.pushReplacementNoTransition(
-        context,
-        CrewActiveTrackingScreen(tripData: widget.tripData),
-      );
+    final role = _userRole ?? prefs.getString('role') ?? widget.tripData['role'];
+    final userName = userProvider.user?.name ?? prefs.getString('name') ?? '';
+    
+    final tripId = widget.tripData['tripId'];
+    double totalFuel = 0;
+    double totalIce = 0;
+    DateTime? actualDepartureTime;
+    int? actualDuration;
+    DateTime? estimatedReturnDate;
+    
+    if (tripId != null) {
+      try {
+        final response = await TripService.getTripDetail(tripId);
+        if (response['success'] == true) {
+          final tripData = response['data'];
+          final perizinan = tripData['perizinan'] ?? {};
+          
+          final fuelDataList = perizinan['fuelData'] as List? ?? [];
+          for (var fuel in fuelDataList) {
+            totalFuel += (fuel['jumlahLiter'] ?? 0).toDouble();
+          }
+          
+          final iceDataList = perizinan['iceData'] as List? ?? [];
+          for (var ice in iceDataList) {
+            totalIce += (ice['jumlahKg'] ?? 0).toDouble();
+          }
+          
+          if (tripData['waktuMulai'] != null) {
+            actualDepartureTime = DateTime.parse(tripData['waktuMulai']);
+          } else if (tripData['tanggalBerangkat'] != null) {
+            actualDepartureTime = DateTime.parse(tripData['tanggalBerangkat']);
+          }
+          
+          if (tripData['estimasiPulang'] != null) {
+            estimatedReturnDate = DateTime.parse(tripData['estimasiPulang']);
+          }
+          
+          actualDuration = tripData['durasi'];
+        }
+      } catch (e) {
+        print('❌ [Navigation] Error: $e');
+      }
     }
+    
+    final fuelAmount = totalFuel > 0 ? totalFuel : (widget.tripData['fuelAmount'] ?? 0.0).toDouble();
+    final iceStorage = totalIce > 0 ? totalIce : (widget.tripData['iceStorage'] ?? 0.0).toDouble();
+    final estimatedDuration = actualDuration ?? widget.tripData['estimatedDuration'] ?? 1;
+    final departureTime = actualDepartureTime ?? widget.tripData['departureDate'] ?? DateTime.now();
+    
+    if (!mounted) return;
+    
+    NavigationHelper.pushReplacementNoTransition(
+      context,
+      WaitingScheduleScreen(
+        scheduledDepartureTime: departureTime,
+        tripData: {
+          'vesselName': widget.tripData['vesselName'] ?? '',
+          'vesselNumber': widget.tripData['vesselNumber'] ?? '',
+          'captainName': widget.tripData['captainName'] ?? '',
+          'crewCount': widget.tripData['crewCount'] ?? 0,
+          'selectedHarbor': widget.tripData['departureHarbor'] ?? '',
+          'departureTime': departureTime,
+          'estimatedReturnDate': estimatedReturnDate,
+          'estimatedDuration': estimatedDuration,
+          'emergencyContact': widget.tripData['emergencyContact'] ?? '',
+          'fuelAmount': fuelAmount,
+          'iceStorage': iceStorage,
+          'notes': widget.tripData['notes'],
+          'harborCoordinates': widget.tripData['harborCoordinates'],
+          'zoneRadius': 50.0,
+          'userRole': role?.toLowerCase() == 'nahkoda' ? 'Nahkoda' : 'ABK',
+          'userName': userName,
+        },
+      ),
+    );
   }
 
   @override
@@ -272,15 +258,13 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
                 ),
                 SizedBox(height: 32),
                 Text(
-                  _userRole?.toLowerCase() == 'nahkoda'
-                      ? 'Menunggu Persetujuan Admin'
-                      : 'Menunggu Nahkoda Memulai Trip',
+                  'Menunggu Persetujuan Admin',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey[800]),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 16),
                 Text(
-                  'Data trip Anda sedang ditinjau oleh admin.\nAnda akan mendapat notifikasi setelah disetujui.',
+                  'Data trip sedang ditinjau admin.\nAnda akan diarahkan otomatis setelah disetujui.',
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   textAlign: TextAlign.center,
                 ),

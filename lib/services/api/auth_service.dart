@@ -76,7 +76,7 @@ class AuthService {
         final user = await _processUserData(response.data['user']);
         
         if (token != null) await saveToken(token);
-        await _fetchVesselData(token);
+        await _fetchVesselDataFromTrip(token, user.id);
         await _initializeUserNotifications(user);
 
         return {
@@ -121,29 +121,53 @@ class AuthService {
     );
   }
 
-  static Future<void> _fetchVesselData(String token) async {
+  static Future<void> _fetchVesselDataFromTrip(String token, int userId) async {
     try {
-      final vesselResponse = await _dio.get(
-        '/mobile/vessels/my-vessel',
+      final tripResponse = await _dio.get(
+        '/trip',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      if (vesselResponse.statusCode == 200 && vesselResponse.data['success'] == true) {
-        final vessels = vesselResponse.data['data'] as List;
-        if (vessels.isNotEmpty) {
-          final vesselData = vessels[0];
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(
-            'vessel_data',
-            jsonEncode({
-              'kapal': {
-                'id': vesselData['id'],
-                'namaKapal': vesselData['namaKapal'],
-                'nomorRegistrasi': vesselData['nomorRegistrasi'],
-              },
-              'nahkoda': vesselData['nahkoda'],
-            }),
-          );
+      if (tripResponse.statusCode == 200 && tripResponse.data['success'] == true) {
+        final trips = tripResponse.data['data'] as List;
+        
+        // Filter trip: user adalah nahkoda ATAU crew, DAN status bukan selesai
+        for (var trip in trips) {
+          final nahkodaId = trip['nahkodaId'];
+          final awakKapal = trip['awakKapal'] as List?;
+          final status = trip['status']?.toString().toLowerCase();
+          
+          // Skip jika trip sudah selesai
+          if (status == 'selesai' || status == 'completed') continue;
+          
+          // Cek apakah user adalah nahkoda atau crew
+          final isNahkoda = nahkodaId == userId;
+          final isCrew = awakKapal != null && awakKapal.contains(userId);
+          
+          if (isNahkoda || isCrew) {
+            final kapal = trip['kapal'];
+            final nahkoda = trip['nahkoda'];
+            
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(
+              'vessel_data',
+              jsonEncode({
+                'kapal': {
+                  'id': kapal['id'],
+                  'namaKapal': kapal['namaKapal'],
+                  'nomorRegistrasi': kapal['nomorRegistrasi'],
+                },
+                'nahkoda': nahkoda != null ? {
+                  'id': nahkoda['id'],
+                  'nama': nahkoda['nama'],
+                  'username': nahkoda['username'],
+                } : null,
+                'tripId': trip['id'],
+                'tripStatus': trip['status'],
+              }),
+            );
+            break; // Ambil trip pertama yang match
+          }
         }
       }
     } catch (e) {

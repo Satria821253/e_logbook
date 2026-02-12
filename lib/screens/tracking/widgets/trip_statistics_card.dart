@@ -1,31 +1,44 @@
 import 'package:e_logbook/utils/responsive_helper.dart';
+import 'package:e_logbook/utils/trip_duration_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
 /// Widget untuk menampilkan statistik trip
 class TripStatisticsCard extends StatelessWidget {
-  final Duration tripDuration;
+  final DateTime departureDate;
+  final DateTime? estimatedReturnDate; // Dari BE (prioritas)
+  final int? estimatedDurationDays; // Fallback
   final double? currentDistance;
   final bool isViolating;
 
   const TripStatisticsCard({
     super.key,
-    required this.tripDuration,
+    required this.departureDate,
+    this.estimatedReturnDate,
+    this.estimatedDurationDays,
     this.currentDistance,
     this.isViolating = false,
   });
 
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    return '${hours.toString().padLeft(2, '0')}:'
-        '${minutes.toString().padLeft(2, '0')}:'
-        '${seconds.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
+    final helper = TripDurationHelper(
+      departureDate: departureDate,
+      estimatedReturnDate: estimatedReturnDate,
+      estimatedDurationDays: estimatedDurationDays,
+    );
+    
+    // DEBUG
+    print('\n========== TRIP STATISTICS DEBUG ==========');
+    print('📅 Departure Date: $departureDate');
+    print('📅 Estimated Return: ${estimatedReturnDate ?? "NULL (using fallback)"}');
+    print('📅 Duration Days: $estimatedDurationDays');
+    print('📅 Calculated Return: ${helper.getEstimatedReturnDate()}');
+    print('⏱️  Remaining Time: ${helper.formatRemainingTime()}');
+    print('🚨 Is Overtime: ${helper.isOvertime()}');
+    print('🎨 Status Color: ${helper.getStatusColor()}');
+    print('==========================================\n');
+    
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: ResponsiveHelper.width(context, mobile: 16, tablet: 20),
@@ -35,9 +48,9 @@ class TripStatisticsCard extends StatelessWidget {
           Expanded(
             child: _buildStatCard(
               lottieAsset: 'assets/animations/clock.json',
-              label: 'Durasi Trip',
-              value: _formatDuration(tripDuration),
-              color: Colors.blue,
+              label: helper.getStatusLabel(),
+              value: helper.formatRemainingTime(),
+              color: helper.getStatusColor(),
             ),
           ),
           SizedBox(width: ResponsiveHelper.width(context, mobile: 12, tablet: 16)),

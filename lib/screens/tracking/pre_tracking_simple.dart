@@ -6,6 +6,7 @@ import '../../services/api/trip_service.dart';
 import '../../utils/navigation_helper.dart';
 import '../../provider/user_provider.dart';
 import 'waiting_approval_screen.dart';
+import 'waiting_schedule_screen.dart';
 
 class PreTrackingScreenSimple extends StatefulWidget {
   final int tripId;
@@ -40,26 +41,87 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
           final status = response['data']?['status']?.toLowerCase();
           print('🔄 [POLLING] Trip status: $status');
           
-          if (status == 'menunggu_izin' && mounted) {
+          // Crew menunggu status 'disetujui' (Admin sudah approve)
+          if (status == 'disetujui' && mounted) {
             timer.cancel();
-            print('➡️ [POLLING] Nahkoda sudah kirim, redirecting to WaitingApprovalScreen...');
-            final userProvider = Provider.of<UserProvider>(context, listen: false);
-            NavigationHelper.pushReplacementNoTransition(
-              context,
-              WaitingApprovalScreen(
-                tripData: {
-                  ...widget.tripData,
-                  'tripId': widget.tripId,
-                  'role': userProvider.user?.role ?? 'crew',
-                },
-              ),
-            );
+            print('➡️ [POLLING] Trip disetujui, crew can start!');
+            _navigateToWaitingSchedule();
           }
         }
       } catch (e) {
         print('❌ [POLLING] Error: $e');
       }
     });
+  }
+
+  Future<void> _navigateToWaitingSchedule() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final userRole = userProvider.user?.role?.toLowerCase();
+    
+    // Fetch trip detail untuk data lengkap
+    final response = await TripService.getTripDetail(widget.tripId);
+    if (response['success'] != true) return;
+    
+    final tripData = response['data'];
+    final perizinan = tripData['perizinan'] ?? {};
+    
+    // Hitung total BBM dan Es
+    double totalFuel = 0;
+    double totalIce = 0;
+    
+    final fuelDataList = perizinan['fuelData'] as List? ?? [];
+    for (var fuel in fuelDataList) {
+      totalFuel += (fuel['jumlahLiter'] ?? 0).toDouble();
+    }
+    
+    final iceDataList = perizinan['iceData'] as List? ?? [];
+    for (var ice in iceDataList) {
+      totalIce += (ice['jumlahKg'] ?? 0).toDouble();
+    }
+    
+    // Parse waktu keberangkatan
+    DateTime departureTime;
+    if (tripData['waktuMulai'] != null) {
+      departureTime = DateTime.parse(tripData['waktuMulai']);
+    } else if (tripData['tanggalBerangkat'] != null) {
+      departureTime = DateTime.parse(tripData['tanggalBerangkat']);
+    } else {
+      departureTime = widget.tripData['departureDate'] ?? DateTime.now();
+    }
+    
+    DateTime? estimatedReturnDate;
+    if (tripData['estimasiPulang'] != null) {
+      estimatedReturnDate = DateTime.parse(tripData['estimasiPulang']);
+    }
+    
+    final estimatedDuration = tripData['durasi'] ?? widget.tripData['estimatedDuration'] ?? 1;
+    
+    if (!mounted) return;
+    
+    NavigationHelper.pushReplacementNoTransition(
+      context,
+      WaitingScheduleScreen(
+        scheduledDepartureTime: departureTime,
+        tripData: {
+          'vesselName': widget.tripData['vesselName'] ?? '',
+          'vesselNumber': widget.tripData['vesselNumber'] ?? '',
+          'captainName': widget.tripData['captainName'] ?? '',
+          'crewCount': widget.tripData['crewCount'] ?? 0,
+          'selectedHarbor': widget.tripData['departureHarbor'] ?? '',
+          'departureTime': departureTime,
+          'estimatedReturnDate': estimatedReturnDate,
+          'estimatedDuration': estimatedDuration,
+          'emergencyContact': widget.tripData['emergencyContact'] ?? '',
+          'fuelAmount': totalFuel > 0 ? totalFuel : (widget.tripData['fuelAmount'] ?? 0.0),
+          'iceStorage': totalIce > 0 ? totalIce : (widget.tripData['iceStorage'] ?? 0.0),
+          'notes': widget.tripData['notes'],
+          'harborCoordinates': widget.tripData['harborCoordinates'],
+          'zoneRadius': 50.0,
+          'userRole': userRole == 'nahkoda' ? 'Nahkoda' : 'ABK',
+          'userName': userProvider.user?.name ?? '',
+        },
+      ),
+    );
   }
 
   @override
@@ -81,24 +143,47 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
         
         print('📊 [PRE-TRACKING] Trip status: $status, Role: $userRole');
         
-        // Jika status menunggu_izin atau lebih, redirect ke WaitingApprovalScreen
-        if (status == 'menunggu_izin' || status == 'disetujui' || status == 'aktif' || status == 'sedang_melaut') {
-          print('➡️ [PRE-TRACKING] Status $status detected, redirecting to WaitingApprovalScreen...');
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              NavigationHelper.pushReplacementNoTransition(
-                context,
-                WaitingApprovalScreen(
-                  tripData: {
-                    ...widget.tripData,
-                    'tripId': widget.tripId,
-                    'role': userRole ?? 'crew',
-                  },
-                ),
-              );
-            }
-          });
-          return;
+        // CREW: Jika status sudah disetujui atau aktif, langsung ke waiting schedule
+        if (userRole == 'crew') {
+          if (status == 'disetujui' || status == 'aktif' || status == 'sedang_melaut') {
+            print('➡️ [PRE-TRACKING] Crew: Status $status, navigating to WaitingSchedule...');
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _navigateToWaitingSchedule();
+              }
+            });
+            return;
+          }
+        }
+        
+        // NAHKODA: Jika status menunggu_izin atau lebih, redirect ke WaitingApprovalScreen
+        if (userRole == 'nahkoda') {
+          if (status == 'menunggu_izin') {
+            print('➡️ [PRE-TRACKING] Nahkoda: Status menunggu_izin, navigating to WaitingApproval...');
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                NavigationHelper.pushReplacementNoTransition(
+                  context,
+                  WaitingApprovalScreen(
+                    tripData: {
+                      ...widget.tripData,
+                      'tripId': widget.tripId,
+                      'role': userRole ?? 'nahkoda',
+                    },
+                  ),
+                );
+              }
+            });
+            return;
+          } else if (status == 'disetujui' || status == 'aktif' || status == 'sedang_melaut') {
+            print('➡️ [PRE-TRACKING] Nahkoda: Status $status, navigating to WaitingSchedule...');
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _navigateToWaitingSchedule();
+              }
+            });
+            return;
+          }
         }
         
         setState(() {
@@ -119,14 +204,44 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
   }
 
   Future<void> _submitAndRequestApproval() async {
-    print('\n🔵 [PRE-TRACKING] KIRIM & MULAI TRIP clicked!');
+    print('\n🔵 [PRE-TRACKING] KIRIM clicked!');
     setState(() => _isSubmitting = true);
 
     try {
-      // Update status trip menjadi menunggu_izin
-      print('📤 [PRE-TRACKING] Updating trip status to menunggu_izin...');
-      await TripService.updateTripStatus(widget.tripId, 'menunggu_izin');
-      print('✅ [PRE-TRACKING] Trip status updated successfully');
+      // Upload dokumen Nahkoda jika ada
+      final pendingDocs = widget.tripData['pendingDocuments'] as Map<String, dynamic>?;
+      if (pendingDocs != null) {
+        print('📤 [PRE-TRACKING] Uploading Nahkoda documents...');
+        
+        if (pendingDocs['izinMelaut'] != null && pendingDocs['izinMelaut'] != 'uploaded') {
+          print('   Uploading Izin Melaut...');
+          await TripService.uploadTripDocument(
+            tripId: widget.tripId,
+            jenisDokumen: 'izinMelaut',
+            filePath: pendingDocs['izinMelaut'],
+          );
+        }
+        
+        if (pendingDocs['dokumenKapal'] != null && pendingDocs['dokumenKapal'] != 'uploaded') {
+          print('   Uploading Dokumen Kapal...');
+          await TripService.uploadTripDocument(
+            tripId: widget.tripId,
+            jenisDokumen: 'dokumenKapal',
+            filePath: pendingDocs['dokumenKapal'],
+          );
+        }
+        
+        if (pendingDocs['asuransi'] != null && pendingDocs['asuransi'] != 'uploaded') {
+          print('   Uploading Asuransi...');
+          await TripService.uploadTripDocument(
+            tripId: widget.tripId,
+            jenisDokumen: 'asuransi',
+            filePath: pendingDocs['asuransi'],
+          );
+        }
+        
+        print('✅ [PRE-TRACKING] All documents uploaded');
+      }
 
       if (!mounted) return;
 
@@ -381,7 +496,7 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
                         Text(
                           userRole == 'nahkoda'
                               ? 'Kirim perizinan untuk memulai tracking'
-                              : 'Menunggu Nahkoda mengirim perizinan',
+                              : 'Menunggu Nahkoda mendapatkan izin dari Admin',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14,
@@ -446,7 +561,7 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
                             Icon(Icons.send, size: 24, color: Colors.white),
                             SizedBox(width: 12),
                             Text(
-                              'KIRIM & MULAI TRIP',
+                              'KIRIM',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
