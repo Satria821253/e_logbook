@@ -723,25 +723,24 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
         children: [
           _buildBody(sp),
 
-          // Catch Button - Hanya untuk ABK (di atas emergency button)
-          if (widget.userRole == 'ABK')
-            Positioned(
-              right: 35,
-              bottom: 180,
-              child: GestureDetector(
-                onTap: _navigateToCatchScreen,
-                child: SizedBox(
-                  width: ResponsiveHelper.width(context, mobile: 70, tablet: 80),
-                  height: ResponsiveHelper.height(context, mobile: 70, tablet: 80),
-                  child: Lottie.asset(
-                    'assets/animations/catch.json',
-                    fit: BoxFit.contain,
-                    repeat: true,
-                    animate: true,
-                  ),
+          // Catch Button - Untuk semua role (Nahkoda dan ABK)
+          Positioned(
+            right: 35,
+            bottom: 180,
+            child: GestureDetector(
+              onTap: _navigateToCatchScreen,
+              child: SizedBox(
+                width: ResponsiveHelper.width(context, mobile: 70, tablet: 80),
+                height: ResponsiveHelper.height(context, mobile: 70, tablet: 80),
+                child: Lottie.asset(
+                  'assets/animations/catch.json',
+                  fit: BoxFit.contain,
+                  repeat: true,
+                  animate: true,
                 ),
               ),
             ),
+          ),
 
           // Emergency Button - Untuk semua role
           Positioned(

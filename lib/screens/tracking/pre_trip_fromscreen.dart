@@ -88,12 +88,13 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
       return;
     }
 
-    if (_departureHarbor == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data pelabuhan tidak tersedia')),
-      );
-      return;
-    }
+    // Pelabuhan opsional - tidak perlu validasi
+    // if (_departureHarbor == null) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(content: Text('Data pelabuhan tidak tersedia')),
+    //   );
+    //   return;
+    // }
 
     // Navigate to PreTripFormV2 with trip data
     NavigationHelper.pushNoTransition(
@@ -105,7 +106,7 @@ class _PreTripFormScreenState extends State<PreTripFormScreen> {
           'vesselNumber': _vesselNumberController.text,
           'captainName': _captainNameController.text,
           'crewCount': int.tryParse(_crewCountController.text) ?? 0,
-          'departureHarbor': _departureHarbor,
+          'departureHarbor': _departureHarbor ?? '',
           'departureDate': _departureDate,
           'estimatedReturnDate': _estimatedReturnDate,
           'estimatedDuration': _estimatedDuration,

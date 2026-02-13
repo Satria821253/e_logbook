@@ -113,7 +113,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           // Check if this trip belongs to current user
           final isMyTrip = (nahkodaId == currentUserId) ||
                            (awakKapal != null && awakKapal.contains(currentUserId));
-          final isActive = status == 'berlayar' || status == 'disetujui';
+          final isActive = status == 'berlayar' || 
+                           status == 'sedang_melaut' ||
+                           status == 'active' ||
+                           status == 'sailing' ||
+                           status == 'disetujui' ||
+                           status == 'approved';
           
           debugPrint('🔍 [CATCH_SCREEN] Trip ${trip['id']}: isMyTrip=$isMyTrip, isActive=$isActive, status=$status');
           
@@ -137,13 +142,15 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           if (detailResult['success'] == true && detailResult['data'] != null) {
             final tripDetail = detailResult['data'];
             debugPrint('✅ [CATCH_SCREEN] Trip detail loaded');
-            debugPrint('⚓ [CATCH_SCREEN] Vessel: ${tripDetail['kapal']?['namaKapal']}');
-            debugPrint('🆔 [CATCH_SCREEN] Vessel Number: ${tripDetail['kapal']?['nomorRegistrasi']}');
-            debugPrint('👨✈️ [CATCH_SCREEN] Captain: ${tripDetail['nahkoda']?['nama']}');
+            debugPrint('⚓ [CATCH_SCREEN] Vessel: ${tripDetail['kapal']?['namaKapal'] ?? tripDetail['kapal']?['nama']}');
+            debugPrint('🆔 [CATCH_SCREEN] Vessel Number: ${tripDetail['kapal']?['nomorRegistrasi'] ?? tripDetail['kapal']?['nomorKapal']}');
+            debugPrint('👨✈️ [CATCH_SCREEN] Captain: ${tripDetail['nahkoda']?['nama'] ?? tripDetail['nahkoda']?['username']}');
             debugPrint('👥 [CATCH_SCREEN] Crew Count: ${(tripDetail['awakKapal'] as List?)?.length}');
             debugPrint('📅 [CATCH_SCREEN] Departure: ${tripDetail['tanggalBerangkat']}');
             debugPrint('📅 [CATCH_SCREEN] Return: ${tripDetail['estimasiPulang']}');
             debugPrint('📌 [CATCH_SCREEN] Status: ${tripDetail['status']}');
+            debugPrint('📦 [CATCH_SCREEN] Full kapal data: ${tripDetail['kapal']}');
+            debugPrint('👤 [CATCH_SCREEN] Full nahkoda data: ${tripDetail['nahkoda']}');
             
             safeSetState(() {
               _tripData = tripDetail;
@@ -386,15 +393,21 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
     if (_tripData != null) {
       debugPrint('\n📦 [CATCH] Using trip data');
-      final kapal = _tripData!['kapal'];
-      final nahkoda = _tripData!['nahkoda'];
+      final kapal = _tripData!['kapal'] ?? {};
+      final nahkoda = _tripData!['nahkoda'] ?? {};
       final awakKapal = _tripData!['awakKapal'] as List?;
       
-      vesselName = kapal['namaKapal'] ?? 'Unknown';
+      vesselName = kapal['namaKapal'] ?? kapal['nama'] ?? 'Unknown';
       vesselNumber = kapal['nomorRegistrasi'] ?? kapal['nomorKapal'] ?? 'Unknown';
-      captainName = nahkoda['nama'] ?? 'Unknown';
+      captainName = nahkoda['nama'] ?? nahkoda['username'] ?? 'Unknown';
       crewCount = awakKapal?.length ?? 0;
-      kapalId = _tripData!['kapalId'] ?? 1;
+      kapalId = _tripData!['kapalId'] ?? kapal['id'] ?? 1;
+      
+      debugPrint('⚓ [CATCH] Vessel: $vesselName');
+      debugPrint('🆔 [CATCH] Vessel Number: $vesselNumber');
+      debugPrint('👨✈️ [CATCH] Captain: $captainName');
+      debugPrint('👥 [CATCH] Crew: $crewCount');
+      debugPrint('🆔 [CATCH] Kapal ID: $kapalId');
     } else {
       debugPrint('\n⚠️ [CATCH] Using UserProvider fallback');
       final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -903,14 +916,14 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       );
     }
 
-    final kapal = _tripData!['kapal'];
-    final nahkoda = _tripData!['nahkoda'];
+    final kapal = _tripData!['kapal'] ?? {};
+    final nahkoda = _tripData!['nahkoda'] ?? {};
     final awakKapal = _tripData!['awakKapal'] as List?;
 
     return _buildVesselCardContent(sp, fs,
-      vesselName: kapal['namaKapal'] ?? 'Unknown',
+      vesselName: kapal['namaKapal'] ?? kapal['nama'] ?? 'Unknown',
       vesselNumber: kapal['nomorRegistrasi'] ?? kapal['nomorKapal'] ?? 'Unknown',
-      captainName: nahkoda['nama'] ?? 'Unknown',
+      captainName: nahkoda['nama'] ?? nahkoda['username'] ?? 'Unknown',
       crewCount: awakKapal?.length ?? 0,
     );
   }

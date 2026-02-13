@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../models/trip_model.dart';
@@ -12,15 +13,26 @@ class MyTripsScreen extends StatefulWidget {
   State<MyTripsScreen> createState() => _MyTripsScreenState();
 }
 
-class _MyTripsScreenState extends State<MyTripsScreen> {
+class _MyTripsScreenState extends State<MyTripsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   bool _isLoading = true;
-  List<TripModel> _trips = [];
+  List<TripModel> _allTrips = [];
+  List<TripModel> _activeTrips = [];
+  List<TripModel> _completedTrips = [];
   String? _errorMessage;
+  int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadTrips();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTrips() async {
@@ -30,41 +42,39 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
     });
 
     try {
-      // Ambil kapal ID dari profile
       final prefs = await SharedPreferences.getInstance();
-      final vesselDataString = prefs.getString('vessel_data');
-      int? userKapalId;
+      final userDataString = prefs.getString('user_data');
       
-      if (vesselDataString != null) {
-        try {
-          final vesselData = json.decode(vesselDataString);
-          userKapalId = vesselData['kapal']?['id'];
-          print('🚢 [NahkodaTrips] User Kapal ID: $userKapalId');
-        } catch (e) {
-          print('❌ [NahkodaTrips] Error parsing vessel_data: $e');
-        }
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        _currentUserId = userData['id'];
       }
-      
+
       final response = await TripService.getAllTrips();
+      
       if (response['success'] == true) {
         final List<dynamic> tripsData = response['data'] ?? [];
         
-        // Filter berdasarkan kapal DAN status bukan selesai/ditolak
-        final filteredTrips = tripsData.where((trip) {
-          final tripKapalId = trip['kapal']?['id'];
-          final status = trip['status']?.toLowerCase();
-          final isMatchingKapal = userKapalId == null || tripKapalId == userKapalId;
-          final isActive = status != 'selesai' && status != 'ditolak';
-          return isMatchingKapal && isActive;
+        // Filter trips yang relevan dengan user (nahkoda)
+        final myTrips = tripsData.where((trip) {
+          final nahkodaId = trip['nahkodaId'];
+          return _currentUserId != null && nahkodaId == _currentUserId;
         }).toList();
+
+        final trips = myTrips.map((json) => TripModel.fromJson(json)).toList();
         
-        // Ambil hanya 1 trip pertama
-        final limitedTrips = filteredTrips.take(1).toList();
-        
-        print('🔍 [NahkodaTrips] Filtered: ${limitedTrips.length}/${tripsData.length} trips');
-        
+        // Sort by date (newest first)
+        trips.sort((a, b) => b.tanggalBerangkat.compareTo(a.tanggalBerangkat));
+
         setState(() {
-          _trips = limitedTrips.map((json) => TripModel.fromJson(json)).toList();
+          _allTrips = trips;
+          _activeTrips = trips.where((t) => 
+            t.status.toLowerCase() != 'selesai' && 
+            t.status.toLowerCase() != 'ditolak'
+          ).toList();
+          _completedTrips = trips.where((t) => 
+            t.status.toLowerCase() == 'selesai'
+          ).toList();
           _isLoading = false;
         });
       } else {
@@ -120,35 +130,42 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: Text('Tugas Saya', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        iconTheme: IconThemeData(color: Colors.white),
+        title: const Text('Info Trip', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        iconTheme: const IconThemeData(color: Colors.white),
         flexibleSpace: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
             ),
           ),
         ),
         elevation: 0,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          tabs: [
+            Tab(text: 'Aktif (${_activeTrips.length})'),
+            Tab(text: 'Selesai (${_completedTrips.length})'),
+          ],
+        ),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
               ? _buildErrorWidget()
-              : _trips.isEmpty
-                  ? _buildEmptyWidget()
-                  : RefreshIndicator(
-                      onRefresh: _loadTrips,
-                      child: ListView.builder(
-                        padding: EdgeInsets.all(16),
-                        itemCount: _trips.length,
-                        itemBuilder: (context, index) {
-                          return _buildTripCard(_trips[index]);
-                        },
-                      ),
-                    ),
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildTripList(_activeTrips, isActive: true),
+                    _buildTripList(_completedTrips, isActive: false),
+                  ],
+                ),
     );
   }
 
@@ -182,28 +199,47 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
     );
   }
 
-  Widget _buildEmptyWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.assignment_outlined, size: 80, color: Colors.grey[400]),
-          SizedBox(height: 16),
-          Text(
-            'Belum Ada Tugas',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[700]),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Anda belum memiliki trip yang ditugaskan',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
-        ],
+  Widget _buildTripList(List<TripModel> trips, {required bool isActive}) {
+    if (trips.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isActive ? Icons.sailing : Icons.check_circle_outline,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isActive ? 'Tidak Ada Trip Aktif' : 'Belum Ada Trip Selesai',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isActive 
+                ? 'Belum ada trip yang sedang berjalan'
+                : 'Riwayat trip yang selesai akan muncul di sini',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadTrips,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: trips.length,
+        itemBuilder: (context, index) => _buildTripCard(trips[index], isActive: isActive),
       ),
     );
   }
 
-  Widget _buildTripCard(TripModel trip) {
+  Widget _buildTripCard(TripModel trip, {required bool isActive}) {
+    final dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -224,7 +260,9 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                colors: isActive 
+                  ? [const Color(0xFF1B4F9C), const Color(0xFF2563EB)]
+                  : [Colors.grey[600]!, Colors.grey[700]!],
               ),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16),
@@ -239,7 +277,11 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.directions_boat, color: Colors.white, size: 24),
+                  child: Icon(
+                    isActive ? Icons.directions_boat : Icons.check_circle,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -290,13 +332,19 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
                   _buildInfoRow(Icons.person_outline, 'Nahkoda', trip.nahkoda.nama),
                 if (trip.nahkoda.nama != '-')
                   SizedBox(height: 12),
-                _buildInfoRow(Icons.groups, 'Jumlah Crew', '${trip.awakKapal.length} orang'),
-                SizedBox(height: 12),
-                _buildInfoRow(Icons.numbers, 'No. Registrasi', trip.kapal.nomorRegistrasi),
-                SizedBox(height: 12),
+                _buildInfoRow(Icons.calendar_today, 'Tanggal Berangkat', dateFormat.format(trip.tanggalBerangkat)),
+                const SizedBox(height: 12),
+                _buildInfoRow(Icons.event, 'Estimasi Pulang', dateFormat.format(trip.estimasiPulang)),
+                const SizedBox(height: 12),
+                _buildInfoRow(Icons.access_time, 'Durasi', '${trip.durasi} hari'),
+                const SizedBox(height: 12),
+                _buildInfoRow(Icons.location_on, 'Area Tangkap', trip.areaTangkap.nama),
+                const SizedBox(height: 12),
                 _buildInfoRow(Icons.phishing, 'Target Ikan', trip.targetIkan),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 _buildInfoRow(Icons.scale, 'Estimasi Berat', '${trip.estimasiBerat.toStringAsFixed(0)} kg'),
+                const SizedBox(height: 12),
+                _buildInfoRow(Icons.groups, 'Jumlah Crew', '${trip.awakKapal.length} orang'),
                 
                 if (trip.suratTugas != null) ...[
                   SizedBox(height: 16),
@@ -337,45 +385,47 @@ class _MyTripsScreenState extends State<MyTripsScreen> {
                   ),
                 ],
 
-                SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PreTripFormScreen(
-                            tripData: {
-                              'tripId': trip.id,
-                              'vesselName': trip.kapal.namaKapal,
-                              'vesselNumber': trip.kapal.nomorRegistrasi,
-                              'crewCount': trip.awakKapal.length,
-                              'departureHarbor': trip.areaTangkap.nama,
-                              'estimatedDuration': trip.durasi,
-                              'departureDate': trip.tanggalBerangkat,
-                              'estimatedReturnDate': trip.estimasiPulang,
-                              'fuelSupply': 0.0,
-                              'iceSupply': 0.0,
-                            },
+                if (isActive)
+                  const SizedBox(height: 16),
+                if (isActive)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PreTripFormScreen(
+                              tripData: {
+                                'tripId': trip.id,
+                                'vesselName': trip.kapal.namaKapal,
+                                'vesselNumber': trip.kapal.nomorRegistrasi,
+                                'crewCount': trip.awakKapal.length,
+                                'departureHarbor': trip.areaTangkap.nama,
+                                'estimatedDuration': trip.durasi,
+                                'departureDate': trip.tanggalBerangkat,
+                                'estimatedReturnDate': trip.estimasiPulang,
+                                'fuelSupply': 0.0,
+                                'iceSupply': 0.0,
+                              },
+                            ),
                           ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1B4F9C),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF1B4F9C),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'Lanjut ke Persiapan Trip',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ),
-                    child: Text(
-                      'Lanjut ke Persiapan Trip',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
                   ),
-                ),
               ],
             ),
           ),

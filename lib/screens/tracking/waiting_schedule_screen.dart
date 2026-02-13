@@ -357,25 +357,85 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
   }
 
   void _navigateToTracking() {
+    print('🚀 [Navigate] Starting navigation to ActiveTrackingScreen');
+    print('📦 [Navigate] tripData keys: ${widget.tripData.keys.toList()}');
+    
+    // Validasi dan parse data dengan type safety
+    final departureTime = widget.tripData['departureTime'];
+    if (departureTime == null || departureTime is! DateTime) {
+      print('❌ [Navigate] Error: departureTime is null or invalid type');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: Waktu keberangkatan tidak valid'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    // Parse harborCoordinates dengan type safety
+    Map<String, dynamic>? harborCoordinates;
+    final rawCoordinates = widget.tripData['harborCoordinates'];
+    if (rawCoordinates != null && rawCoordinates is Map) {
+      harborCoordinates = Map<String, dynamic>.from(rawCoordinates);
+      print('✅ [Navigate] harborCoordinates: $harborCoordinates');
+    } else {
+      print('⚠️ [Navigate] harborCoordinates is null or invalid, using default');
+      harborCoordinates = {
+        'latitude': -6.1075,
+        'longitude': 106.8975,
+      };
+    }
+    
+    // Parse estimatedReturnDate
+    DateTime? estimatedReturnDate;
+    final rawReturnDate = widget.tripData['estimatedReturnDate'];
+    if (rawReturnDate != null && rawReturnDate is DateTime) {
+      estimatedReturnDate = rawReturnDate;
+    }
+    
+    // Parse numeric values dengan type safety
+    final crewCount = (widget.tripData['crewCount'] ?? 0) is int 
+        ? widget.tripData['crewCount'] as int 
+        : int.tryParse(widget.tripData['crewCount'].toString()) ?? 0;
+    
+    final estimatedDuration = (widget.tripData['estimatedDuration'] ?? 1) is int
+        ? widget.tripData['estimatedDuration'] as int
+        : int.tryParse(widget.tripData['estimatedDuration'].toString()) ?? 1;
+    
+    final fuelAmount = (widget.tripData['fuelAmount'] ?? 0.0) is num
+        ? (widget.tripData['fuelAmount'] as num).toDouble()
+        : double.tryParse(widget.tripData['fuelAmount'].toString()) ?? 0.0;
+    
+    final iceStorage = (widget.tripData['iceStorage'] ?? 0.0) is num
+        ? (widget.tripData['iceStorage'] as num).toDouble()
+        : double.tryParse(widget.tripData['iceStorage'].toString()) ?? 0.0;
+    
+    final zoneRadius = (widget.tripData['zoneRadius'] ?? 50.0) is num
+        ? (widget.tripData['zoneRadius'] as num).toDouble()
+        : double.tryParse(widget.tripData['zoneRadius'].toString()) ?? 50.0;
+    
+    print('✅ [Navigate] All data validated, navigating...');
+    
     NavigationHelper.pushReplacementNoTransition(
       context,
       ActiveTrackingScreen(
-        vesselName: widget.tripData['vesselName'] ?? '',
-        vesselNumber: widget.tripData['vesselNumber'] ?? '',
-        captainName: widget.tripData['captainName'] ?? '',
-        crewCount: widget.tripData['crewCount'] ?? 0,
-        selectedHarbor: widget.tripData['selectedHarbor'] ?? '',
-        departureTime: widget.tripData['departureTime'],
-        estimatedReturnDate: widget.tripData['estimatedReturnDate'],
-        estimatedDuration: widget.tripData['estimatedDuration'] ?? 1,
-        emergencyContact: widget.tripData['emergencyContact'] ?? '',
-        fuelAmount: widget.tripData['fuelAmount'] ?? 0.0,
-        iceStorage: widget.tripData['iceStorage'] ?? 0.0,
-        notes: widget.tripData['notes'],
-        harborCoordinates: widget.tripData['harborCoordinates'],
-        zoneRadius: widget.tripData['zoneRadius'] ?? 50.0,
-        userRole: widget.tripData['userRole'] ?? 'Nahkoda',
-        userName: widget.tripData['userName'] ?? '',
+        vesselName: widget.tripData['vesselName']?.toString() ?? '',
+        vesselNumber: widget.tripData['vesselNumber']?.toString() ?? '',
+        captainName: widget.tripData['captainName']?.toString() ?? '',
+        crewCount: crewCount,
+        selectedHarbor: widget.tripData['selectedHarbor']?.toString() ?? '',
+        departureTime: departureTime,
+        estimatedReturnDate: estimatedReturnDate,
+        estimatedDuration: estimatedDuration,
+        emergencyContact: widget.tripData['emergencyContact']?.toString() ?? '',
+        fuelAmount: fuelAmount,
+        iceStorage: iceStorage,
+        notes: widget.tripData['notes']?.toString(),
+        harborCoordinates: harborCoordinates,
+        zoneRadius: zoneRadius,
+        userRole: widget.tripData['userRole']?.toString() ?? 'Nahkoda',
+        userName: widget.tripData['userName']?.toString() ?? '',
       ),
     );
   }

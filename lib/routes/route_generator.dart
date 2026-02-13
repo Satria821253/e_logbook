@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:e_logbook/routes/app_routes.dart';
 import 'package:e_logbook/screens/main_screen.dart';
 import 'package:e_logbook/screens/profile_screen.dart';
-import 'package:e_logbook/screens/tracking/pre_trip_fromscreen.dart';
+import 'package:e_logbook/screens/tracking/pre_trip_form_v2.dart';
+import 'package:e_logbook/screens/tracking/active_tracking_screen.dart';
 import 'package:e_logbook/screens/vessel/vessel_info_screen.dart';
 import 'package:e_logbook/screens/vessel/vessel_documents_screen.dart';
 import 'package:e_logbook/screens/vessel/vessel_bbm_screen.dart';
@@ -45,7 +46,33 @@ class RouteGenerator {
       case AppRoutes.preTripForm:
         final tripData = settings.arguments as Map<String, dynamic>?;
         return _noTransitionRoute(
-          PreTripFormScreen(tripData: tripData),
+          PreTripFormV2(
+            tripId: tripData?['id'],
+            tripData: tripData,
+          ),
+        );
+      
+      case AppRoutes.activeTracking:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return _noTransitionRoute(
+          ActiveTrackingScreen(
+            vesselName: args?['vesselName'] ?? '',
+            vesselNumber: args?['vesselNumber'] ?? '',
+            captainName: args?['captainName'] ?? '',
+            crewCount: args?['crewCount'] ?? 0,
+            selectedHarbor: args?['selectedHarbor'] ?? '',
+            departureTime: args?['departureTime'] ?? DateTime.now(),
+            estimatedReturnDate: args?['estimatedReturnDate'],
+            estimatedDuration: args?['estimatedDuration'] ?? 1,
+            emergencyContact: args?['emergencyContact'] ?? '',
+            fuelAmount: (args?['fuelAmount'] ?? 0.0).toDouble(),
+            iceStorage: (args?['iceStorage'] ?? 0.0).toDouble(),
+            notes: args?['notes'],
+            harborCoordinates: args?['harborCoordinates'],
+            zoneRadius: (args?['zoneRadius'] ?? 50.0).toDouble(),
+            userRole: args?['userRole'] ?? 'Nahkoda',
+            userName: args?['userName'] ?? '',
+          ),
         );
       
       case AppRoutes.vesselInfo:

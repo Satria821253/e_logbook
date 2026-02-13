@@ -215,6 +215,16 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   }
 
   Widget _buildTripHeader() {
+    // Ambil data kapal dari tripData yang dikirim dari schedule
+    final kapal = widget.tripData?['kapal'];
+    final vesselName = kapal?['namaKapal'] ?? kapal?['nama'] ?? 'Trip';
+    final vesselNumber = kapal?['nomorRegistrasi'] ?? '-';
+    
+    print('\n🚢 [TRIP HEADER] Vessel Data:');
+    print('   Nama Kapal: $vesselName');
+    print('   Nomor Registrasi: $vesselNumber');
+    print('   Raw kapal data: $kapal');
+    
     return Container(
       margin: EdgeInsets.all(16),
       padding: EdgeInsets.all(16),
@@ -231,12 +241,12 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.tripData?['vesselName'] ?? 'Trip',
+                  vesselName,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 SizedBox(height: 4),
                 Text(
-                  widget.tripData?['vesselNumber'] ?? '-',
+                  vesselNumber,
                   style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
                 ),
               ],
@@ -769,13 +779,29 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   }
 
   Future<void> _submit() async {
+    print('\n🔵 [SUBMIT] Button clicked');
+    print('🔵 [SUBMIT] tripId: ${widget.tripId}');
+    print('🔵 [SUBMIT] tripData keys: ${widget.tripData?.keys.toList()}');
+    
+    // Validasi tripId
+    if (widget.tripId == null) {
+      print('❌ [SUBMIT] Error: tripId is null');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: Trip ID tidak tersedia'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    
+    // Pastikan tripData tidak null
+    final tripData = widget.tripData ?? {};
+    
     // Navigate ke PreTrackingScreen dengan membawa path dokumen
     NavigationHelper.pushNoTransition(
       context,
       PreTrackingScreenSimple(
         tripId: widget.tripId!,
         tripData: {
-          ...widget.tripData ?? {},
+          ...tripData,
           'pendingDocuments': _isNahkoda ? {
             'izinMelaut': _izinMelautPath,
             'dokumenKapal': _dokumenKapalPath,

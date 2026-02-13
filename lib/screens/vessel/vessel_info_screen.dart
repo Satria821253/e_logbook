@@ -200,6 +200,9 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
   }
 
   Widget _buildHeaderBanner() {
+    final source = _vesselData?['source'];
+    final isFromTrip = source == 'trip';
+    
     return Container(
       width: double.infinity,
       color: Colors.transparent,
@@ -226,20 +229,58 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 8),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: Color(0xFF1B4F9C).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              vesselNumber,
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF1B4F9C),
-                fontWeight: FontWeight.w500,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Color(0xFF1B4F9C).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  vesselNumber,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF1B4F9C),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
-            ),
+              if (source != null) ...[
+                SizedBox(width: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isFromTrip ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isFromTrip ? Colors.green : Colors.orange,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isFromTrip ? Icons.sailing : Icons.settings,
+                        size: 14,
+                        color: isFromTrip ? Colors.green : Colors.orange,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        isFromTrip ? 'Trip Aktif' : 'Data Kapal',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isFromTrip ? Colors.green : Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
           SizedBox(height: 24),
         ],

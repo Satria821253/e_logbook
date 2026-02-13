@@ -39,12 +39,68 @@ class VesselService {
 
       print('🎯 Role: $actualRole, Force refresh? $forceRefresh');
 
-      // Gunakan endpoint /trip untuk semua role
-      print('🌐 Using /trip endpoint...');
-      return await _getVesselDataFromTrip(token, currentUserId, forceRefresh);
+      // Prioritas 1: Cek trip aktif dulu
+      print('🌐 Checking active trip...');
+      final tripVessel = await _getVesselDataFromTrip(token, currentUserId, forceRefresh);
+      
+      if (tripVessel != null) {
+        print('✅ Found vessel from active trip');
+        return tripVessel;
+      }
+      
+      // Prioritas 2: Ambil dari user settings jika tidak ada trip aktif
+      print('🌐 No active trip, checking user settings...');
+      return await _getVesselDataFromUserSettings(token, currentUserId);
     } catch (e) {
       print('❌ Error in getVesselData: $e');
       print('========== getVesselData END (ERROR) ==========\n');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _getVesselDataFromUserSettings(
+    String token,
+    int? currentUserId,
+  ) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/user/$currentUserId'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final userData = responseData['data'];
+          final kapal = userData['kapal'];
+          
+          if (kapal != null) {
+            print('✅ Found vessel from user settings');
+            return {
+              'kapal': {
+                'id': kapal['id'],
+                'namaKapal': kapal['namaKapal'],
+                'nomorRegistrasi': kapal['nomorRegistrasi'],
+              },
+              'nahkoda': null, // Tidak ada info nahkoda dari settings
+              'tripId': null,
+              'tripStatus': null,
+              'source': 'user_settings', // Marker untuk tahu dari mana datanya
+            };
+          }
+        }
+      }
+
+      print('⚠️ No vessel found in user settings');
+      return null;
+    } catch (e) {
+      print('❌ Error getting vessel from user settings: $e');
       return null;
     }
   }
@@ -90,8 +146,8 @@ class VesselService {
               final isCrew = currentUserId != null && awakKapal != null && awakKapal.contains(currentUserId);
               
               if (isNahkoda || isCrew) {
-                // Prioritaskan trip dengan status 'berlayar' (aktif tracking)
-                if (status == 'berlayar') {
+                // Prioritaskan trip dengan status 'berlayar' atau 'sedang_melaut' (aktif tracking)
+                if (status == 'berlayar' || status == 'sedang_melaut') {
                   myActiveTrip = trip;
                   break; // Langsung ambil yang sedang berlayar
                 }
@@ -130,6 +186,7 @@ class VesselService {
               } : null,
               'tripId': myActiveTrip['id'],
               'tripStatus': myActiveTrip['status'],
+              'source': 'trip', // Marker untuk tahu dari mana datanya
             };
           }
         }

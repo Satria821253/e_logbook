@@ -1055,185 +1055,87 @@ class _MainScreenState extends State<MainScreen> {
     IconData? icon,
     bool isLottie = false,
   }) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.elasticOut,
-      builder: (context, scaleValue, child) {
-        return Transform.scale(
-          scale: scaleValue,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 1500),
-            curve: Curves.easeInOut,
-            builder: (context, pulseValue, child) {
-              return AnimatedBuilder(
-                animation: AlwaysStoppedAnimation(pulseValue),
-                builder: (context, child) {
-                  final pulse = (pulseValue * 2 * 3.14159);
-                  final shadowOpacity = 0.3 + (0.3 * (1 + sin(pulse)) / 2);
-                  final shadowBlur = 12.0 + (8.0 * (1 + sin(pulse)) / 2);
-                  
-                  return Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF1565C0).withOpacity(shadowOpacity),
-                          blurRadius: shadowBlur,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: onTap,
-                        customBorder: const CircleBorder(),
-                        splashColor: Colors.white.withOpacity(0.3),
-                        highlightColor: Colors.white.withOpacity(0.1),
-                        child: isLottie ? _buildLottieFAB() : _buildIconFAB(icon!),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-            onEnd: () {
-              if (mounted) {
-                setState(() {});
-              }
-            },
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: ResponsiveHelper.width(context, mobile: 60, tablet: 70),
+        height: ResponsiveHelper.height(context, mobile: 60, tablet: 70),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildIconFAB(IconData icon) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final fabSize = screenWidth < 800 ? 48.0 : 54.0;
-    final iconSize = screenWidth < 800 ? 22.0 : 26.0;
-    
-    return Ink(
-      width: fabSize,
-      height: fabSize,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1B4F9C).withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: iconSize,
-      ),
-    );
-  }
-
-  Widget _buildLottieFAB() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final fabSize = screenWidth < 800 ? 50.0 : 56.0;
-    final borderWidth = screenWidth < 800 ? 2.5 : 3.0;
-    
-    final now = DateTime.now();
-    final isNight = now.hour >= 18 || now.hour < 6;
-    final lottieAsset = isNight 
-        ? 'assets/animations/tripmalam.json'
-        : 'assets/animations/tripsiang.json';
-
-    return Container(
-      width: fabSize,
-      height: fabSize,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFF1565C0), width: borderWidth),
-      ),
-      child: ClipOval(
-        child: Lottie.asset(
-          lottieAsset,
-          fit: BoxFit.cover,
-          repeat: true,
-          animate: true,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(
-              Icons.directions_boat,
-              color: Color(0xFF1565C0),
-              size: 40,
-            );
-          },
-        ),
+        child: isLottie
+            ? Lottie.asset(
+                'assets/animations/PreTrip.json',
+                fit: BoxFit.contain,
+                repeat: true,
+                animate: true,
+              )
+            : Icon(
+                icon ?? Icons.add,
+                color: Colors.white,
+                size: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+              ),
       ),
     );
   }
-
+  
   Widget _buildEmergencyFAB() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final fabSize = screenWidth < 800 ? 48.0 : 54.0;
-    
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.elasticOut,
-      builder: (context, scaleValue, child) {
-        return Transform.scale(
-          scale: scaleValue,
-          child: GestureDetector(
-            onTap: () async {
-              final success = await showSosAlertDialog(context);
-              if (success == true && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text('🚨 Sinyal Darurat Terkirim!'),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 3),
-                  ),
-                );
-              }
-            },
-            child: Container(
-              width: fabSize,
-              height: fabSize,
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.red, width: 2.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 0),
-                  ),
+    return GestureDetector(
+      onTap: () async {
+        final success = await showSosAlertDialog(context);
+        if (success == true && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('🚨 Sinyal Darurat Terkirim!')),
                 ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Lottie.asset(
-                  'assets/animations/alert.json',
-                  fit: BoxFit.contain,
-                  repeat: true,
-                  animate: true,
-                ),
-              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
             ),
-          ),
-        );
+          );
+        }
       },
+      child: Container(
+        width: ResponsiveHelper.width(context, mobile: 56, tablet: 64),
+        height: ResponsiveHelper.height(context, mobile: 56, tablet: 64),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Colors.red, Colors.redAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.warning_rounded,
+          color: Colors.white,
+          size: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+        ),
+      ),
     );
   }
 
@@ -1316,30 +1218,49 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _handleTripPreparation(BuildContext context) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
     try {
-      final tripData = await _getTripData();
-      Navigator.pop(context);
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      int? currentUserId;
       
-      if (tripData == null) {
-        _showNoTripDialog(context);
-      } else {
-        Navigator.pushNamed(
-          context,
-          '/pre-trip-form',
-          arguments: tripData,
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        currentUserId = userData['id'];
+      }
+      
+      if (currentUserId == null) return;
+      
+      final response = await TripService.getAllTrips();
+      if (response['success'] == true && response['data'] != null) {
+        final allTrips = List<Map<String, dynamic>>.from(response['data']);
+        
+        final activeTrip = allTrips.firstWhere(
+          (trip) {
+            final nahkodaId = trip['nahkodaId'];
+            final status = trip['status']?.toLowerCase();
+            return nahkodaId == currentUserId && 
+                   (status == 'berlayar' || status == 'sedang_melaut');
+          },
+          orElse: () => {},
         );
+        
+        if (activeTrip.isNotEmpty && mounted) {
+          // Langsung ke tracking jika ada trip aktif
+          Navigator.pushNamed(context, '/active-tracking', arguments: {
+            'tripId': activeTrip['id'],
+            'lat': 0.0,
+            'lng': 0.0,
+          });
+        } else if (mounted) {
+          // Ke jadwal tugas jika belum ada trip aktif
+          NahkodaRoutes.navigateToMySchedules(context);
+        }
       }
     } catch (e) {
-      Navigator.pop(context);
-      _showNoTripDialog(context);
+      print('❌ Error handling trip preparation: $e');
+      if (mounted) {
+        NahkodaRoutes.navigateToMySchedules(context);
+      }
     }
   }
 }
