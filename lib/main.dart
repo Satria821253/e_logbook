@@ -6,6 +6,7 @@ import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/zone_alert.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/provider/notification_provider.dart';
+import 'package:e_logbook/provider/tracking_minimize_provider.dart';
 import 'package:e_logbook/config/app_initializer.dart';
 import 'package:e_logbook/routes/route_generator.dart';
 import 'package:e_logbook/screens/splash_screen.dart';
@@ -33,6 +34,7 @@ void main() async {
               ChangeNotifierProvider(create: (_) => ZoneAlertProvider()),
               ChangeNotifierProvider(create: (_) => NavigationProvider()),
               ChangeNotifierProvider(create: (_) => NotificationProvider()),
+              ChangeNotifierProvider(create: (_) => TrackingMinimizeProvider()),
             ],
             child: const MyApp(),
           )

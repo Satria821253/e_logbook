@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:e_logbook/models/catch_model.dart';
 import 'package:e_logbook/provider/catch_provider.dart';
 import 'package:e_logbook/provider/user_provider.dart';
+import 'package:e_logbook/provider/tracking_minimize_provider.dart';
 import 'package:e_logbook/services/local/catch_submission_service.dart';
 import 'package:e_logbook/services/ai/gemini_fish_detection_service.dart';
 import 'package:e_logbook/services/api/trip_service.dart';
@@ -11,6 +14,7 @@ import 'package:e_logbook/widgets/ai_detection_result_widget.dart';
 import 'package:e_logbook/widgets/image_picker.dart';
 import 'package:e_logbook/widgets/section_title.dart';
 import 'package:e_logbook/widgets/sync_status_widget.dart';
+import 'package:e_logbook/widgets/tracking_minimized_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -71,18 +75,60 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   Future<void> _loadTripData() async {
     try {
       debugPrint('\n🚢 [CATCH_SCREEN] Loading trip data...');
-      final result = await TripService.getMyTrips();
+      
+      // Gunakan endpoint /trip yang sama seperti screen lain
+      final result = await TripService.getAllTrips();
       
       if (result['success'] == true && result['data'] != null) {
         final trips = result['data'] as List;
         debugPrint('📊 [CATCH_SCREEN] Total trips: ${trips.length}');
         
-        if (trips.isNotEmpty) {
-          final trip = trips[0];
+        // Get current user ID and role
+        final prefs = await SharedPreferences.getInstance();
+        final userDataString = prefs.getString('user_data');
+        int? currentUserId;
+        String? currentUserRole;
+        
+        if (userDataString != null) {
+          final userData = json.decode(userDataString);
+          currentUserId = userData['id'];
+          currentUserRole = userData['role'];
+        }
+        
+        if (currentUserId == null) {
+          debugPrint('⚠️ [CATCH_SCREEN] No user ID found');
+          safeSetState(() => _isLoadingTrip = false);
+          return;
+        }
+        
+        debugPrint('👤 [CATCH_SCREEN] Current User ID: $currentUserId');
+        debugPrint('🎭 [CATCH_SCREEN] Current User Role: $currentUserRole');
+        
+        // Filter trip untuk user ini yang statusnya berlayar/disetujui
+        final myTrips = trips.where((trip) {
+          final nahkodaId = trip['nahkodaId'];
+          final awakKapal = trip['awakKapal'] as List?;
+          final status = trip['status']?.toLowerCase();
+          
+          // Check if this trip belongs to current user
+          final isMyTrip = (nahkodaId == currentUserId) ||
+                           (awakKapal != null && awakKapal.contains(currentUserId));
+          final isActive = status == 'berlayar' || status == 'disetujui';
+          
+          debugPrint('🔍 [CATCH_SCREEN] Trip ${trip['id']}: isMyTrip=$isMyTrip, isActive=$isActive, status=$status');
+          
+          return isMyTrip && isActive;
+        }).toList();
+        
+        debugPrint('🎯 [CATCH_SCREEN] My active trips: ${myTrips.length}');
+        
+        if (myTrips.isNotEmpty) {
+          final trip = myTrips[0];
           debugPrint('🎯 [CATCH_SCREEN] Trip ID: ${trip['id']}');
           debugPrint('🆔 [CATCH_SCREEN] Kapal ID: ${trip['kapalId']}');
           debugPrint('👨✈️ [CATCH_SCREEN] Nahkoda ID: ${trip['nahkodaId']}');
           debugPrint('👥 [CATCH_SCREEN] Crew IDs: ${trip['awakKapal']}');
+          debugPrint('📌 [CATCH_SCREEN] Trip Status: ${trip['status']}');
           
           // Fetch detail trip untuk mendapatkan data lengkap
           debugPrint('🔍 [CATCH_SCREEN] Fetching trip detail...');
@@ -92,9 +138,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
             final tripDetail = detailResult['data'];
             debugPrint('✅ [CATCH_SCREEN] Trip detail loaded');
             debugPrint('⚓ [CATCH_SCREEN] Vessel: ${tripDetail['kapal']?['namaKapal']}');
+            debugPrint('🆔 [CATCH_SCREEN] Vessel Number: ${tripDetail['kapal']?['nomorRegistrasi']}');
             debugPrint('👨✈️ [CATCH_SCREEN] Captain: ${tripDetail['nahkoda']?['nama']}');
+            debugPrint('👥 [CATCH_SCREEN] Crew Count: ${(tripDetail['awakKapal'] as List?)?.length}');
             debugPrint('📅 [CATCH_SCREEN] Departure: ${tripDetail['tanggalBerangkat']}');
             debugPrint('📅 [CATCH_SCREEN] Return: ${tripDetail['estimasiPulang']}');
+            debugPrint('📌 [CATCH_SCREEN] Status: ${tripDetail['status']}');
             
             safeSetState(() {
               _tripData = tripDetail;
@@ -106,7 +155,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   final departureDateTime = DateTime.parse(tripDetail['tanggalBerangkat']);
                   _departureDate = departureDateTime;
                   _departureTime = TimeOfDay(hour: departureDateTime.hour, minute: departureDateTime.minute);
-                  debugPrint('✅ [CATCH_SCREEN] Auto-filled departure time:');
+                  debugPrint('✅ [CATCH_SCREEN] Auto-filled departure from trip:');
                   debugPrint('   Date: ${_departureDate.day}/${_departureDate.month}/${_departureDate.year}');
                   debugPrint('   Time: ${_departureTime.hour}:${_departureTime.minute}');
                 } catch (e) {
@@ -121,7 +170,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   final returnDateTime = DateTime.parse(tripDetail['estimasiPulang']);
                   _arrivalDate = returnDateTime;
                   _arrivalTime = TimeOfDay(hour: returnDateTime.hour, minute: returnDateTime.minute);
-                  debugPrint('✅ [CATCH_SCREEN] Auto-filled return time:');
+                  debugPrint('✅ [CATCH_SCREEN] Auto-filled return from trip:');
                   debugPrint('   Date: ${_arrivalDate.day}/${_arrivalDate.month}/${_arrivalDate.year}');
                   debugPrint('   Time: ${_arrivalTime.hour}:${_arrivalTime.minute}');
                 } catch (e) {
@@ -134,6 +183,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               // Calculate duration
               _calculateDuration();
               debugPrint('⏱️ [CATCH_SCREEN] Calculated duration: $_calculatedHours hours $_calculatedMinutes minutes');
+              debugPrint('✅ [CATCH_SCREEN] Waktu perjalanan diambil dari trip berdasarkan userId: $currentUserId, role: $currentUserRole');
             });
           } else {
             debugPrint('⚠️ [CATCH_SCREEN] Failed to load trip detail - will use UserProvider fallback');
@@ -504,7 +554,20 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
         // Allow both Nahkoda and Crew to access catch management
-        return _buildCreateCatchScreen(context);
+        return Stack(
+          children: [
+            _buildCreateCatchScreen(context),
+            // Tampilkan overlay minimized jika tracking aktif
+            Consumer<TrackingMinimizeProvider>(
+              builder: (context, trackingProvider, child) {
+                if (trackingProvider.isTrackingActive && trackingProvider.isMinimized) {
+                  return TrackingMinimizedOverlay();
+                }
+                return SizedBox.shrink();
+              },
+            ),
+          ],
+        );
       },
     );
   }
@@ -860,6 +923,19 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     required String captainName,
     required int crewCount,
   }) {
+    // Get user info from provider
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final userId = userProvider.user?.id ?? 0;
+    final userRole = userProvider.user?.role ?? 'ABK';
+    
+    debugPrint('\n📋 [VESSEL_INFO_CARD]');
+    debugPrint('⚓ Vessel Name: $vesselName');
+    debugPrint('🆔 Vessel Number: $vesselNumber');
+    debugPrint('👨✈️ Captain: $captainName');
+    debugPrint('👥 Crew Count: $crewCount');
+    debugPrint('🆔 User ID: $userId');
+    debugPrint('👤 User Role: $userRole');
+    
     return Container(
           padding: EdgeInsets.all(sp(16)),
           decoration: BoxDecoration(

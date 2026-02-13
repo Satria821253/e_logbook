@@ -9,8 +9,6 @@ import 'dart:async';
 import '../../../screens/nahkoda/widgets/menu_toggle_button.dart';
 import '../../../services/api/trip_service.dart';
 import 'crew_menu_items.dart';
-import 'crew_tracking_button.dart';
-import '../screens/create_catch_screen.dart';
 
 class CrewFloatingMenu extends StatefulWidget {
   const CrewFloatingMenu({super.key});
@@ -23,6 +21,9 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
     with TickerProviderStateMixin {
   bool _isMenuOpen = false;
   bool _isBerlayar = false;
+  bool _showTracking = true;
+  Timer? _toggleTimer;
+  DateTime? _berlayarStartTime;
   late AnimationController _animationController;
   late Animation<double> _animation;
 
@@ -39,10 +40,30 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
     );
     _checkTripStatus();
     _startPeriodicCheck();
+    _startFabToggle();
+  }
+  
+  void _startFabToggle() {
+    _toggleTimer?.cancel();
+    _toggleTimer = Timer.periodic(Duration(seconds: 3), (timer) {
+      if (mounted) {
+        if (_isBerlayar && _berlayarStartTime != null) {
+          final elapsed = DateTime.now().difference(_berlayarStartTime!);
+          if (elapsed.inSeconds >= 10) {
+            setState(() {
+              _showTracking = !_showTracking;
+            });
+          }
+        } else if (!_isBerlayar) {
+          setState(() {
+            _showTracking = !_showTracking;
+          });
+        }
+      }
+    });
   }
   
   void _startPeriodicCheck() {
-    // Cek status trip setiap 30 detik untuk update FAB
     Timer.periodic(Duration(seconds: 30), (timer) {
       if (mounted) {
         _checkTripStatus();
@@ -81,8 +102,13 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
         });
         
         if (mounted) {
+          final wasBerlayar = _isBerlayar;
           setState(() {
             _isBerlayar = hasBerlayar;
+            if (hasBerlayar && !wasBerlayar) {
+              _berlayarStartTime = DateTime.now();
+              _showTracking = true;
+            }
           });
         }
       }
@@ -93,6 +119,7 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
 
   @override
   void dispose() {
+    _toggleTimer?.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -109,7 +136,6 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
   }
 
   Future<void> _handleSosAlert(BuildContext context) async {
-    // Check location permission first
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -194,7 +220,6 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
       return;
     }
 
-    // Show SOS dialog
     final success = await showSosAlertDialog(context);
 
     if (success == true && context.mounted) {
@@ -236,51 +261,11 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Main FAB - Bergantian antara Tracking (saat berlayar) dan Create Catch (saat tidak berlayar)
+        // Emergency Alert
         if (!_isMenuOpen)
           Positioned(
             right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
             bottom: ResponsiveHelper.height(context, mobile: 153, tablet: 183),
-            child: _isBerlayar
-                ? const CrewTrackingButton()
-                : GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CreateCatchScreen(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      width: ResponsiveHelper.width(context, mobile: 56, tablet: 70),
-                      height: ResponsiveHelper.height(context, mobile: 56, tablet: 70),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF1565C0).withOpacity(0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.add_photo_alternate,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-          ),
-        // Alert Button (always visible, hides when menu opens)
-        if (!_isMenuOpen)
-          Positioned(
-            right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-            bottom: ResponsiveHelper.height(context, mobile: 80, tablet: 96),
             child: GestureDetector(
               onTap: () async {
                 await _handleSosAlert(context);
@@ -312,14 +297,16 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
               ),
             ),
           ),
+        // Menu Toggle Button
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 16, tablet: 20),
+          bottom: ResponsiveHelper.height(context, mobile: 80, tablet: 96),
           child: MenuToggleButton(
             isMenuOpen: _isMenuOpen,
             onToggle: _toggleMenu,
           ),
         ),
+        // Menu Items
         if (_isMenuOpen)
           CrewMenuItems(
             animation: _animation,
@@ -328,4 +315,6 @@ class _CrewFloatingMenuState extends State<CrewFloatingMenu>
       ],
     );
   }
+
+
 }

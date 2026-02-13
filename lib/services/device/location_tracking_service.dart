@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:e_logbook/services/device/zone_checker.dart';
+import 'package:e_logbook/services/device/foreground_tracking_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 
@@ -53,6 +54,12 @@ class LocationTrackingService {
       if (permission == LocationPermission.deniedForever) {
         throw Exception('Izin lokasi ditolak permanen. Aktifkan di Settings.');
       }
+
+      // 🚀 START FOREGROUND SERVICE
+      await ForegroundTrackingService.startService(
+        vesselName: vesselName,
+        harborName: harborName,
+      );
 
       // Get initial position
       _lastPosition = await Geolocator.getCurrentPosition(
@@ -151,6 +158,7 @@ class LocationTrackingService {
 
   /// Stop tracking (dipanggil saat user akhiri trip)
   static Future<void> stopTracking() async {
+    await ForegroundTrackingService.stopService();
     await _cleanup();
     debugPrint('🛑 Location tracking stopped');
   }
@@ -198,12 +206,11 @@ class LocationTrackingService {
   required double harborLng,
   required String harborName,
   required String vesselName,
-  required double zoneRadius, // dalam km
+  required double zoneRadius,
   required Function() onViolationDetected,
   required Function() onBackToSafeZone,
   required Function(Position, Map<String, dynamic>) onLocationUpdate,
 }) async {
-  // Check permission
   LocationPermission permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.denied) {
     permission = await Geolocator.requestPermission();
@@ -212,21 +219,24 @@ class LocationTrackingService {
     }
   }
 
+  await ForegroundTrackingService.startService(
+    vesselName: vesselName,
+    harborName: harborName,
+  );
+
   bool wasViolating = false;
   _vesselName = vesselName;
   _selectedHarborName = harborName;
   _isTracking = true;
 
-  // Start tracking
   _positionStream = Geolocator.getPositionStream(
     locationSettings: const LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 10, // Update setiap 10 meter
+      distanceFilter: 10,
     ),
   ).listen((Position position) {
     _lastPosition = position;
 
-    // 🚨 CEK ZONA TERLARANG DULU (PRIORITAS UTAMA)
     final restrictedCheck = ZoneCheckerService.checkRestrictedZones(
       latitude: position.latitude,
       longitude: position.longitude,
@@ -235,21 +245,18 @@ class LocationTrackingService {
 
     bool isInRestrictedZone = restrictedCheck['isInRestrictedZone'] == true;
 
-    // Hitung jarak dari pelabuhan (untuk info saja)
     final distance = Geolocator.distanceBetween(
           harborLat,
           harborLng,
           position.latitude,
           position.longitude,
         ) /
-        1000; // Convert ke km
+        1000;
 
-    // ✅ PERBAIKAN: Kapal di luar zona pelabuhan = NORMAL (bukan pelanggaran)
-    // Pelanggaran hanya jika masuk ZONA TERLARANG
     final zoneInfo = {
       'distance': distance,
       'zoneRadius': zoneRadius,
-      'isViolating': isInRestrictedZone, // ✅ Hanya zona terlarang yang dianggap pelanggaran
+      'isViolating': isInRestrictedZone,
       'isInRestrictedZone': isInRestrictedZone,
       'restrictedZoneName': restrictedCheck['zoneName'],
       'restrictedZoneDistance': restrictedCheck['distance'],
@@ -257,10 +264,13 @@ class LocationTrackingService {
       'harborName': harborName,
     };
 
-    // Update callback
     onLocationUpdate(position, zoneInfo);
 
-    // 🚨 DETEKSI MASUK ZONA TERLARANG
+    ForegroundTrackingService.updateNotification(
+      title: '🚢 $vesselName',
+      text: 'Jarak: ${distance.toStringAsFixed(1)} km dari $harborName',
+    );
+
     if (isInRestrictedZone && !wasViolating) {
       wasViolating = true;
       _isCurrentlyViolating = true;

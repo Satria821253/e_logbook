@@ -146,6 +146,18 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
     final role = _userRole ?? prefs.getString('role') ?? widget.tripData['role'];
     final userName = userProvider.user?.name ?? prefs.getString('name') ?? '';
     
+    print('🔍 [Navigation] ===== ROLE DEBUG START =====');
+    print('🔍 [Navigation] _userRole: $_userRole');
+    print('🔍 [Navigation] prefs.role: ${prefs.getString('role')}');
+    print('🔍 [Navigation] tripData.role: ${widget.tripData['role']}');
+    print('🔍 [Navigation] Final role: $role');
+    print('🔍 [Navigation] role.toLowerCase(): ${role?.toString().toLowerCase()}');
+    print('🔍 [Navigation] contains nahkoda: ${role?.toString().toLowerCase().contains('nahkoda')}');
+    
+    final finalUserRole = (role?.toString().toLowerCase().contains('nahkoda') ?? false) ? 'Nahkoda' : 'ABK';
+    print('🔍 [Navigation] Final userRole to pass: $finalUserRole');
+    print('🔍 [Navigation] ===== ROLE DEBUG END =====');
+    
     final tripId = widget.tripData['tripId'];
     double totalFuel = 0;
     double totalIce = 0;
@@ -213,7 +225,7 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
           'notes': widget.tripData['notes'],
           'harborCoordinates': widget.tripData['harborCoordinates'],
           'zoneRadius': 50.0,
-          'userRole': role?.toLowerCase() == 'nahkoda' ? 'Nahkoda' : 'ABK',
+          'userRole': finalUserRole,
           'userName': userName,
         },
       ),

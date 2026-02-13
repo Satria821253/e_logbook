@@ -19,15 +19,12 @@ class TripDurationHelper {
   /// Prioritas: estimatedReturnDate dari BE > hitung dari estimatedDurationDays
   DateTime getEstimatedReturnDate() {
     if (estimatedReturnDate != null) {
-      print('✅ Using estimatedReturnDate from API: $estimatedReturnDate');
       return estimatedReturnDate!;
     }
     
     // Fallback: hitung dari departure + duration
     final days = estimatedDurationDays ?? 7; // Default 7 hari
-    final calculated = departureDate.add(Duration(days: days));
-    print('⚠️  Using fallback calculation: $departureDate + $days days = $calculated');
-    return calculated;
+    return departureDate.add(Duration(days: days));
   }
 
   /// Hitung durasi yang sudah berjalan
@@ -45,14 +42,7 @@ class TripDurationHelper {
     // PRODUCTION FIX: Hitung dari departure date, bukan dari now
     // Jika trip belum dimulai, gunakan departure date sebagai start
     final tripStart = now.isBefore(departureDate) ? departureDate : now;
-    final remaining = estimatedReturn.difference(tripStart);
-    
-    print('🕒 Now: $now');
-    print('🚢 Trip Start: ${now.isBefore(departureDate) ? "$departureDate (scheduled)" : "$now (active)"}');
-    print('🎯 Estimated Return: $estimatedReturn');
-    print('⏳ Remaining: ${remaining.inDays}d ${remaining.inHours.remainder(24)}h ${remaining.inMinutes.remainder(60)}m');
-    
-    return remaining;
+    return estimatedReturn.difference(tripStart);
   }
 
   /// Cek apakah trip sudah overtime

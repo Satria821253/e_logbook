@@ -68,6 +68,46 @@ class NahkodaRoutes {
     TrackingRoutes.navigateToPreTripForm(context);
   }
 
+  static void navigateToActiveTracking(
+    BuildContext context, {
+    required String vesselName,
+    required String vesselNumber,
+    required String captainName,
+    required int crewCount,
+    required String selectedHarbor,
+    required DateTime departureTime,
+    DateTime? estimatedReturnDate,
+    required int estimatedDuration,
+    required String emergencyContact,
+    required double fuelAmount,
+    required double iceStorage,
+    String? notes,
+    Map<String, dynamic>? harborCoordinates,
+    required double zoneRadius,
+    String userRole = 'Nahkoda',
+    String userName = '',
+  }) {
+    TrackingRoutes.navigateToActiveTracking(
+      context,
+      vesselName: vesselName,
+      vesselNumber: vesselNumber,
+      captainName: captainName,
+      crewCount: crewCount,
+      selectedHarbor: selectedHarbor,
+      departureTime: departureTime,
+      estimatedReturnDate: estimatedReturnDate,
+      estimatedDuration: estimatedDuration,
+      emergencyContact: emergencyContact,
+      fuelAmount: fuelAmount,
+      iceStorage: iceStorage,
+      notes: notes,
+      harborCoordinates: harborCoordinates,
+      zoneRadius: zoneRadius,
+      userRole: userRole,
+      userName: userName,
+    );
+  }
+
   static void showEmergencyDialog(BuildContext context) {
     TrackingRoutes.showTrackingEmergencyDialog(context);
   }
