@@ -9,7 +9,6 @@ class LocationTrackingService {
   static StreamSubscription<Position>? _positionStream;
   static Position? _lastPosition;
   static bool _isTracking = false;
-  static Function(Position, Map<String, dynamic>)? _onLocationUpdate;
   static VoidCallback? _onViolationDetected;
   static VoidCallback? _onBackToSafeZone;
   
@@ -34,7 +33,6 @@ class LocationTrackingService {
     _vesselName = vesselName;
     _onViolationDetected = onViolationDetected;
     _onBackToSafeZone = onBackToSafeZone;
-    _onLocationUpdate = onLocationUpdate;
 
     try {
       // Cek permission
@@ -118,24 +116,6 @@ class LocationTrackingService {
 
     bool isInRestrictedZone = restrictedCheck['isInRestrictedZone'] == true;
 
-    // Cek zona pelabuhan (untuk info saja)
-    final zoneCheck = ZoneCheckerService.checkZone(
-      selectedHarborName: _selectedHarborName!,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      vesselName: _vesselName!,
-    );
-
-    // Gabungkan info zona
-    final combinedZoneInfo = {
-      ...zoneCheck,
-      'isInRestrictedZone': isInRestrictedZone,
-      'restrictedZoneName': restrictedCheck['zoneName'],
-      'restrictedZoneDistance': restrictedCheck['distance'],
-    };
-
-    // Callback location update (untuk update UI map)
-    _onLocationUpdate?.call(position, combinedZoneInfo);
 
     // 🚨 DETEKSI MASUK ZONA TERLARANG
     if (isInRestrictedZone && !_isCurrentlyViolating) {
@@ -177,7 +157,6 @@ class LocationTrackingService {
       _vesselName = null;
       _onViolationDetected = null;
       _onBackToSafeZone = null;
-      _onLocationUpdate = null;
     }
   }
 
@@ -189,18 +168,6 @@ class LocationTrackingService {
   static String? get currentVessel => _vesselName;
 
   /// Get current zone info
-  static Map<String, dynamic>? getCurrentZoneInfo() {
-    if (_lastPosition == null || _selectedHarborName == null || _vesselName == null) {
-      return null;
-    }
-
-    return ZoneCheckerService.checkZone(
-      selectedHarborName: _selectedHarborName!,
-      latitude: _lastPosition!.latitude,
-      longitude: _lastPosition!.longitude,
-      vesselName: _vesselName!,
-    );
-  }
   static Future<void> startTrackingWithCoordinates({
   required double harborLat,
   required double harborLng,
