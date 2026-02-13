@@ -67,6 +67,7 @@ dependencies:
   image: ^4.0.17
   flutter_local_notifications: ^17.0.0
   timezone: ^0.9.2
+  flutter_foreground_task: ^8.11.0
   
 
 dev_dependencies:
@@ -109,8 +110,6 @@ flutter:
      - assets/animations/tripsiang.json
      - assets/animations/tripmalam.json 
      - assets/animations/PreTrip.json
-     - assets/animations/siapmelautmalam.json 
-     - assets/animations/siapmelaut.json
      - assets/animations/cloudy.json
      - assets/animations/cloudynight.json
      - assets/animations/night_sky.json
@@ -121,10 +120,6 @@ flutter:
      - assets/animations/thunderstorm.json
      - assets/animations/sunnynew.json
      - assets/animations/rainynight.json
-     - assets/animations/fish.json
-     - assets/animations/money.json
-     - assets/animations/chart.json
-     - assets/animations/Weighing.json
      - assets/animations/livetracking.json
      - assets/animations/GPS.json
      - assets/animations/GPSRED.json
@@ -134,6 +129,7 @@ flutter:
      - assets/animations/listfitur.json
      - assets/animations/wa.json
      - assets/animations/Click.json
+     - assets/animations/catch.json
      - assets/icons/icon_ai.png
      - assets/icons/iot.png
      - assets/oipb.png

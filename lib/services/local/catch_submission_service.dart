@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../config/api_config.dart';
 import 'offline_sync_service.dart';
 
 class CatchSubmissionService {
@@ -69,15 +69,12 @@ class CatchSubmissionService {
     }
   }
 
-  // Kirim ke server (implementasi real API)
   static Future<bool> _sendToServer(
     Map<String, dynamic> catchData,
     File imageFile,
   ) async {
     try {
-      // Get API base URL from .env
-      final apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000/api';
-      final uri = Uri.parse('$apiBaseUrl/mobile/catches');
+      final uri = Uri.parse('${ApiConfig.baseUrl}/mobile/catches');
       
       // Get auth token
       final prefs = await SharedPreferences.getInstance();

@@ -17,10 +17,10 @@ class CrewMenuItems extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Customer Service (WhatsApp)
+        // Customer Service (WhatsApp) - paling bawah
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 230, tablet: 290),
+          bottom: ResponsiveHelper.height(context, mobile: 150, tablet: 190),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -36,7 +36,7 @@ class CrewMenuItems extends StatelessWidget {
         // Data Raw
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 300, tablet: 390),
+          bottom: ResponsiveHelper.height(context, mobile: 220, tablet: 290),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -52,7 +52,7 @@ class CrewMenuItems extends StatelessWidget {
         // Jadwal Tugas
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 370, tablet: 490),
+          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -68,7 +68,7 @@ class CrewMenuItems extends StatelessWidget {
         // Riwayat Tugas Saya
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 440, tablet: 590),
+          bottom: ResponsiveHelper.height(context, mobile: 360, tablet: 490),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(

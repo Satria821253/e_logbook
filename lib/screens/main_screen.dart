@@ -1,26 +1,34 @@
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/notification_provider.dart';
+import 'package:e_logbook/provider/tracking_minimize_provider.dart';
 import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_floating_menu.dart';
-import 'package:e_logbook/screens/tracking/animated/tracking.dart';
+import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_tracking_button.dart';
 import 'package:e_logbook/screens/crew/widgets/crew_floating_menu.dart';
-import 'package:e_logbook/provider/navigation_provider.dart';
+import 'package:e_logbook/screens/crew/widgets/crew_tracking_button.dart';
+import 'package:e_logbook/screens/tracking/active_tracking_screen.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:e_logbook/utils/profile_photo_cache.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
+import 'package:e_logbook/services/api/trip_service.dart';
 import 'package:e_logbook/services/nitification/local_notification_service.dart';
 import 'package:e_logbook/widgets/sos_alert_dialog.dart';
 import 'package:e_logbook/routes/crew_routes.dart';
 import 'package:e_logbook/routes/nahkoda_routes.dart';
+import 'package:e_logbook/provider/navigation_provider.dart';
+import 'package:e_logbook/widgets/tracking_minimized_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:lottie/lottie.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'dart:math' show sin;
+import 'dart:async';
+import 'dart:convert';
 import 'home_screen.dart';
 import 'statistics_screen.dart';
 import 'history_screen.dart';
@@ -44,6 +52,10 @@ class _MainScreenState extends State<MainScreen> {
   
   String _currentAddress = "Mendeteksi lokasi...";
   ImageProvider? _cachedImageProvider;
+  bool _isBerlayar = false;
+  bool _showTracking = false;
+  Timer? _toggleTimer;
+  DateTime? _berlayarStartTime;
   
   @override
   void initState() {
@@ -54,6 +66,89 @@ class _MainScreenState extends State<MainScreen> {
     AuthService.addTokenInterceptor(context);
     _loadUserData();
     _initCachedPhoto();
+    _checkTripStatus();
+    _startPeriodicCheck();
+    _startFabToggle();
+  }
+  
+  void _startFabToggle() {
+    _toggleTimer?.cancel();
+    _toggleTimer = Timer.periodic(Duration(seconds: 3), (timer) {
+      if (mounted) {
+        if (_isBerlayar && _berlayarStartTime != null) {
+          final elapsed = DateTime.now().difference(_berlayarStartTime!);
+          if (elapsed.inSeconds >= 10) {
+            setState(() {
+              _showTracking = !_showTracking;
+            });
+          }
+        } else if (!_isBerlayar) {
+          setState(() {
+            _showTracking = !_showTracking;
+          });
+        }
+      }
+    });
+  }
+  
+  void _startPeriodicCheck() {
+    Timer.periodic(Duration(seconds: 30), (timer) {
+      if (mounted) {
+        _checkTripStatus();
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _checkTripStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      int? currentUserId;
+      
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        currentUserId = userData['id'];
+      }
+      
+      if (currentUserId == null) return;
+      
+      final response = await TripService.getAllTrips();
+      if (response['success'] == true && response['data'] != null) {
+        final allTrips = List<Map<String, dynamic>>.from(response['data']);
+        
+        final hasBerlayar = allTrips.any((trip) {
+          final nahkodaId = trip['nahkodaId'];
+          final awakKapal = trip['awakKapal'] as List?;
+          final status = trip['status']?.toLowerCase();
+          
+          final isMyTrip = (nahkodaId == currentUserId) ||
+                           (awakKapal != null && awakKapal.contains(currentUserId));
+          
+          return isMyTrip && status == 'berlayar';
+        });
+        
+        if (mounted) {
+          final wasBerlayar = _isBerlayar;
+          setState(() {
+            _isBerlayar = hasBerlayar;
+            if (hasBerlayar && !wasBerlayar) {
+              _berlayarStartTime = DateTime.now();
+              _showTracking = true;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ [MainScreen] Error checking trip status: $e');
+    }
+  }
+  
+  @override
+  void dispose() {
+    _toggleTimer?.cancel();
+    super.dispose();
   }
   
   Future<void> _requestNotificationPermission() async {
@@ -151,40 +246,55 @@ class _MainScreenState extends State<MainScreen> {
     double iconSize = ResponsiveHelper.width(context, mobile: 24, tablet: 28);
     double fontSize = ResponsiveHelper.font(context, mobile: 10, tablet: 12);
 
-    return Consumer2<UserProvider, NavigationProvider>(
-      builder: (context, userProvider, navProvider, child) {
+    return Consumer3<UserProvider, NavigationProvider, TrackingMinimizeProvider>(
+      builder: (context, userProvider, navProvider, trackingProvider, child) {
         final user = userProvider.user;
         final isABK = user?.isABK == true;
         final selectedIndex = navProvider.selectedIndex;
         final isTablet = ResponsiveHelper.isTablet(context);
 
         if (isTablet) {
-          return _buildTabletLayout(userProvider, navProvider, selectedIndex, isABK);
+          return _buildTabletLayout(userProvider, navProvider, selectedIndex, isABK, trackingProvider);
         }
 
         return Scaffold(
           resizeToAvoidBottomInset: false,
           backgroundColor: Colors.white,
 
-          body: IndexedStack(
-            index: selectedIndex,
+          body: Stack(
             children: [
-              Stack(
+              IndexedStack(
+                index: selectedIndex,
                 children: [
-                  _screens[0],
-                  if (!isABK) const NahkodaFloatingMenu(),
-                  if (isABK) const CrewFloatingMenu(),
+                  Stack(
+                    children: [
+                      _screens[0],
+                      if (!isABK) const NahkodaFloatingMenu(),
+                      if (isABK) const CrewFloatingMenu(),
+                    ],
+                  ),
+                  _screens[1],
+                  _screens[2],
+                  _screens[3],
                 ],
               ),
-              _screens[1],
-              _screens[2],
-              _screens[3],
             ],
           ),
 
           floatingActionButton: isABK
-              ? _buildCatchFAB(fabSize)
-              : const TrackingAnimationButton(),
+              ? AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
+                  },
+                  child: _showTracking 
+                      ? const CrewTrackingButton(key: ValueKey('tracking'))
+                      : _buildCatchFAB(fabSize),
+                )
+              : const NahkodaTrackingButton(),
           floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
           bottomNavigationBar: BottomAppBar(
@@ -281,34 +391,23 @@ class _MainScreenState extends State<MainScreen> {
 
   // Catch FAB untuk Crew
   Widget _buildCatchFAB(double fabSize) {
-    return Container(
-      width: fabSize,
-      height: fabSize,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return GestureDetector(
+      key: const ValueKey('catch'),
+      onTap: () => NavigationHelper.pushNoTransition(context, const CreateCatchScreen()),
+      child: Container(
+        width: 90,
+        height: 90,
+        child: Lottie.asset(
+          'assets/animations/catch.json',
+          fit: BoxFit.contain,
+          repeat: true,
+          animate: true,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1B4F9C).withOpacity(0.4),
-            blurRadius: ResponsiveHelper.width(context, mobile: 12, tablet: 16),
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: FloatingActionButton(
-        onPressed: () => NavigationHelper.pushNoTransition(context, const CreateCatchScreen()),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: Icon(Icons.add, size: ResponsiveHelper.width(context, mobile: 36, tablet: 42), color: Colors.white),
       ),
     );
   }
 
-  Widget _buildTabletLayout(UserProvider userProvider, NavigationProvider navProvider, int selectedIndex, bool isABK) {
+  Widget _buildTabletLayout(UserProvider userProvider, NavigationProvider navProvider, int selectedIndex, bool isABK, TrackingMinimizeProvider trackingProvider) {
     final screenWidth = MediaQuery.of(context).size.width;
     final sidebarWidth = screenWidth < 800 ? 180.0 : 200.0;
     final headerHeight = screenWidth < 800 ? 80.0 : 90.0;
@@ -520,6 +619,8 @@ class _MainScreenState extends State<MainScreen> {
                       right: 0,
                       child: _buildTabletHeader(userProvider, headerHeight),
                     ),
+                    if (trackingProvider.isMinimized && trackingProvider.isTrackingActive)
+                      TrackingMinimizedOverlay(),
                   ],
                 ),
               ),
@@ -1241,5 +1342,126 @@ class _MainScreenState extends State<MainScreen> {
       Navigator.pop(context);
       _showNoTripDialog(context);
     }
+  }
+
+  Widget _buildMinimizedTracking(TrackingMinimizeProvider trackingProvider) {
+    final trackingData = trackingProvider.trackingData;
+    if (trackingData == null) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () {
+        trackingProvider.maximize();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ActiveTrackingScreen(
+              vesselName: trackingData['vesselName'] ?? '',
+              vesselNumber: trackingData['vesselNumber'] ?? '',
+              captainName: trackingData['captainName'] ?? '',
+              crewCount: trackingData['crewCount'] ?? 0,
+              selectedHarbor: trackingData['selectedHarbor'] ?? '',
+              departureTime: trackingData['departureTime'] ?? DateTime.now(),
+              estimatedReturnDate: trackingData['estimatedReturnDate'],
+              estimatedDuration: trackingData['estimatedDuration'] ?? 0,
+              emergencyContact: trackingData['emergencyContact'] ?? '',
+              fuelAmount: trackingData['fuelAmount'] ?? 0.0,
+              iceStorage: trackingData['iceStorage'] ?? 0.0,
+              notes: trackingData['notes'],
+              harborCoordinates: trackingData['harborCoordinates'],
+              zoneRadius: trackingData['zoneRadius'] ?? 0.0,
+              userRole: trackingData['userRole'] ?? 'Nahkoda',
+              userName: trackingData['userName'] ?? '',
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 180,
+        height: 240,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white, width: 3),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.sailing,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Active Tracking',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              trackingData['vesselName'] ?? '',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.greenAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Tap to open',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:e_logbook/screens/nahkoda/screens/aktif_tracking.dart';
+import 'package:e_logbook/screens/tracking/active_tracking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 
@@ -29,6 +29,8 @@ class TrackingRoutes {
     String? notes,
     Map<String, dynamic>? harborCoordinates,
     required double zoneRadius,
+    String userRole = 'Nahkoda',
+    String userName = '',
   }) {
     NavigationHelper.pushReplacementNoTransition(
       context,
@@ -47,6 +49,8 @@ class TrackingRoutes {
         notes: notes,
         harborCoordinates: harborCoordinates,
         zoneRadius: zoneRadius,
+        userRole: userRole,
+        userName: userName,
       ),
     );
   }

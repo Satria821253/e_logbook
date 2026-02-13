@@ -10,6 +10,7 @@ class TripStatisticsCard extends StatelessWidget {
   final int? estimatedDurationDays; // Fallback
   final double? currentDistance;
   final bool isViolating;
+  final String zoneStatus; // 'inside', 'approaching', 'outside', 'unknown'
 
   const TripStatisticsCard({
     super.key,
@@ -18,6 +19,7 @@ class TripStatisticsCard extends StatelessWidget {
     this.estimatedDurationDays,
     this.currentDistance,
     this.isViolating = false,
+    this.zoneStatus = 'unknown',
   });
 
   @override
@@ -28,16 +30,34 @@ class TripStatisticsCard extends StatelessWidget {
       estimatedDurationDays: estimatedDurationDays,
     );
     
-    // DEBUG
-    print('\n========== TRIP STATISTICS DEBUG ==========');
-    print('📅 Departure Date: $departureDate');
-    print('📅 Estimated Return: ${estimatedReturnDate ?? "NULL (using fallback)"}');
-    print('📅 Duration Days: $estimatedDurationDays');
-    print('📅 Calculated Return: ${helper.getEstimatedReturnDate()}');
-    print('⏱️  Remaining Time: ${helper.formatRemainingTime()}');
-    print('🚨 Is Overtime: ${helper.isOvertime()}');
-    print('🎨 Status Color: ${helper.getStatusColor()}');
-    print('==========================================\n');
+    // Tentukan warna dan label berdasarkan zone status
+    Color zoneColor;
+    String zoneLabel;
+    
+    if (isViolating) {
+      // Jika di zona terlarang, prioritaskan warna merah
+      zoneColor = Colors.red;
+      zoneLabel = 'Melewati Batas';
+    } else {
+      // Gunakan zone status untuk menentukan warna
+      switch (zoneStatus) {
+        case 'inside':
+          zoneColor = Colors.green;
+          zoneLabel = 'Dalam Zona';
+          break;
+        case 'approaching':
+          zoneColor = Colors.orange;
+          zoneLabel = 'Menuju Zona';
+          break;
+        case 'outside':
+          zoneColor = Colors.red;
+          zoneLabel = 'Melewati Batas';
+          break;
+        default:
+          zoneColor = Colors.grey;
+          zoneLabel = 'Jarak dari Zona';
+      }
+    }
     
     return Container(
       margin: EdgeInsets.symmetric(
@@ -58,12 +78,16 @@ class TripStatisticsCard extends StatelessWidget {
             child: _buildStatCard(
               lottieAsset: isViolating
                   ? 'assets/animations/GPSRED.json'
-                  : 'assets/animations/GPSBLUE.json',
-              label: 'Jarak dari Zona',
+                  : (zoneStatus == 'inside' 
+                      ? 'assets/animations/GPSBLUE.json'
+                      : zoneStatus == 'approaching'
+                          ? 'assets/animations/GPSBLUE.json'
+                          : 'assets/animations/GPSRED.json'),
+              label: zoneLabel,
               value: currentDistance != null
                   ? '${currentDistance!.toStringAsFixed(1)} km'
                   : '-',
-              color: isViolating ? Colors.red : Colors.green,
+              color: zoneColor,
             ),
           ),
         ],

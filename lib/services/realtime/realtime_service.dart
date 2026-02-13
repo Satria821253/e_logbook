@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../config/api_config.dart';
 
 class RealTimeService {
-  static const String baseUrl = 'http://192.168.1.22:8000/api';
+  static String get baseUrl => ApiConfig.baseUrl;
   static final Dio _dio = Dio();
   static Timer? _heartbeatTimer;
   

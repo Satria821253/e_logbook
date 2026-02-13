@@ -174,4 +174,47 @@ class ZoneService {
       return [];
     }
   }
+
+  /// Get all harbor POIs
+  static Future<List<Map<String, dynamic>>> getAllHarborPOIs() async {
+    try {
+      print('\n========== GET HARBOR POIs START ==========');
+      
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        throw Exception('Token tidak ditemukan');
+      }
+
+      final url = '$baseUrl/api/harbor-pois';
+      print('🌐 [POI] URL: $url');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 30));
+
+      print('📥 [POI] Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        final List<dynamic> data = result['data'] ?? [];
+        print('✅ [POI] ${data.length} POIs retrieved');
+        print('========== GET HARBOR POIs END (SUCCESS) ==========\n');
+        return List<Map<String, dynamic>>.from(data);
+      } else {
+        print('❌ [POI] Failed: ${response.statusCode}');
+        print('========== GET HARBOR POIs END (FAILED) ==========\n');
+        throw Exception('Gagal mengambil data POI');
+      }
+    } catch (e) {
+      print('❌ [POI] Exception: $e');
+      print('========== GET HARBOR POIs END (ERROR) ==========\n');
+      return [];
+    }
+  }
 }

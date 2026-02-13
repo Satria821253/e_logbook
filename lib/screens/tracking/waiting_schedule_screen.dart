@@ -1,11 +1,14 @@
+import 'package:e_logbook/screens/tracking/active_tracking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import '../../utils/navigation_helper.dart';
 import '../../services/nitification/local_notification_service.dart';
 import '../../services/cuaca/weather_service.dart';
-import '../nahkoda/screens/aktif_tracking.dart';
+import '../../provider/user_provider.dart';
+import '../main_screen.dart';
 
 class WaitingScheduleScreen extends StatefulWidget {
   final DateTime scheduledDepartureTime;
@@ -30,6 +33,11 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
   @override
   void initState() {
     super.initState();
+    print('📍 [WaitingSchedule] ===== INIT DEBUG =====');
+    print('📍 [WaitingSchedule] userRole received: ${widget.tripData['userRole']}');
+    print('📍 [WaitingSchedule] userName received: ${widget.tripData['userName']}');
+    print('📍 [WaitingSchedule] captainName: ${widget.tripData['captainName']}');
+    print('📍 [WaitingSchedule] ===== INIT DEBUG END =====');
     _startCountdown();
   }
 
@@ -54,7 +62,19 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
 
   void _updateRemainingTime() {
     setState(() {
-      _remainingTime = widget.scheduledDepartureTime.difference(DateTime.now());
+      final now = DateTime.now();
+      final userRole = widget.tripData['userRole'] ?? 'Nahkoda';
+      
+      // Untuk Nahkoda: countdown ke waktu mulai tracking (24 jam sebelum keberangkatan)
+      // Untuk Crew: countdown ke waktu keberangkatan
+      if (userRole == 'Nahkoda') {
+        final trackingStartTime = widget.scheduledDepartureTime.subtract(Duration(hours: 24));
+        _remainingTime = trackingStartTime.difference(now);
+        print('📅 [Countdown] Nahkoda - Tracking start: $trackingStartTime, Remaining: $_remainingTime');
+      } else {
+        _remainingTime = widget.scheduledDepartureTime.difference(now);
+        print('📅 [Countdown] Crew - Departure: ${widget.scheduledDepartureTime}, Remaining: $_remainingTime');
+      }
     });
   }
 
@@ -382,8 +402,19 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final userName = userProvider.user?.name ?? '-';
+    
     return WillPopScope(
-      onWillPop: () async => false,
+      onWillPop: () async {
+        print('🔙 [WaitingSchedule] Back button pressed - navigating to MainScreen');
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+          (route) => false,
+        );
+        return false;
+      },
       child: Scaffold(
         backgroundColor: Color(0xFFF5F7FA),
         appBar: AppBar(
@@ -396,8 +427,12 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
             IconButton(
               icon: Icon(Icons.close, color: Colors.white),
               onPressed: () {
-                // Kembali ke home screen (MainScreen)
-                Navigator.popUntil(context, (route) => route.isFirst);
+                print('❌ [WaitingSchedule] Close button pressed - navigating to MainScreen');
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MainScreen()),
+                  (route) => false,
+                );
               },
               tooltip: 'Tutup',
             ),
@@ -467,7 +502,7 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
                             ),
                             SizedBox(width: 4),
                             Text(
-                              'Nama: ${widget.tripData['userName'] ?? '-'}',
+                              'Nama: $userName',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.white,
@@ -523,7 +558,12 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
                       ),
                       // Khusus Crew: Tampilkan Nama Nahkoda
                       if (widget.tripData['userRole'] != 'Nahkoda') ...[
-                        SizedBox(height: 12),
+                        Builder(
+                          builder: (context) {
+                            print('📍 [WaitingSchedule] Showing captain card because userRole=${widget.tripData['userRole']}');
+                            return SizedBox(height: 12);
+                          },
+                        ),
                         Container(
                           padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(

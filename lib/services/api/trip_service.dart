@@ -51,51 +51,6 @@ class TripService {
     }
   }
 
-  // ==================== GET MY TRIPS ====================
-  
-  /// Get list of trips assigned to current user
-  static Future<Map<String, dynamic>> getMyTrips() async {
-    try {
-      print('\n========== GET MY TRIPS START ==========');
-      
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-
-      if (token == null) {
-        throw Exception('Token tidak ditemukan');
-      }
-
-      final url = '$baseUrl/api/trip';
-      print('🌐 [TRIPS] URL: $url');
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30));
-
-      print('📥 [TRIPS] Response status: ${response.statusCode}');
-      print('📥 [TRIPS] Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final result = json.decode(response.body);
-        print('✅ [TRIPS] Trips retrieved');
-        print('========== GET MY TRIPS END (SUCCESS) ==========\n');
-        return result;
-      } else {
-        print('❌ [TRIPS] Failed: ${response.statusCode}');
-        print('========== GET MY TRIPS END (FAILED) ==========\n');
-        throw Exception('Gagal mengambil data trips');
-      }
-    } catch (e) {
-      print('❌ [TRIPS] Exception: $e');
-      print('========== GET MY TRIPS END (ERROR) ==========\n');
-      throw Exception('Error: $e');
-    }
-  }
-
   // Get trip detail by ID
   static Future<Map<String, dynamic>> getTripDetail(int tripId) async {
     try {
