@@ -21,6 +21,7 @@ import 'package:e_logbook/screens/vessel/ice_management_screen.dart';
 import 'package:e_logbook/screens/notification_detail_screen.dart';
 import 'package:e_logbook/screens/zone_violation_detail_screen.dart';
 import 'package:e_logbook/screens/page/edit_profile_screen.dart';
+import 'package:e_logbook/screens/history_screen.dart';
 
 class RouteGenerator {
   static Route<dynamic>? generateRoute(RouteSettings settings) {
@@ -164,6 +165,11 @@ class RouteGenerator {
       case AppRoutes.editProfile:
         return _noTransitionRoute(
           const EditProfileScreen(),
+        );
+      
+      case AppRoutes.history:
+        return _noTransitionRoute(
+          const HistoryScreen(),
         );
       
       case '/vessel-certificates':

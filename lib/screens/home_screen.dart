@@ -13,6 +13,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../provider/catch_provider.dart';
 import '../provider/user_provider.dart';
+import '../routes/app_routes.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1289,7 +1290,10 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             TextButton(
               onPressed: () {
-                // Navigate to history
+                NavigationHelper.pushNamedNoTransition(
+                  context,
+                  AppRoutes.history,
+                );
               },
               child: Text(
                 'Lihat Semua',

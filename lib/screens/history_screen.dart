@@ -46,7 +46,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return AppBar(
       elevation: 0,
       backgroundColor: Colors.transparent,
-      automaticallyImplyLeading: false,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
+      ),
       flexibleSpace: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -98,10 +101,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
   // TABLET LAYOUT
   // ========================================================================
   Widget _buildTabletLayout(CatchProvider catchProvider) {
+    // Check if opened via navigation (fullscreen) or embedded in MainScreen
+    final isFullscreen = ModalRoute.of(context)?.settings.name != null;
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(30),
       child: Column(
         children: [
+          // Back button only for fullscreen tablet
+          if (isFullscreen)
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF1B4F9C)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Riwayat Tangkapan',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1B4F9C),
+                  ),
+                ),
+              ],
+            ),
+          if (isFullscreen) const SizedBox(height: 20),
+          
           _buildSummaryCardTablet(catchProvider),
           const SizedBox(height: 20),
 

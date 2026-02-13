@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:e_logbook/provider/notification_provider.dart';
 import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:e_logbook/screens/notification_screen.dart';
 import 'package:e_logbook/provider/user_provider.dart';
@@ -865,31 +866,62 @@ class _CustomSliverAppBarState extends State<CustomSliverAppBar>
                     ),
                     const Spacer(),
                     // Notification Bell
-                    Consumer<UserProvider>(
-                      builder: (context, userProvider, child) {
-                        return Container(
-                          height: 48,
-                          width: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.2),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
+                    Consumer2<UserProvider, NotificationProvider>(
+                      builder: (context, userProvider, notifProvider, child) {
+                        return Stack(
+                          children: [
+                            Container(
+                              height: 48,
+                              width: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.2),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                              ),
+                              child: IconButton(
+                                onPressed: () {
+                                  NavigationHelper.pushNoTransition(
+                                    context,
+                                    NotificationScreen(),
+                                  );
+                                },
+                                icon: const Icon(
+                                  Icons.notifications_outlined,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
                             ),
-                          ),
-                          child: IconButton(
-                            onPressed: () {
-                              NavigationHelper.pushNoTransition(
-                                context,
-                                NotificationScreen(),
-                              );
-                            },
-                            icon: const Icon(
-                              Icons.notifications_outlined,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
+                            // Badge
+                            if (notifProvider.unreadCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 18,
+                                    minHeight: 18,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      notifProvider.unreadCount > 99 ? '99+' : '${notifProvider.unreadCount}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         );
                       },
                     ),

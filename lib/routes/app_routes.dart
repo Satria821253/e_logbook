@@ -21,4 +21,5 @@ class AppRoutes {
   static const String notificationDetail = '/notification-detail';
   static const String zoneViolationDetail = '/zone-violation-detail';
   static const String editProfile = '/edit-profile';
+  static const String history = '/history';
 }
