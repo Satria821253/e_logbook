@@ -139,6 +139,11 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
     }
   }
 
+  void _navigateToHome() {
+    _pollTimer?.cancel();
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   void _navigateToWaitingSchedule() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final prefs = await SharedPreferences.getInstance();
@@ -241,7 +246,10 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false,
+      onWillPop: () async {
+        _navigateToHome();
+        return false;
+      },
       child: Scaffold(
         backgroundColor: Color(0xFFF5F7FA),
         appBar: AppBar(
@@ -249,7 +257,10 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
             'Menunggu Persetujuan',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
           ),
-          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: _navigateToHome,
+          ),
           iconTheme: IconThemeData(color: Colors.white),
           flexibleSpace: Container(
             decoration: BoxDecoration(
@@ -305,11 +316,6 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
                 SizedBox(height: 32),
                 if (!_isApproved)
                   CircularProgressIndicator(color: Color(0xFF1B4F9C)),
-                SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Kembali', style: TextStyle(color: Colors.grey[600])),
-                ),
               ],
             ),
           ),

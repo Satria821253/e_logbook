@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
-import '../screens/nahkoda/screens/trip_info_screen.dart';
+import '../screens/schedules/trip_info_screen.dart';
 import '../screens/schedules/my_schedules_screen.dart';
-import '../screens/schedules/trip_history_screen.dart';
 import 'tracking_routes.dart';
 
 
@@ -19,13 +18,6 @@ class NahkodaRoutes {
     NavigationHelper.pushNoTransition(
       context,
       const MySchedulesScreen(),
-    );
-  }
-
-  static void navigateToMyTripsHistory(BuildContext context) {
-    NavigationHelper.pushNoTransition(
-      context,
-      const TripHistoryScreen(),
     );
   }
 
@@ -62,10 +54,6 @@ class NahkodaRoutes {
         );
       }
     }
-  }
-
-  static void navigateToTracking(BuildContext context) {
-    TrackingRoutes.navigateToPreTripForm(context);
   }
 
   static void navigateToActiveTracking(

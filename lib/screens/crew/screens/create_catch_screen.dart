@@ -9,6 +9,7 @@ import 'package:e_logbook/provider/tracking_minimize_provider.dart';
 import 'package:e_logbook/services/local/catch_submission_service.dart';
 import 'package:e_logbook/services/ai/gemini_fish_detection_service.dart';
 import 'package:e_logbook/services/api/trip_service.dart';
+import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:e_logbook/widgets/ai_detection_loading_widget.dart';
 import 'package:e_logbook/widgets/ai_detection_result_widget.dart';
 import 'package:e_logbook/widgets/image_picker.dart';
@@ -19,9 +20,12 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 
 class CreateCatchScreen extends StatefulWidget {
-  const CreateCatchScreen({super.key});
+  final int tripId;
+  
+  const CreateCatchScreen({super.key, required this.tripId});
 
   @override
   State<CreateCatchScreen> createState() => _CreateCatchScreenState();
@@ -35,11 +39,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   final _fishNameController = TextEditingController();
   final _weightController = TextEditingController();
   final _quantityController = TextEditingController();
-
-  final _waterDepthController = TextEditingController();
-  final _fishingGearController = TextEditingController();
   final _notesController = TextEditingController();
-  final _harborController = TextEditingController();
   final _estimatedLengthController = TextEditingController();
   final _estimatedHeightController = TextEditingController();
   final _unitWeightController = TextEditingController();
@@ -55,7 +55,8 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
   String _selectedCondition = '';
   String _selectedFishType = '';
-  String _selectedWeatherCondition = 'Cerah';
+  String _selectedWeatherCondition = '';
+  bool _isLoadingWeather = false;
 
   // AI Detection
   bool _isDetectingFish = false;
@@ -69,140 +70,136 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   @override
   void initState() {
     super.initState();
+    _checkDuplicateCatch();
     _loadTripData();
+    _loadWeatherData();
+  }
+
+  Future<void> _checkDuplicateCatch() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        final userId = userData['id'];
+        
+        // Cek apakah user sudah pernah submit catch untuk trip ini
+        final catchKey = 'catch_submitted_trip_${widget.tripId}_user_$userId';
+        final hasSubmitted = prefs.getBool(catchKey) ?? false;
+        
+        if (hasSubmitted && mounted) {
+          // Tampilkan dialog dan kembali
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.block, color: Colors.red.shade700, size: 24),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Duplikat Terdeteksi',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Anda sudah mencatat tangkapan untuk trip ini.',
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Setiap trip hanya bisa dicatat sekali',
+                              style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.pop(context);
+                    },
+                    child: Text('Mengerti', style: TextStyle(fontSize: 16)),
+                  ),
+                ],
+              ),
+            );
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking duplicate: $e');
+    }
   }
 
   Future<void> _loadTripData() async {
     try {
-      debugPrint('\n🚢 [CATCH_SCREEN] Loading trip data...');
+      // Langsung load trip berdasarkan tripId yang dikirim
+      final detailResult = await TripService.getTripDetail(widget.tripId);
       
-      // Gunakan endpoint /trip yang sama seperti screen lain
-      final result = await TripService.getAllTrips();
-      
-      if (result['success'] == true && result['data'] != null) {
-        final trips = result['data'] as List;
-        debugPrint('📊 [CATCH_SCREEN] Total trips: ${trips.length}');
+      if (detailResult['success'] == true && detailResult['data'] != null) {
+        final tripDetail = detailResult['data'];
         
-        // Get current user ID and role
-        final prefs = await SharedPreferences.getInstance();
-        final userDataString = prefs.getString('user_data');
-        int? currentUserId;
-        String? currentUserRole;
-        
-        if (userDataString != null) {
-          final userData = json.decode(userDataString);
-          currentUserId = userData['id'];
-          currentUserRole = userData['role'];
-        }
-        
-        if (currentUserId == null) {
-          debugPrint('⚠️ [CATCH_SCREEN] No user ID found');
-          safeSetState(() => _isLoadingTrip = false);
-          return;
-        }
-        
-        debugPrint('👤 [CATCH_SCREEN] Current User ID: $currentUserId');
-        debugPrint('🎭 [CATCH_SCREEN] Current User Role: $currentUserRole');
-        
-        // Filter trip untuk user ini yang statusnya berlayar/disetujui
-        final myTrips = trips.where((trip) {
-          final nahkodaId = trip['nahkodaId'];
-          final awakKapal = trip['awakKapal'] as List?;
-          final status = trip['status']?.toLowerCase();
+        safeSetState(() {
+          _tripData = tripDetail;
+          _isLoadingTrip = false;
           
-          // Check if this trip belongs to current user
-          final isMyTrip = (nahkodaId == currentUserId) ||
-                           (awakKapal != null && awakKapal.contains(currentUserId));
-          final isActive = status == 'berlayar' || 
-                           status == 'sedang_melaut' ||
-                           status == 'active' ||
-                           status == 'sailing' ||
-                           status == 'disetujui' ||
-                           status == 'approved';
-          
-          debugPrint('🔍 [CATCH_SCREEN] Trip ${trip['id']}: isMyTrip=$isMyTrip, isActive=$isActive, status=$status');
-          
-          return isMyTrip && isActive;
-        }).toList();
-        
-        debugPrint('🎯 [CATCH_SCREEN] My active trips: ${myTrips.length}');
-        
-        if (myTrips.isNotEmpty) {
-          final trip = myTrips[0];
-          debugPrint('🎯 [CATCH_SCREEN] Trip ID: ${trip['id']}');
-          debugPrint('🆔 [CATCH_SCREEN] Kapal ID: ${trip['kapalId']}');
-          debugPrint('👨✈️ [CATCH_SCREEN] Nahkoda ID: ${trip['nahkodaId']}');
-          debugPrint('👥 [CATCH_SCREEN] Crew IDs: ${trip['awakKapal']}');
-          debugPrint('📌 [CATCH_SCREEN] Trip Status: ${trip['status']}');
-          
-          // Fetch detail trip untuk mendapatkan data lengkap
-          debugPrint('🔍 [CATCH_SCREEN] Fetching trip detail...');
-          final detailResult = await TripService.getTripDetail(trip['id']);
-          
-          if (detailResult['success'] == true && detailResult['data'] != null) {
-            final tripDetail = detailResult['data'];
-            debugPrint('✅ [CATCH_SCREEN] Trip detail loaded');
-            debugPrint('⚓ [CATCH_SCREEN] Vessel: ${tripDetail['kapal']?['namaKapal'] ?? tripDetail['kapal']?['nama']}');
-            debugPrint('🆔 [CATCH_SCREEN] Vessel Number: ${tripDetail['kapal']?['nomorRegistrasi'] ?? tripDetail['kapal']?['nomorKapal']}');
-            debugPrint('👨✈️ [CATCH_SCREEN] Captain: ${tripDetail['nahkoda']?['nama'] ?? tripDetail['nahkoda']?['username']}');
-            debugPrint('👥 [CATCH_SCREEN] Crew Count: ${(tripDetail['awakKapal'] as List?)?.length}');
-            debugPrint('📅 [CATCH_SCREEN] Departure: ${tripDetail['tanggalBerangkat']}');
-            debugPrint('📅 [CATCH_SCREEN] Return: ${tripDetail['estimasiPulang']}');
-            debugPrint('📌 [CATCH_SCREEN] Status: ${tripDetail['status']}');
-            debugPrint('📦 [CATCH_SCREEN] Full kapal data: ${tripDetail['kapal']}');
-            debugPrint('👤 [CATCH_SCREEN] Full nahkoda data: ${tripDetail['nahkoda']}');
-            
-            safeSetState(() {
-              _tripData = tripDetail;
-              _isLoadingTrip = false;
-              
-              // Auto-fill waktu dari trip
-              if (tripDetail['tanggalBerangkat'] != null) {
-                try {
-                  final departureDateTime = DateTime.parse(tripDetail['tanggalBerangkat']);
-                  _departureDate = departureDateTime;
-                  _departureTime = TimeOfDay(hour: departureDateTime.hour, minute: departureDateTime.minute);
-                  debugPrint('✅ [CATCH_SCREEN] Auto-filled departure from trip:');
-                  debugPrint('   Date: ${_departureDate.day}/${_departureDate.month}/${_departureDate.year}');
-                  debugPrint('   Time: ${_departureTime.hour}:${_departureTime.minute}');
-                } catch (e) {
-                  debugPrint('❌ [CATCH_SCREEN] Failed to parse departure date: $e');
-                }
-              } else {
-                debugPrint('⚠️ [CATCH_SCREEN] No departure date in trip data');
-              }
-              
-              if (tripDetail['estimasiPulang'] != null) {
-                try {
-                  final returnDateTime = DateTime.parse(tripDetail['estimasiPulang']);
-                  _arrivalDate = returnDateTime;
-                  _arrivalTime = TimeOfDay(hour: returnDateTime.hour, minute: returnDateTime.minute);
-                  debugPrint('✅ [CATCH_SCREEN] Auto-filled return from trip:');
-                  debugPrint('   Date: ${_arrivalDate.day}/${_arrivalDate.month}/${_arrivalDate.year}');
-                  debugPrint('   Time: ${_arrivalTime.hour}:${_arrivalTime.minute}');
-                } catch (e) {
-                  debugPrint('❌ [CATCH_SCREEN] Failed to parse return date: $e');
-                }
-              } else {
-                debugPrint('⚠️ [CATCH_SCREEN] No return date in trip data');
-              }
-              
-              // Calculate duration
-              _calculateDuration();
-              debugPrint('⏱️ [CATCH_SCREEN] Calculated duration: $_calculatedHours hours $_calculatedMinutes minutes');
-              debugPrint('✅ [CATCH_SCREEN] Waktu perjalanan diambil dari trip berdasarkan userId: $currentUserId, role: $currentUserRole');
-            });
-          } else {
-            debugPrint('⚠️ [CATCH_SCREEN] Failed to load trip detail - will use UserProvider fallback');
-            safeSetState(() => _isLoadingTrip = false);
+          if (tripDetail['tanggalBerangkat'] != null) {
+            try {
+              final departureDateTime = DateTime.parse(tripDetail['tanggalBerangkat']);
+              _departureDate = departureDateTime;
+              _departureTime = TimeOfDay(hour: departureDateTime.hour, minute: departureDateTime.minute);
+            } catch (e) {}
           }
-        } else {
-          debugPrint('⚠️ [CATCH_SCREEN] No trips found - will use UserProvider fallback');
-          safeSetState(() => _isLoadingTrip = false);
-        }
+          
+          if (tripDetail['estimasiPulang'] != null) {
+            try {
+              final returnDateTime = DateTime.parse(tripDetail['estimasiPulang']);
+              _arrivalDate = returnDateTime;
+              _arrivalTime = TimeOfDay(hour: returnDateTime.hour, minute: returnDateTime.minute);
+            } catch (e) {}
+          }
+          
+          _calculateDuration();
+        });
+      } else {
+        safeSetState(() => _isLoadingTrip = false);
       }
     } catch (e) {
-      debugPrint('❌ [CATCH_SCREEN] Error: $e - will use UserProvider fallback');
+      debugPrint('❌ Error loading trip data: $e');
       safeSetState(() => _isLoadingTrip = false);
     }
   }
@@ -212,10 +209,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     _fishNameController.dispose();
     _weightController.dispose();
     _quantityController.dispose();
-    _waterDepthController.dispose();
-    _fishingGearController.dispose();
     _notesController.dispose();
-    _harborController.dispose();
     _estimatedLengthController.dispose();
     _estimatedHeightController.dispose();
     _unitWeightController.dispose();
@@ -225,6 +219,61 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   void safeSetState(VoidCallback fn) {
     if (!mounted) return;
     setState(fn);
+  }
+
+  Future<void> _loadWeatherData() async {
+    debugPrint('\n🌤️ ========== WEATHER LOADING START ==========');
+    safeSetState(() => _isLoadingWeather = true);
+    
+    try {
+      debugPrint('📍 Getting current position...');
+      final position = await Geolocator.getCurrentPosition();
+      debugPrint('✅ Position: ${position.latitude}, ${position.longitude}');
+      
+      debugPrint('🌐 Fetching weather data...');
+      final weather = await WeatherService.getWeatherByPosition(position);
+      
+      if (weather != null && mounted) {
+        debugPrint('✅ Weather data received:');
+        debugPrint('   Condition: ${weather.condition}');
+        debugPrint('   Temperature: ${weather.temperature}°C');
+        debugPrint('   Wind: ${weather.windSpeed} km/h');
+        debugPrint('   Humidity: ${weather.humidity}%');
+        
+        String condition = 'Cerah';
+        final desc = weather.condition.toLowerCase();
+        
+        if (desc.contains('hujan') || desc.contains('rain')) {
+          condition = 'Hujan';
+        } else if (desc.contains('badai') || desc.contains('storm') || desc.contains('thunder')) {
+          condition = 'Badai';
+        } else if (desc.contains('awan') || desc.contains('cloud')) {
+          condition = 'Berawan';
+        }
+        
+        debugPrint('🎯 Mapped condition: $condition');
+        
+        safeSetState(() {
+          _selectedWeatherCondition = condition;
+          _isLoadingWeather = false;
+        });
+        
+        debugPrint('✅ Weather loaded successfully: $condition');
+        debugPrint('========== WEATHER LOADING SUCCESS ==========\n');
+      } else {
+        debugPrint('⚠️ Weather data is null');
+        throw Exception('Weather data is null');
+      }
+    } catch (e) {
+      debugPrint('❌ Weather load failed: $e');
+      debugPrint('📋 Stack trace: ${StackTrace.current}');
+      safeSetState(() {
+        _selectedWeatherCondition = 'Cerah';
+        _isLoadingWeather = false;
+      });
+      debugPrint('🔄 Fallback to default: Cerah');
+      debugPrint('========== WEATHER LOADING FAILED ==========\n');
+    }
   }
 
 
@@ -367,14 +416,15 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       _showSnackBar('⚠️ Minimal upload 1 foto tangkapan ikan!');
       return false;
     }
-
-    if (_calculatedHours == 0 && _calculatedMinutes == 0) {
-      _showSnackBar('⚠️ Silakan atur waktu keberangkatan & kedatangan!');
+    
+    // Validasi: Harus ada hasil deteksi AI
+    if (_detectionResult == null) {
+      _showSnackBar('⚠️ Silakan lakukan deteksi AI terlebih dahulu!');
       return false;
     }
 
-    if (_fishingGearController.text.trim().isEmpty) {
-      _showSnackBar('⚠️ Alat tangkap harus diisi!');
+    if (_calculatedHours == 0 && _calculatedMinutes == 0) {
+      _showSnackBar('⚠️ Silakan atur waktu keberangkatan & kedatangan!');
       return false;
     }
 
@@ -383,7 +433,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
   // ==================== SAVE CATCH ====================
   void _saveCatch() async {
-    if (!_validateForm()) return;
+    debugPrint('\n📦 ========== SAVE CATCH START ==========');
+    
+    if (!_validateForm()) {
+      debugPrint('❌ Validation failed');
+      return;
+    }
 
     String vesselName;
     String vesselNumber;
@@ -414,6 +469,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       final user = userProvider.user;
 
       if (user?.vesselName == null) {
+        debugPrint('❌ [CATCH] No vessel data in user profile');
         _showSnackBar('⚠️ Silakan lengkapi data kapal di profil!');
         return;
       }
@@ -423,11 +479,15 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       captainName = user.captainName!;
       crewCount = user.crewCount ?? 0;
       kapalId = 1;
+      
+      debugPrint('⚓ [CATCH] Fallback Vessel: $vesselName');
+      debugPrint('🆔 [CATCH] Fallback Kapal ID: $kapalId');
     }
     
-    debugPrint('⚓ [CATCH] Vessel: $vesselName');
-    debugPrint('🆔 [CATCH] Kapal ID: $kapalId');
-    debugPrint('👥 [CATCH] Crew: $crewCount');
+    debugPrint('\n📦 [CATCH] Final vessel info:');
+    debugPrint('⚓ Vessel: $vesselName');
+    debugPrint('🆔 Kapal ID: $kapalId');
+    debugPrint('👥 Crew: $crewCount');
 
     // Show loading
     showDialog(
@@ -454,6 +514,24 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       // Data mentah tangkapan (perhitungan di backend)
       final weight = double.tryParse(_weightController.text) ?? 0;
 
+      // Ambil data dari trip - field yang benar adalah areaTangkap
+      final areaTangkap = _tripData?['areaTangkap'];
+      final zonaTangkap = areaTangkap != null 
+          ? (areaTangkap['nama'] ?? areaTangkap['zona'] ?? 'WPP-NRI')
+          : 'WPP-NRI';
+      
+      // Pelabuhan bisa dari harborZone atau field lain
+      final harborZone = _tripData?['harborZone'];
+      final pelabuhan = harborZone != null
+          ? (harborZone['nama'] ?? harborZone['name'] ?? 'Tidak diketahui')
+          : (_tripData?['pelabuhan'] ?? 'Tidak diketahui');
+      
+      debugPrint('\n📍 [CATCH] Trip location data:');
+      debugPrint('🎯 Area tangkap object: $areaTangkap');
+      debugPrint('🎯 Zona tangkap: $zonaTangkap');
+      debugPrint('⚓ Harbor zone object: $harborZone');
+      debugPrint('⚓ Pelabuhan: $pelabuhan');
+
       // Buat data catch untuk submission (data mentah, perhitungan di backend)
       final catchId = DateTime.now().millisecondsSinceEpoch.toString();
       final catchData = {
@@ -470,26 +548,38 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
         'arrival_time': _arrivalTime.format(context),
         'trip_duration_hours': _calculatedHours,
         'trip_duration_minutes': _calculatedMinutes,
-        'fishing_zone': _harborController.text.isEmpty ? 'WPP-NRI' : _harborController.text,
-        'location_name': _fishingGearController.text.isEmpty ? 'Laut Jawa' : _fishingGearController.text,
-        'latitude': 0.0, // TODO: Implement GPS
-        'longitude': 0.0, // TODO: Implement GPS
-        'water_depth': double.tryParse(_waterDepthController.text) ?? 0,
+        'fishing_zone': zonaTangkap,
+        'location_name': pelabuhan,
+        'latitude': 0.0,
+        'longitude': 0.0,
+        'water_depth': 0.0,  // Default 0 instead of null
         'weather_condition': _selectedWeatherCondition,
         'notes': _notesController.text.isEmpty ? null : _notesController.text,
         'kapalId': kapalId,
-        'tripId': _tripData?['id'], // Add tripId if available
+        'tripId': _tripData?['id'],
         // Extra fields for local storage
         'vesselName': vesselName,
         'vesselNumber': vesselNumber,
         'captainName': captainName,
         'createdAt': DateTime.now().toIso8601String(),
       };
+      
+      debugPrint('📦 Catch data to submit:');
+      debugPrint('  fish_name: ${catchData['fish_name']}');
+      debugPrint('  weight: ${catchData['weight']}');
+      debugPrint('  kapalId: ${catchData['kapalId']}');
+      debugPrint('  tripId: ${catchData['tripId']}');
+      debugPrint('  fishing_zone: ${catchData['fishing_zone']}');
+      debugPrint('  location_name: ${catchData['location_name']}');
+      debugPrint('  weather_condition: ${catchData['weather_condition']}');
 
       // Submit dengan offline fallback
+      debugPrint('\n📤 [CATCH] Submitting catch data...');
+      debugPrint('📷 [CATCH] Image path: ${_catchImages[0].path}');
+      
       final result = await CatchSubmissionService.submitCatch(
         catchData: catchData,
-        imageFile: File(_catchImages[0].path),
+        imageFile: File(_catchImages[0].path),  // Foto hasil deteksi AI
       );
 
       // Close loading dialog
@@ -497,17 +587,52 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
       // Show result
       if (mounted) {
+        final bgColor = result.success 
+            ? (result.isOffline ? Colors.orange : Colors.green)
+            : Colors.red;
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result.message),
-            backgroundColor: result.isOffline ? Colors.orange : Colors.green,
-            duration: Duration(seconds: 3),
+            backgroundColor: bgColor,
+            duration: Duration(seconds: result.success ? 3 : 5),
+            action: !result.success && result.error != null
+                ? SnackBarAction(
+                    label: 'Detail',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('❌ Error Detail'),
+                          content: Text(result.error!),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  )
+                : null,
           ),
         );
       }
 
       // Update provider dengan status sync
       if (result.success && mounted) {
+        // Simpan flag bahwa user sudah submit catch untuk trip ini
+        final prefs = await SharedPreferences.getInstance();
+        final userDataString = prefs.getString('user_data');
+        if (userDataString != null) {
+          final userData = json.decode(userDataString);
+          final userId = userData['id'];
+          final catchKey = 'catch_submitted_trip_${widget.tripId}_user_$userId';
+          await prefs.setBool(catchKey, true);
+        }
+        
         final newCatch = CatchModel(
           id: int.tryParse(catchId),
           fishName: _fishNameController.text,
@@ -528,11 +653,11 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           arrivalTime: _arrivalTime.format(context),
           tripDurationHours: _calculatedHours,
           tripDurationMinutes: _calculatedMinutes,
-          fishingZone: _harborController.text.isEmpty ? 'WPP-NRI' : _harborController.text,
-          locationName: _fishingGearController.text.isEmpty ? 'Laut Jawa' : _fishingGearController.text,
+          fishingZone: zonaTangkap,
+          locationName: pelabuhan,
           latitude: 0.0,
           longitude: 0.0,
-          waterDepth: double.tryParse(_waterDepthController.text) ?? 0,
+          waterDepth: 0.0,
           weatherCondition: _selectedWeatherCondition,
           fuelCost: 0, // Dihitung di backend
           operationalCost: 0, // Dihitung di backend
@@ -788,7 +913,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
               SizedBox(height: sp(24)),
 
-              // LOKASI & CUACA
+              // LOKASI & CUACA (AUTO DARI TRIP)
               SectionTitle(
                 title: 'Lokasi & Kondisi',
                 icon: Icons.location_on,
@@ -1564,6 +1689,22 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     double Function(double) sp,
     double Function(double) fs,
   ) {
+    // Ambil dari areaTangkap object
+    final areaTangkap = _tripData?['areaTangkap'];
+    final zonaTangkap = areaTangkap != null 
+        ? (areaTangkap['nama'] ?? areaTangkap['zona'] ?? 'WPP-NRI')
+        : 'WPP-NRI';
+    
+    // Ambil dari harborZone object
+    final harborZone = _tripData?['harborZone'];
+    final pelabuhan = harborZone != null
+        ? (harborZone['nama'] ?? harborZone['name'] ?? 'Tidak diketahui')
+        : (_tripData?['pelabuhan'] ?? 'Tidak diketahui');
+    
+    debugPrint('\n📍 [UI] Displaying location:');
+    debugPrint('   Zona: $zonaTangkap');
+    debugPrint('   Pelabuhan: $pelabuhan');
+    
     return Container(
       padding: EdgeInsets.all(sp(16)),
       decoration: BoxDecoration(
@@ -1573,60 +1714,74 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       ),
       child: Column(
         children: [
-          TextFormField(
-            controller: _harborController,
+          // Zona Tangkap (dari trip)
+          InputDecorator(
             decoration: InputDecoration(
               labelText: 'Zona Penangkapan',
-              hintText: 'Contoh: WPP 711',
               prefixIcon: Icon(Icons.waves, color: Color(0xFF1B4F9C)),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(sp(12)),
               ),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+            child: Text(
+              zonaTangkap,
+              style: TextStyle(fontSize: fs(14), color: Colors.black87),
             ),
           ),
           SizedBox(height: sp(12)),
-          TextFormField(
-            controller: _fishingGearController,
+          
+          // Pelabuhan (dari trip)
+          InputDecorator(
             decoration: InputDecoration(
-              labelText: 'Nama Lokasi',
-              hintText: 'Contoh: Laut Jawa',
-              prefixIcon: Icon(Icons.location_on, color: Color(0xFF1B4F9C)),
+              labelText: 'Pelabuhan',
+              prefixIcon: Icon(Icons.anchor, color: Color(0xFF1B4F9C)),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(sp(12)),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+            child: Text(
+              pelabuhan,
+              style: TextStyle(fontSize: fs(14), color: Colors.black87),
+            ),
+          ),
+          SizedBox(height: sp(12)),
+          
+          // Kondisi Cuaca (realtime)
+          InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Kondisi Cuaca (Realtime)',
+              prefixIcon: _isLoadingWeather
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: Padding(
+                        padding: EdgeInsets.all(sp(12)),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : Icon(Icons.wb_sunny, color: Color(0xFF1B4F9C)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(sp(12)),
+              ),
+              filled: true,
+              fillColor: Colors.blue[50],
+            ),
+            child: Text(
+              _selectedWeatherCondition.isEmpty ? 'Memuat...' : _selectedWeatherCondition,
+              style: TextStyle(
+                fontSize: fs(14),
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
           SizedBox(height: sp(12)),
-          TextFormField(
-            controller: _waterDepthController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Kedalaman Air (meter)',
-              hintText: '0.0',
-              prefixIcon: Icon(Icons.water, color: Color(0xFF1B4F9C)),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(sp(12)),
-              ),
-            ),
-          ),
-          SizedBox(height: sp(12)),
-          DropdownButtonFormField<String>(
-            value: _selectedWeatherCondition,
-            decoration: InputDecoration(
-              labelText: 'Kondisi Cuaca',
-              prefixIcon: Icon(Icons.wb_sunny, color: Color(0xFF1B4F9C)),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(sp(12)),
-              ),
-            ),
-            items: ['Cerah', 'Berawan', 'Hujan', 'Badai']
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) setState(() => _selectedWeatherCondition = value);
-            },
-          ),
-          SizedBox(height: sp(12)),
+          
+          // Catatan
           TextFormField(
             controller: _notesController,
             maxLines: 3,

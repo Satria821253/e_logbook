@@ -33,10 +33,26 @@ class NahkodaMenuItems extends StatelessWidget {
             ),
           ),
         ),
-        // Jadwal Tugas
+        // Info Trip
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
           bottom: ResponsiveHelper.height(context, mobile: 220, tablet: 290),
+          child: ScaleTransition(
+            scale: animation,
+            child: FloatingActionButtonWidget(
+              icon: Icons.sailing,
+              color: Colors.blue,
+              onTap: () {
+                onMenuToggle();
+                NahkodaRoutes.navigateToTripInfo(context);
+              },
+            ),
+          ),
+        ),
+        // Jadwal Tugas
+        Positioned(
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
           child: ScaleTransition(
             scale: animation,
             child: FloatingActionButtonWidget(
@@ -45,22 +61,6 @@ class NahkodaMenuItems extends StatelessWidget {
               onTap: () {
                 onMenuToggle();
                 NahkodaRoutes.navigateToMySchedules(context);
-              },
-            ),
-          ),
-        ),
-        // Riwayat Tugas Saya
-        Positioned(
-          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
-          child: ScaleTransition(
-            scale: animation,
-            child: FloatingActionButtonWidget(
-              icon: Icons.history,
-              color: Colors.teal,
-              onTap: () {
-                onMenuToggle();
-                NahkodaRoutes.navigateToMyTripsHistory(context);
               },
             ),
           ),

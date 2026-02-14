@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../../services/api/trip_service.dart';
 
 class UploadIceScreen extends StatefulWidget {
   final int tripId;
@@ -334,35 +333,52 @@ class _UploadIceScreenState extends State<UploadIceScreen> {
   }
 
   Widget _buildSubmitButton() {
-    bool canSubmit = _iceAmountController.text.isNotEmpty &&
+    bool canLock = _iceAmountController.text.isNotEmpty &&
         _icePriceController.text.isNotEmpty &&
         _iceFilePath != null;
 
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: canSubmit ? LinearGradient(colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)]) : null,
-        color: canSubmit ? null : Colors.grey,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ElevatedButton(
-        onPressed: canSubmit && !_isLoading ? _submit : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: canLock 
+              ? LinearGradient(
+                  colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: canLock ? null : Colors.grey,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: canLock
+              ? [
+                  BoxShadow(
+                    color: Color(0xFF1B4F9C).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
-        child: _isLoading
-            ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.save, size: 24, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('SIMPAN DATA ES', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                ],
-              ),
+        child: ElevatedButton(
+          onPressed: canLock && !_isLoading ? _lockData : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            padding: EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: _isLoading
+              ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock, size: 24, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('LOCK DATA ES', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -438,7 +454,7 @@ class _UploadIceScreenState extends State<UploadIceScreen> {
       ),
     );
   }
-  Future<void> _submit() async {
+  Future<void> _lockData() async {
     if (_iceAmountController.text.isEmpty || _icePriceController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Jumlah dan harga wajib diisi'), backgroundColor: Colors.red),
@@ -453,64 +469,25 @@ class _UploadIceScreenState extends State<UploadIceScreen> {
       return;
     }
 
-    print('\n' + '='*60);
-    print('🧊 UPLOAD ICE DATA - SCREEN LAYER');
-    print('='*60);
-    print('📤 [ICE-SCREEN] Trip ID: ${widget.tripId}');
-    print('📤 [ICE-SCREEN] Jenis: $_selectedIceType');
-    print('📤 [ICE-SCREEN] Jumlah: ${_iceAmountController.text} Kg');
-    print('📤 [ICE-SCREEN] Harga/Kg: Rp ${_icePriceController.text}');
-    print('📤 [ICE-SCREEN] Total: Rp ${double.parse(_iceAmountController.text) * double.parse(_icePriceController.text)}');
-    print('📤 [ICE-SCREEN] Tanggal: ${_selectedDate.toIso8601String()}');
-    print('📤 [ICE-SCREEN] Lokasi: ${_iceLocationController.text.isNotEmpty ? _iceLocationController.text : "(kosong)"}');
-    print('📤 [ICE-SCREEN] Keterangan: ${_iceNotesController.text.isNotEmpty ? _iceNotesController.text : "(kosong)"}');
-    print('📤 [ICE-SCREEN] Bukti: ${_iceFilePath ?? "(tidak ada)"}');
-    print('🔄 [ICE-SCREEN] Calling TripService.uploadIceData()...');
-    print('='*60 + '\n');
+    // Simpan data sementara dan kembali dengan status locked
+    final iceData = {
+      'jenisEs': _selectedIceType,
+      'jumlahKg': double.parse(_iceAmountController.text),
+      'hargaPerKg': double.parse(_icePriceController.text),
+      'totalHarga': double.parse(_iceAmountController.text) * double.parse(_icePriceController.text),
+      'tanggalPembelian': _selectedDate.toIso8601String(),
+      'buktiFilePath': _iceFilePath,
+      'lokasiPembelian': _iceLocationController.text.isNotEmpty ? _iceLocationController.text : null,
+      'keterangan': _iceNotesController.text.isNotEmpty ? _iceNotesController.text : null,
+      'locked': true,
+    };
 
-    setState(() => _isLoading = true);
-    try {
-      final result = await TripService.uploadIceData(
-        tripId: widget.tripId,
-        jenisEs: _selectedIceType,
-        jumlahKg: double.parse(_iceAmountController.text),
-        hargaPerKg: double.parse(_icePriceController.text),
-        totalHarga: double.parse(_iceAmountController.text) * double.parse(_icePriceController.text),
-        tanggalPembelian: _selectedDate.toIso8601String(),
-        buktiFilePath: _iceFilePath,
-        lokasiPembelian: _iceLocationController.text.isNotEmpty ? _iceLocationController.text : null,
-        keterangan: _iceNotesController.text.isNotEmpty ? _iceNotesController.text : null,
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Data Es berhasil di-lock!'), backgroundColor: Colors.green),
+    );
 
-      print('\n' + '='*60);
-      print('✅ ICE UPLOAD SUCCESS - SCREEN LAYER');
-      print('='*60);
-      print('📊 [ICE-SCREEN] Response: $result');
-      print('📊 [ICE-SCREEN] Success: ${result['success']}');
-      print('📊 [ICE-SCREEN] Message: ${result['message']}');
-      print('='*60 + '\n');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data Es berhasil disimpan!'), backgroundColor: Colors.green),
-      );
-
-      Navigator.pop(context, true);
-    } catch (e) {
-      print('\n' + '='*60);
-      print('❌ ICE UPLOAD FAILED - SCREEN LAYER');
-      print('='*60);
-      print('❌ [ICE-SCREEN] Error: $e');
-      print('❌ [ICE-SCREEN] Error Type: ${e.runtimeType}');
-      print('='*60 + '\n');
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
+    Navigator.pop(context, iceData);
   }
-
   @override
   void dispose() {
     _iceAmountController.removeListener(_calculateTotal);

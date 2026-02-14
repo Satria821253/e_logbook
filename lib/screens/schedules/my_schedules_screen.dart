@@ -7,10 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../services/api/trip_service.dart';
 import '../../services/api/vessel_service.dart';
 import '../../services/nitification/local_notification_service.dart';
-import '../../utils/navigation_helper.dart';
 import '../tracking/active_tracking_screen.dart';
-import '../nahkoda/my_trips_screen.dart';
-import '../crew/screens/crew_my_trips_screen.dart';
 
 class MySchedulesScreen extends StatefulWidget {
   const MySchedulesScreen({Key? key}) : super(key: key);
@@ -22,7 +19,6 @@ class MySchedulesScreen extends StatefulWidget {
 class _MySchedulesScreenState extends State<MySchedulesScreen> {
   List<Map<String, dynamic>> _schedules = [];
   bool _isLoading = true;
-  String? _userRole;
   bool _hasActiveTrip = false;
   Map<String, dynamic>? _activeTrip;
   Timer? _notificationPollTimer;
@@ -31,7 +27,6 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserRole();
     _initializeData();
     _startNotificationPolling();
   }
@@ -169,13 +164,6 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     }
   }
 
-  Future<void> _loadUserRole() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _userRole = prefs.getString('role');
-    });
-  }
 
   Future<void> _loadSchedules() async {
     if (!mounted) return;
@@ -236,10 +224,10 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
           // Filter 2: Tampilkan trip berlayar, siap dimulai, atau selesai
           // Status berlayar: berlayar, sedang_melaut, active, sailing
           // Status selesai: selesai, completed, finished
-          // Status siap: disetujui, approved, siap_berangkat
+          // Status siap: disetujui, approved, siap_berangkat, menunggu_dokumen, menunggu_izin
           final isBerlayar = status == 'berlayar' || status == 'sedang_melaut' || status == 'active' || status == 'sailing';
           final isSelesai = status == 'selesai' || status == 'completed' || status == 'finished';
-          final validStatuses = ['disetujui', 'approved', 'siap_berangkat'];
+          final validStatuses = ['disetujui', 'approved', 'siap_berangkat', 'menunggu_dokumen', 'menunggu_izin'];
           final isValidStatus = validStatuses.contains(status);
           
           // Jika ada trip berlayar, tampilkan trip berlayar dan selesai
@@ -253,8 +241,19 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
           return match;
         }).toList();
         
-        // Ambil hanya 3 trip terbaru (berlayar + selesai + disetujui)
-        final limitedTrips = filteredTrips.take(3).toList();
+        // Sort by tanggalBerangkat (newest first)
+        filteredTrips.sort((a, b) {
+          try {
+            final dateA = DateTime.parse(a['tanggalBerangkat'] ?? '');
+            final dateB = DateTime.parse(b['tanggalBerangkat'] ?? '');
+            return dateB.compareTo(dateA);
+          } catch (e) {
+            return 0;
+          }
+        });
+        
+        // Ambil semua trip (tidak dibatasi 3)
+        final limitedTrips = filteredTrips;
         
         print('🔍 [MySchedules] Filtered trips: ${limitedTrips.length}');
         print('========== FILTER SCHEDULES END ==========\n');

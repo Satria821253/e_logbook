@@ -33,10 +33,26 @@ class CrewMenuItems extends StatelessWidget {
             ),
           ),
         ),
-        // Data Raw
+        // Info Trip
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
           bottom: ResponsiveHelper.height(context, mobile: 220, tablet: 290),
+          child: ScaleTransition(
+            scale: animation,
+            child: CrewFloatingActionButton(
+              icon: Icons.sailing,
+              color: Colors.teal,
+              onTap: () {
+                onMenuToggle();
+                CrewRoutes.navigateToTripInfo(context);
+              },
+            ),
+          ),
+        ),
+        // Data Raw
+        Positioned(
+          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -52,7 +68,7 @@ class CrewMenuItems extends StatelessWidget {
         // Jadwal Tugas
         Positioned(
           right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 290, tablet: 390),
+          bottom: ResponsiveHelper.height(context, mobile: 360, tablet: 490),
           child: ScaleTransition(
             scale: animation,
             child: CrewFloatingActionButton(
@@ -61,22 +77,6 @@ class CrewMenuItems extends StatelessWidget {
               onTap: () {
                 onMenuToggle();
                 CrewRoutes.navigateToMySchedules(context);
-              },
-            ),
-          ),
-        ),
-        // Riwayat Tugas Saya
-        Positioned(
-          right: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
-          bottom: ResponsiveHelper.height(context, mobile: 360, tablet: 490),
-          child: ScaleTransition(
-            scale: animation,
-            child: CrewFloatingActionButton(
-              icon: Icons.history,
-              color: Colors.teal,
-              onTap: () {
-                onMenuToggle();
-                CrewRoutes.navigateToMyTripsHistory(context);
               },
             ),
           ),

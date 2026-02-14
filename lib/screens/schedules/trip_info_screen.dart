@@ -2,9 +2,9 @@ import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../../models/trip_model.dart';
-import '../../../services/api/trip_service.dart';
-import '../../../provider/user_provider.dart';
+import '../../models/trip_model.dart';
+import '../../services/api/trip_service.dart';
+import '../../provider/user_provider.dart';
 
 class TripInfoScreen extends StatefulWidget {
   const TripInfoScreen({Key? key}) : super(key: key);

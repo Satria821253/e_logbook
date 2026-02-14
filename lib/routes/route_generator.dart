@@ -112,8 +112,16 @@ class RouteGenerator {
         );
       
       case AppRoutes.createCatch:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final tripId = args?['tripId'];
+        
+        if (tripId == null) {
+          // Redirect ke home jika tidak ada tripId
+          return _noTransitionRoute(const MainScreen());
+        }
+        
         return _noTransitionRoute(
-          const CreateCatchScreen(),
+          CreateCatchScreen(tripId: tripId),
         );
       
       case AppRoutes.documentStatus:
