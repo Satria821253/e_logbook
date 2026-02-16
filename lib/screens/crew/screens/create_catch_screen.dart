@@ -9,6 +9,7 @@ import 'package:e_logbook/provider/tracking_minimize_provider.dart';
 import 'package:e_logbook/services/local/catch_submission_service.dart';
 import 'package:e_logbook/services/ai/gemini_fish_detection_service.dart';
 import 'package:e_logbook/services/api/trip_service.dart';
+import 'package:e_logbook/services/api/iot_service.dart';
 import 'package:e_logbook/services/cuaca/weather_service.dart';
 import 'package:e_logbook/widgets/ai_detection_loading_widget.dart';
 import 'package:e_logbook/widgets/ai_detection_result_widget.dart';
@@ -315,8 +316,66 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
 
       if (mounted) {
         safeSetState(() => _isDetectingFish = false);
-        // Hanya tampilkan pesan singkat, tidak perlu error detail
-        _showSnackBar('⚠️ Deteksi AI tidak berhasil. Silakan isi data manual.');
+        
+        // Tampilkan error yang lebih detail
+        String errorMessage = '⚠️ Deteksi AI gagal.';
+        
+        if (e.toString().contains('API Key')) {
+          errorMessage = '❌ API Key Gemini tidak valid. Hubungi admin.';
+        } else if (e.toString().contains('suspended') || e.toString().contains('CONSUMER_SUSPENDED')) {
+          errorMessage = '🚫 API Key telah di-suspend oleh Google. Generate API Key baru!';
+        } else if (e.toString().contains('Quota')) {
+          errorMessage = '⚠️ Quota API habis. Coba lagi nanti.';
+        } else if (e.toString().contains('Model tidak ditemukan')) {
+          errorMessage = '❌ Model AI tidak ditemukan. Hubungi admin.';
+        } else if (e.toString().contains('timeout')) {
+          errorMessage = '⏱️ Koneksi timeout. Periksa internet Anda.';
+        } else if (e.toString().contains('SocketException')) {
+          errorMessage = '🚫 Tidak ada koneksi internet.';
+        }
+        
+        _showSnackBar(errorMessage);
+        
+        // Tampilkan dialog dengan opsi retry
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('AI Detection Gagal'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(errorMessage),
+                SizedBox(height: 12),
+                Text(
+                  'Anda bisa:\n1. Coba lagi deteksi AI\n2. Isi data manual',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Isi Manual'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (_catchImages.isNotEmpty) {
+                    _detectFishFromImage(_catchImages.first);
+                  }
+                },
+                child: Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        );
       }
     }
   }
@@ -417,11 +476,12 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       return false;
     }
     
-    // Validasi: Harus ada hasil deteksi AI
-    if (_detectionResult == null) {
-      _showSnackBar('⚠️ Silakan lakukan deteksi AI terlebih dahulu!');
-      return false;
-    }
+    // Validasi: AI detection OPTIONAL - User bisa input manual
+    // Uncomment jika AI sudah tersedia
+    // if (_detectionResult == null) {
+    //   _showSnackBar('⚠️ Silakan lakukan deteksi AI terlebih dahulu!');
+    //   return false;
+    // }
 
     if (_calculatedHours == 0 && _calculatedMinutes == 0) {
       _showSnackBar('⚠️ Silakan atur waktu keberangkatan & kedatangan!');
@@ -502,7 +562,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 16),
-                Text('Mengirim data...'),
+                Text('Mengirim data ke IoT...'),
               ],
             ),
           ),
@@ -573,8 +633,54 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       debugPrint('  location_name: ${catchData['location_name']}');
       debugPrint('  weather_condition: ${catchData['weather_condition']}');
 
-      // Submit dengan offline fallback
-      debugPrint('\n📤 [CATCH] Submitting catch data...');
+      // STEP 1: Kirim ke IoT terlebih dahulu
+      debugPrint('\n📡 [STEP 1] Sending to IoT...');
+      final iotResult = await IoTService.sendToIoT(catchData: catchData);
+      
+      if (!iotResult['success']) {
+        // Close loading dialog
+        if (mounted) Navigator.pop(context);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Gagal mengirim ke IoT: ${iotResult['message']}'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+      
+      debugPrint('✅ [STEP 1] IoT data sent successfully');
+      
+      // Update loading message
+      if (mounted) {
+        Navigator.pop(context);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Mengirim data tangkapan...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      // STEP 2: Submit catch dengan offline fallback
+      debugPrint('\n📤 [STEP 2] Submitting catch data...');
       debugPrint('📷 [CATCH] Image path: ${_catchImages[0].path}');
       
       final result = await CatchSubmissionService.submitCatch(

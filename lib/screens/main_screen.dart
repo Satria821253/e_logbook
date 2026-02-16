@@ -21,6 +21,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
@@ -53,6 +54,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _showTracking = false;
   Timer? _toggleTimer;
   DateTime? _berlayarStartTime;
+  Timer? _periodicCheckTimer;
+  int _checkRetryCount = 0;
   
   @override
   void initState() {
@@ -89,13 +92,37 @@ class _MainScreenState extends State<MainScreen> {
   }
   
   void _startPeriodicCheck() {
-    Timer.periodic(Duration(seconds: 30), (timer) {
-      if (mounted) {
-        _checkTripStatus();
-      } else {
-        timer.cancel();
+    _periodicCheckTimer?.cancel();
+    _scheduleNextCheck();
+  }
+
+  void _scheduleNextCheck() {
+    _periodicCheckTimer?.cancel();
+    
+    final interval = Duration(seconds: 30 + (_checkRetryCount * 10));
+    _periodicCheckTimer = Timer(interval, () async {
+      if (!mounted) return;
+      
+      final hasConnection = await _hasInternetConnection();
+      if (!hasConnection) {
+        _checkRetryCount++;
+        _scheduleNextCheck();
+        return;
       }
+      
+      await _checkTripStatus();
+      _checkRetryCount = 0;
+      _scheduleNextCheck();
     });
+  }
+
+  Future<bool> _hasInternetConnection() async {
+    try {
+      final result = await Connectivity().checkConnectivity();
+      return result != ConnectivityResult.none;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<void> _checkTripStatus() async {
@@ -145,6 +172,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _toggleTimer?.cancel();
+    _periodicCheckTimer?.cancel();
     super.dispose();
   }
   
@@ -923,8 +951,6 @@ class _MainScreenState extends State<MainScreen> {
     final iconSize = screenWidth < 800 ? 13.0 : 14.0;
     final fontSize = screenWidth < 800 ? 10.0 : 11.0;
     
-    print('🔧 Building sidebar item: $label, selected: $isSelected, right margin: $rightMargin');
-    
     return Padding(
       padding: EdgeInsets.only(
         left: 12,
@@ -952,10 +978,7 @@ class _MainScreenState extends State<MainScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: InkWell(
-              onTap: () {
-                print('🖱️ Sidebar item clicked: $label');
-                navProvider.setIndex(index);
-              },
+              onTap: () => navProvider.setIndex(index),
               splashColor: const Color(0xFF1B4F9C).withOpacity(0.1),
               highlightColor: const Color(0xFF1B4F9C).withOpacity(0.05),
               child: Container(
@@ -992,8 +1015,6 @@ class _MainScreenState extends State<MainScreen> {
     final rightMargin = screenWidth < 800 ? 20.0 : 24.0;
     final iconSize = screenWidth < 800 ? 13.0 : 14.0;
     final fontSize = screenWidth < 800 ? 10.0 : 11.0;
-    
-    print('🔧 Building action item: $label with right margin: $rightMargin');
     return Padding(
       padding: EdgeInsets.only(
         left: 12,
@@ -1014,10 +1035,7 @@ class _MainScreenState extends State<MainScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: InkWell(
-              onTap: () {
-                print('🖱️ Action item clicked: $label');
-                onTap();
-              },
+              onTap: onTap,
               splashColor: isEmergency ? Colors.red.withOpacity(0.2) : const Color(0xFF1B4F9C).withOpacity(0.1),
               highlightColor: isEmergency ? Colors.red.withOpacity(0.1) : const Color(0xFF1B4F9C).withOpacity(0.05),
               child: Container(
@@ -1137,50 +1155,8 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
   void _handleTripPreparation(BuildContext context) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-      int? currentUserId;
-      
-      if (userDataString != null) {
-        final userData = json.decode(userDataString);
-        currentUserId = userData['id'];
-      }
-      
-      if (currentUserId == null) return;
-      
-      final response = await TripService.getAllTrips();
-      if (response['success'] == true && response['data'] != null) {
-        final allTrips = List<Map<String, dynamic>>.from(response['data']);
-        
-        final activeTrip = allTrips.firstWhere(
-          (trip) {
-            final nahkodaId = trip['nahkodaId'];
-            final status = trip['status']?.toLowerCase();
-            return nahkodaId == currentUserId && 
-                   (status == 'berlayar' || status == 'sedang_melaut');
-          },
-          orElse: () => {},
-        );
-        
-        if (activeTrip.isNotEmpty && mounted) {
-          // Langsung ke tracking jika ada trip aktif
-          Navigator.pushNamed(context, '/active-tracking', arguments: {
-            'tripId': activeTrip['id'],
-            'lat': 0.0,
-            'lng': 0.0,
-          });
-        } else if (mounted) {
-          // Ke jadwal tugas jika belum ada trip aktif
-          NahkodaRoutes.navigateToMySchedules(context);
-        }
-      }
-    } catch (e) {
-      print('❌ Error handling trip preparation: $e');
-      if (mounted) {
-        NahkodaRoutes.navigateToMySchedules(context);
-      }
-    }
+    // Selalu redirect ke MySchedules untuk handle trip dengan benar
+    NahkodaRoutes.navigateToMySchedules(context);
   }
 
   void _handleCreateCatch(BuildContext context) async {

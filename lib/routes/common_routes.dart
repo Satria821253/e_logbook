@@ -6,7 +6,6 @@ import '../screens/profile_screen.dart';
 import '../screens/notification_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/map_piker_screen.dart';
-import '../screens/zone_violation_detail_screen.dart';
 
 class CommonRoutes {
   // Main navigation screens
@@ -50,19 +49,6 @@ class CommonRoutes {
     NavigationHelper.pushNoTransition(
       context,
       MapPickerScreen(),
-    );
-  }
-
-  static void navigateToZoneViolationDetail(BuildContext context, {
-    required Map<String, dynamic> zoneInfo,
-    required VoidCallback onDismiss,
-  }) {
-    NavigationHelper.pushNoTransition(
-      context,
-      ZoneViolationDetailScreen(
-        zoneInfo: zoneInfo,
-        onDismiss: onDismiss,
-      ),
     );
   }
 

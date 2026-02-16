@@ -52,120 +52,44 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    print('🚀 [HOME] initState START');
     WidgetsBinding.instance.addObserver(this);
-    print('🚀 [HOME] initState called, mounted=$mounted');
-
-    // Register listener untuk auto-refresh documents (gunakan key unik)
-    RealtimeUpdateService.addListener('documents-home', () {
-      print('🔔 [HOME] Documents listener triggered! mounted=$mounted');
-      if (mounted) {
-        print('🔔 Documents changed, auto-refreshing home screen...');
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            print('🔔 [HOME] Calling _checkDocumentCompletion from listener');
-            _checkDocumentCompletion().then((_) {
-              print('✅ [HOME] Banner refresh completed');
-            });
-          }
-        });
-      } else {
-        print('⚠️ [HOME] Widget not mounted, skipping refresh');
-      }
-    });
-
-    // Juga listen ke 'documents' untuk compatibility
-    RealtimeUpdateService.addListener('documents', () {
-      print('🔔 [HOME] Documents (global) listener triggered!');
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            print(
-              '🔔 [HOME] Calling _checkDocumentCompletion from global listener',
-            );
-            _checkDocumentCompletion();
-          }
-        });
-      }
-    });
-
-    // Register listener untuk auto-refresh saat admin memverifikasi
-    RealtimeUpdateService.addListener('document-verified', () {
-      print('🔔 [HOME] Document-verified listener triggered! mounted=$mounted');
-      if (mounted) {
-        print('🔔 Document verified by admin, auto-refreshing banner...');
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            print(
-              '🔔 [HOME] Calling _checkDocumentCompletion from verified listener',
-            );
-            _checkDocumentCompletion();
-          }
-        });
-      }
-    });
-
-    print('🚀 [HOME] Scheduling _loadAllData with addPostFrameCallback');
+    
+    // Register listeners dengan key unik
+    RealtimeUpdateService.addListener('documents-home', _handleDocumentUpdate);
+    RealtimeUpdateService.addListener('document-verified', _handleDocumentUpdate);
+    
+    // Schedule data loading
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('🚀 [HOME] addPostFrameCallback executing, mounted=$mounted');
       _loadAllData();
-      // Check for new schedules
       ScheduleMonitoringService.checkForNewSchedules();
     });
-    print('🚀 [HOME] initState END');
+  }
+  
+  void _handleDocumentUpdate() {
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _checkDocumentCompletion();
+      });
+    }
   }
 
   Future<void> _loadAllData() async {
-    print(
-      '📥 [HOME] _loadAllData START, mounted=$mounted, _userProvider=${_userProvider != null}',
-    );
-    if (!mounted || _userProvider == null) {
-      print(
-        '❌ [HOME] _loadAllData ABORT: mounted=$mounted, _userProvider=${_userProvider != null}',
-      );
-      return;
-    }
-
-    print('📥 [HOME] Loading user from storage...');
+    if (!mounted || _userProvider == null) return;
+    
     await _userProvider!.loadUserFromStorage();
-    print('✅ [HOME] User loaded, mounted=$mounted');
+    if (!mounted) return;
 
-    if (!mounted) {
-      print(
-        '❌ [HOME] _loadAllData ABORT after loadUserFromStorage: mounted=$mounted',
-      );
-      return;
-    }
-
-    // Tampilkan popup dulu jika perlu
     if (!_hasShownPopup) {
-      print('📥 [HOME] Checking and showing popup...');
       await _checkAndShowPopup();
-      if (mounted) {
-        _hasShownPopup = true;
-        print('✅ [HOME] Popup check completed, _hasShownPopup=$_hasShownPopup');
-      }
-    } else {
-      print('⏭️ [HOME] Popup already shown, skipping');
+      if (mounted) _hasShownPopup = true;
     }
 
-    if (!mounted) {
-      print(
-        '❌ [HOME] _loadAllData ABORT after _checkAndShowPopup: mounted=$mounted',
-      );
-      return;
-    }
-
-    // Setelah popup, baru load dan tampilkan banner
-    print('📥 [HOME] Checking document completion...');
+    if (!mounted) return;
     await _checkDocumentCompletion();
-    print('✅ [HOME] Document completion checked');
-
+    
     if (!_hasLoggedInit && mounted) {
-      print('🔍 HomeScreen: _hasShownPopup = $_hasShownPopup');
       _hasLoggedInit = true;
     }
-    print('📥 [HOME] _loadAllData END');
   }
 
   Future<void> _checkAndShowPopup() async {
@@ -276,15 +200,8 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    
-    // ✅ Remove listeners untuk prevent memory leak
-    // Meskipun menggunakan AutomaticKeepAliveClientMixin, tetap harus cleanup
-    // karena listener bisa dipanggil saat widget sudah disposed
     RealtimeUpdateService.removeListener('documents-home');
-    RealtimeUpdateService.removeListener('documents');
     RealtimeUpdateService.removeListener('document-verified');
-    
-    print('🗑️ HomeScreen: dispose called, listeners removed');
     super.dispose();
   }
 

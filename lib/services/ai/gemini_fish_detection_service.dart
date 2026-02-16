@@ -249,8 +249,34 @@ Jawab HANYA dengan JSON valid (tanpa markdown, tanpa backticks):
       } else {
         debugPrint('❌ Server Error ${response.statusCode}');
         debugPrint('📄 Response body: ${response.body}');
+        
+        // Parse error message dari Gemini API
+        try {
+          final errorData = json.decode(response.body);
+          final errorMessage = errorData['error']?['message'] ?? 'Unknown error';
+          final errorReason = errorData['error']?['details']?[0]?['reason'];
+          
+          debugPrint('🔴 Gemini Error: $errorMessage');
+          debugPrint('🔴 Error Reason: $errorReason');
+          
+          if (response.statusCode == 400) {
+            throw Exception('Invalid request: $errorMessage');
+          } else if (response.statusCode == 403) {
+            if (errorReason == 'CONSUMER_SUSPENDED') {
+              throw Exception('API Key telah di-suspend oleh Google. Generate API Key baru di https://makersuite.google.com/app/apikey');
+            }
+            throw Exception('API Key invalid atau tidak memiliki akses: $errorMessage');
+          } else if (response.statusCode == 429) {
+            throw Exception('Quota API habis atau terlalu banyak request');
+          } else if (response.statusCode == 404) {
+            throw Exception('Model tidak ditemukan. Pastikan menggunakan gemini-1.5-flash');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Could not parse error: $e');
+        }
+        
         debugPrint('========== GEMINI AI DETECTION FAILED ==========\n');
-        throw Exception('Server Error: ${response.statusCode}');
+        throw Exception('Server Error ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       debugPrint('❌ Exception caught: $e');

@@ -13,7 +13,6 @@ import 'package:e_logbook/routes/route_generator.dart';
 import 'package:e_logbook/screens/splash_screen.dart';
 import 'package:e_logbook/widgets/initialization_error_screen.dart';
 import 'package:e_logbook/services/fcm/fcm_service.dart';
-import 'package:e_logbook/utils/auth_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

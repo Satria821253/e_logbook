@@ -173,20 +173,33 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
   }
 
   Future<void> _validateAndStartTracking() async {
-    if (widget.harborCoordinates == null) {
+    if (widget.harborCoordinates == null || 
+        widget.harborCoordinates!['lat'] == null || 
+        widget.harborCoordinates!['lng'] == null) {
+      print('❌ [ActiveTracking] Invalid harbor coordinates: ${widget.harborCoordinates}');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          _showError('Data koordinat pelabuhan tidak tersedia');
-          Navigator.pop(context);
+          _showError('Data koordinat pelabuhan tidak tersedia. Menggunakan GPS real-time.');
+          // Jangan pop, lanjutkan dengan GPS real-time
         }
       });
+      // Lanjutkan tracking dengan GPS real-time tanpa koordinat pelabuhan
       return;
     }
+    
+    print('✅ [ActiveTracking] Valid harbor coordinates: ${widget.harborCoordinates}');
 
     try {
+      final harborLat = widget.harborCoordinates!['lat'];
+      final harborLng = widget.harborCoordinates!['lng'];
+      
+      if (harborLat == null || harborLng == null) {
+        throw Exception('Koordinat pelabuhan tidak valid');
+      }
+      
       await LocationTrackingService.startTrackingWithCoordinates(
-        harborLat: widget.harborCoordinates!['lat'],
-        harborLng: widget.harborCoordinates!['lng'],
+        harborLat: harborLat,
+        harborLng: harborLng,
         harborName: widget.selectedHarbor,
         vesselName: widget.vesselName,
         zoneRadius: widget.zoneRadius,
@@ -683,13 +696,10 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('\n🔵 [ActiveTracking] build() called - isMinimized check');
-    return Consumer<TrackingMinimizeProvider>(
-      builder: (context, minimizeProvider, child) {
-        print('🔵 [ActiveTracking] Consumer builder - isMinimized: ${minimizeProvider.isMinimized}');
-        
-        if (minimizeProvider.isMinimized) {
-          // Saat minimize, tampilkan MainScreen dengan overlay
+    return Selector<TrackingMinimizeProvider, bool>(
+      selector: (_, provider) => provider.isMinimized,
+      builder: (context, isMinimized, child) {
+        if (isMinimized) {
           return WillPopScope(
             onWillPop: () async => false,
             child: Stack(
@@ -701,15 +711,15 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
           );
         }
         
-        // Saat maximize, tampilkan full tracking screen
         return WillPopScope(
           onWillPop: () async {
-            minimizeProvider.minimize();
+            Provider.of<TrackingMinimizeProvider>(context, listen: false).minimize();
             return false;
           },
-          child: _buildFullView(),
+          child: child!,
         );
       },
+      child: _buildFullView(),
     );
   }
 

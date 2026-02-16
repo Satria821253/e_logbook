@@ -35,7 +35,7 @@ Berangkat: [Tanggal]
 ### **FASE 2: Persiapan Trip**
 
 #### 2.1 Upload Dokumen Perizinan (Nahkoda)
-**Screen**: `PreTripFormV2`
+**Screen**: `PreTripForm`
 **Dokumen yang diupload**:
 1. ✅ Izin Melaut (dari admin via email)
 2. ✅ Dokumen Kapal
@@ -47,7 +47,7 @@ Berangkat: [Tanggal]
 - Tidak bisa diubah lagi
 
 #### 2.2 Upload Data BBM & Es (Crew)
-**Screen**: `PreTripFormV2` (Crew Section)
+**Screen**: `PreTripForm` (Crew Section)
 **Catatan**: Crew yang mengisi data operasional
 - Crew upload data BBM (liter)
 - Crew upload data Es (kg)
@@ -355,7 +355,7 @@ if (role == 'nahkoda') {
         ↓
 2. MyTripsScreen (Detail Trip)
         ↓
-3. PreTripFormV2 (Upload BBM, Es, Dokumen)
+3. PreTripForm (Upload BBM, Es, Dokumen)
         ↓
 4. PreTrackingScreenSimple (Review & Kirim)
         ↓

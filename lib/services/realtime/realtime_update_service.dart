@@ -1,42 +1,71 @@
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../api/vessel_service.dart';
 import '../api/document_service.dart';
 
 class RealtimeUpdateService {
   static Timer? _pollingTimer;
-  static final Map<String, List<Function>> _listeners = {}; // Changed to List<Function>
-  static Map<String, dynamic>? _lastVesselData;
+  static final Map<String, List<Function>> _listeners = {};
+  static String? _lastVesselId;
   static List<dynamic>? _lastDocuments;
-  static Map<String, dynamic>? _lastCertificates;
-  static List<dynamic>? _lastBBMData;
-  static List<dynamic>? _lastIceData;
   static Map<String, dynamic>? _lastUserProfile;
+  static int _retryCount = 0;
   
-  // Polling interval (30 detik)
-  static const Duration _pollingInterval = Duration(seconds: 30);
+  static const Duration _initialInterval = Duration(seconds: 30);
+  static const Duration _maxInterval = Duration(seconds: 120);
+  static const int _maxRetries = 10;
+
+  static Duration _getNextInterval() {
+    final seconds = (_initialInterval.inSeconds * (1 + _retryCount * 0.5)).toInt();
+    return Duration(seconds: seconds.clamp(_initialInterval.inSeconds, _maxInterval.inSeconds));
+  }
+
+  static Future<bool> _hasConnection() async {
+    try {
+      final result = await Connectivity().checkConnectivity();
+      return result != ConnectivityResult.none;
+    } catch (e) {
+      return false;
+    }
+  }
 
   /// Start polling untuk auto-update
   static void startPolling() {
     if (_pollingTimer != null && _pollingTimer!.isActive) {
-      print('⚠️ Polling already running');
       return;
     }
 
-    print('🔄 Starting real-time polling...');
-    _pollingTimer = Timer.periodic(_pollingInterval, (timer) async {
-      await _checkForUpdates();
-    });
+    _retryCount = 0;
+    _scheduleNextPoll();
+  }
+
+  static void _scheduleNextPoll() {
+    _pollingTimer?.cancel();
     
-    // Check immediately on start
-    _checkForUpdates();
+    if (_retryCount >= _maxRetries) {
+      _retryCount = 0;
+    }
+
+    final interval = _getNextInterval();
+    _pollingTimer = Timer(interval, () async {
+      if (!await _hasConnection()) {
+        _retryCount++;
+        _scheduleNextPoll();
+        return;
+      }
+      
+      await _checkForUpdates();
+      _retryCount = 0;
+      _scheduleNextPoll();
+    });
   }
 
   /// Stop polling
   static void stopPolling() {
     _pollingTimer?.cancel();
     _pollingTimer = null;
-    print('⏹️ Polling stopped');
+    _retryCount = 0;
   }
 
   /// Register listener untuk data tertentu
@@ -45,17 +74,26 @@ class RealtimeUpdateService {
       _listeners[key] = [];
     }
     _listeners[key]!.add(callback);
-    print('👂 Listener registered: $key (total: ${_listeners[key]!.length})');
+    print('🔔 [LISTENER] Added listener for "$key" - Total: ${_listeners[key]!.length}');
+    print('   All listeners: ${_listeners.keys.map((k) => '$k(${_listeners[k]!.length})').join(', ')}');
   }
 
   /// Remove listener
-  static void removeListener(String key) {
-    if (_listeners.containsKey(key)) {
-      _listeners.remove(key);
-      print('🔇 Listener removed: $key');
+  static void removeListener(String key, [Function? callback]) {
+    final beforeCount = _listeners[key]?.length ?? 0;
+    if (callback != null) {
+      final removed = _listeners[key]?.remove(callback) ?? false;
+      print('🗑️ [LISTENER] Remove specific callback for "$key": ${removed ? 'SUCCESS' : 'FAILED'}');
+      print('   Before: $beforeCount, After: ${_listeners[key]?.length ?? 0}');
+      if (_listeners[key]?.isEmpty ?? false) {
+        _listeners.remove(key);
+        print('   Key "$key" removed (empty)');
+      }
     } else {
-      print('⚠️ Listener not found: $key');
+      _listeners.remove(key);
+      print('🗑️ [LISTENER] Removed all listeners for "$key" (was: $beforeCount)');
     }
+    print('   Remaining listeners: ${_listeners.keys.map((k) => '$k(${_listeners[k]!.length})').join(', ')}');
   }
   
   /// Get listener (untuk manual trigger)
@@ -65,34 +103,38 @@ class RealtimeUpdateService {
 
   /// Check for updates dari backend
   static Future<void> _checkForUpdates() async {
+    print('\n🔄 [POLLING] Checking for updates...');
     try {
-      print('\n========== POLLING CHECK START ==========');
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       
       if (token == null) {
-        print('⚠️ No auth token, skipping polling');
+        print('❌ [POLLING] No auth token found');
         return;
       }
 
       final changes = <String>[];
 
-      // Check vessel data
-      final vesselData = await VesselService().getVesselData();
-      if (vesselData != null) {
-        if (_lastVesselData == null) {
-          _lastVesselData = vesselData;
-        } else {
-          // Compare vessel data
-          final lastUpdated = _lastVesselData!['kapal']?['updatedAt'];
-          final currentUpdated = vesselData['kapal']?['updatedAt'];
-          
-          if (lastUpdated != currentUpdated) {
-            print('🔔 Vessel data changed!');
+      // Check vessel ID changes
+      try {
+        final vesselService = VesselService();
+        final currentVesselId = await vesselService.getVesselIdFromUserSettings() ?? 
+                                await vesselService.getVesselIdFromTrip();
+        
+        print('🚢 [VESSEL] Current: $currentVesselId, Last: $_lastVesselId');
+        
+        if (currentVesselId != null) {
+          if (_lastVesselId == null) {
+            _lastVesselId = currentVesselId;
+            print('   First time vessel ID set');
+          } else if (_lastVesselId != currentVesselId) {
             changes.add('vessel');
-            _lastVesselData = vesselData;
+            _lastVesselId = currentVesselId;
+            print('   ⚠️ VESSEL CHANGED!');
           }
         }
+      } catch (e) {
+        print('❌ [VESSEL] Error: $e');
       }
 
       // Check documents - DETAIL CHECK untuk detect status changes
@@ -108,7 +150,6 @@ class RealtimeUpdateService {
             
             // Check count change (dokumen dihapus atau ditambah)
             if (docs.length != _lastDocuments!.length) {
-              print('🔔 Document count changed: ${_lastDocuments!.length} → ${docs.length}');
               hasDocumentChanges = true;
             }
             
@@ -118,7 +159,6 @@ class RealtimeUpdateService {
               final lastIds = _lastDocuments!.map((d) => d['id']).toSet();
               
               if (!currentIds.containsAll(lastIds) || !lastIds.containsAll(currentIds)) {
-                print('🔔 Document IDs changed (added/removed)');
                 hasDocumentChanges = true;
               }
             }
@@ -132,15 +172,12 @@ class RealtimeUpdateService {
                 );
                 
                 if (oldDoc.isEmpty) {
-                  // Dokumen baru
-                  print('🔔 New document added: ${doc['jenisDokumen']}');
                   hasDocumentChanges = true;
                   break;
                 }
                 
                 // Check status change
                 if (oldDoc['status'] != doc['status']) {
-                  print('🔔 Document status changed: ${doc['jenisDokumen']} → ${doc['status']}');
                   hasDocumentChanges = true;
                   break;
                 }
@@ -148,14 +185,12 @@ class RealtimeUpdateService {
                 // Check rejection reason
                 if (doc['status'] == 'rejected' && 
                     oldDoc['alasanPenolakan'] != doc['alasanPenolakan']) {
-                  print('🔔 Document rejection reason updated');
                   hasDocumentChanges = true;
                   break;
                 }
                 
                 // Check file path change (dokumen diupload ulang)
                 if (oldDoc['filePath'] != doc['filePath']) {
-                  print('🔔 Document file changed: ${doc['jenisDokumen']}');
                   hasDocumentChanges = true;
                   break;
                 }
@@ -169,53 +204,9 @@ class RealtimeUpdateService {
           }
         }
       } catch (e) {
-        print('⚠️ Error checking documents: $e');
+        // Silent error
       }
 
-      // Check certificates
-      try {
-        final certData = await VesselService().getVesselDocuments(forceRefresh: false);
-        final certs = certData['sertifikatJalan'] as List?;
-        
-        if (_lastCertificates == null) {
-          _lastCertificates = {'count': certs?.length ?? 0};
-        } else {
-          final lastCount = _lastCertificates!['count'] ?? 0;
-          final currentCount = certs?.length ?? 0;
-          
-          if (lastCount != currentCount) {
-            print('🔔 Certificates changed: $lastCount → $currentCount');
-            changes.add('certificates');
-            _lastCertificates = {'count': currentCount};
-          }
-        }
-        
-        // Check BBM data
-        final bbmData = certData['dataBahanBakar'] as List?;
-        if (bbmData != null) {
-          if (_lastBBMData == null) {
-            _lastBBMData = bbmData;
-          } else if (_hasListChanged(_lastBBMData!, bbmData)) {
-            print('🔔 BBM data changed');
-            changes.add('bbm');
-            _lastBBMData = bbmData;
-          }
-        }
-        
-        // Check Ice data
-        final iceData = certData['dataEs'] as List?;
-        if (iceData != null) {
-          if (_lastIceData == null) {
-            _lastIceData = iceData;
-          } else if (_hasListChanged(_lastIceData!, iceData)) {
-            print('🔔 Ice data changed');
-            changes.add('ice');
-            _lastIceData = iceData;
-          }
-        }
-      } catch (e) {
-        print('⚠️ Error checking vessel documents: $e');
-      }
       
       // Check user profile changes
       try {
@@ -224,61 +215,51 @@ class RealtimeUpdateService {
           if (_lastUserProfile == null) {
             _lastUserProfile = {'data': userDataStr};
           } else if (_lastUserProfile!['data'] != userDataStr) {
-            print('🔔 User profile changed');
             changes.add('profile');
             _lastUserProfile = {'data': userDataStr};
           }
         }
       } catch (e) {
-        print('⚠️ Error checking user profile: $e');
+        // Silent error
       }
 
       if (changes.isNotEmpty) {
-        print('🔔 Changes detected: ${changes.join(", ")}');
+        print('📢 [POLLING] Changes detected: $changes');
         _notifyListeners(changes);
       } else {
-        print('✅ No changes detected');
+        print('✅ [POLLING] No changes detected');
       }
-      
-      print('========== POLLING CHECK END ==========\n');
     } catch (e) {
-      print('⚠️ Polling error: $e');
-      print('========== POLLING CHECK END (ERROR) ==========\n');
+      print('❌ [POLLING] Error: $e');
     }
   }
 
   /// Notify all listeners
   static void _notifyListeners(List<String> changes) {
-    print('📢 Notifying listeners for changes: ${changes.join(", ")}');
-    print('👂 Active listeners: ${_listeners.keys.join(", ")}');
-    
+    print('\n📣 [NOTIFY] Notifying listeners for: $changes');
     for (var change in changes) {
       final listeners = _listeners[change];
+      print('   "$change": ${listeners?.length ?? 0} listeners');
       if (listeners != null && listeners.isNotEmpty) {
-        print('🔔 Calling ${listeners.length} listener(s) for: $change');
-        for (var listener in listeners) {
+        for (var i = 0; i < listeners.length; i++) {
           try {
-            listener();
-            print('✅ Listener called successfully');
+            print('      Calling listener #${i + 1}...');
+            listeners[i]();
+            print('      ✅ Listener #${i + 1} executed');
           } catch (e) {
-            print('❌ Error calling listener $change: $e');
+            print('      ❌ Listener #${i + 1} error: $e');
           }
         }
-      } else {
-        print('⚠️ No listener registered for: $change');
       }
     }
     
-    // Notify global listener
     final globalListeners = _listeners['global'];
     if (globalListeners != null && globalListeners.isNotEmpty) {
-      print('🔔 Calling ${globalListeners.length} global listener(s)');
       for (var listener in globalListeners) {
         try {
           listener(changes);
-          print('✅ Global listener called successfully');
         } catch (e) {
-          print('❌ Error calling global listener: $e');
+          // Silent error
         }
       }
     }
@@ -286,35 +267,14 @@ class RealtimeUpdateService {
 
   /// Public method to manually trigger listeners
   static void notifyListeners(String key) {
-    print('📢 Manual trigger for: $key');
     _notifyListeners([key]);
   }
 
-  /// Helper to check if list data changed
-  static bool _hasListChanged(List oldList, List newList) {
-    if (oldList.length != newList.length) return true;
-    
-    for (int i = 0; i < oldList.length; i++) {
-      final oldItem = oldList[i];
-      final newItem = newList[i];
-      
-      // Compare by ID if available
-      if (oldItem is Map && newItem is Map) {
-        if (oldItem['id'] != newItem['id']) return true;
-        if (oldItem['updatedAt'] != newItem['updatedAt']) return true;
-      }
-    }
-    return false;
-  }
 
   /// Force refresh all data
   static Future<void> forceRefresh() async {
-    print('🔄 Force refreshing all data...');
-    _lastVesselData = null;
+    _lastVesselId = null;
     _lastDocuments = null;
-    _lastCertificates = null;
-    _lastBBMData = null;
-    _lastIceData = null;
     _lastUserProfile = null;
     await _checkForUpdates();
   }
