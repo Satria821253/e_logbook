@@ -11,24 +11,23 @@ import 'upload_ice_screen.dart';
 import '../../utils/navigation_helper.dart';
 import 'pre_tracking_simple.dart';
 
-class PreTripFormV2 extends StatefulWidget {
+class PreTripForm extends StatefulWidget {
   final int? tripId;
   final Map<String, dynamic>? tripData;
 
-  const PreTripFormV2({Key? key, this.tripId, this.tripData}) : super(key: key);
+  const PreTripForm({Key? key, this.tripId, this.tripData}) : super(key: key);
 
   @override
-  State<PreTripFormV2> createState() => _PreTripFormV2State();
+  State<PreTripForm> createState() => _PreTripFormState();
 }
 
-class _PreTripFormV2State extends State<PreTripFormV2> {
+class _PreTripFormState extends State<PreTripForm> {
   String? _userRole;
   bool _isLoading = true;
 
   // Crew uploads - STEP BY STEP
   Map<String, dynamic>? _fuelData;
   Map<String, dynamic>? _iceData;
-
 
   // Nahkoda uploads - STEP BY STEP
   String? _izinMelautPath;
@@ -45,7 +44,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
     _izinMelautPath = null;
     _dokumenKapalPath = null;
     _asuransiPath = null;
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadUserRole();
       await _loadTripOperationalData();
@@ -57,33 +56,39 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
 
   Future<void> _loadTripOperationalData() async {
     if (widget.tripId == null) return;
-    
+
     try {
       print('\n🔄 [LOAD] Fetching trip detail...');
       final response = await TripService.getTripDetail(widget.tripId!);
-      
+
       if (response['success'] == true) {
         final tripData = response['data'];
         final perizinan = tripData?['perizinan'];
-        
+
         final fuelDataList = perizinan?['fuelData'] as List?;
         final iceDataList = perizinan?['iceData'] as List?;
         final dokumen = perizinan?['dokumen'];
-        
-        print('📊 [LOAD] Fuel uploaded: ${fuelDataList != null && fuelDataList.isNotEmpty}');
-        print('📊 [LOAD] Ice uploaded: ${iceDataList != null && iceDataList.isNotEmpty}');
+
+        print(
+          '📊 [LOAD] Fuel uploaded: ${fuelDataList != null && fuelDataList.isNotEmpty}',
+        );
+        print(
+          '📊 [LOAD] Ice uploaded: ${iceDataList != null && iceDataList.isNotEmpty}',
+        );
         print('📊 [LOAD] Izin Melaut: ${dokumen?['izinMelaut'] == true}');
         print('📊 [LOAD] Dokumen Kapal: ${dokumen?['dokumenKapal'] == true}');
         print('📊 [LOAD] Asuransi: ${dokumen?['asuransi'] == true}');
-        
+
         setState(() {
-          if (fuelDataList != null && fuelDataList.isNotEmpty) _fuelData = {'locked': true, 'uploaded': true};
-          if (iceDataList != null && iceDataList.isNotEmpty) _iceData = {'locked': true, 'uploaded': true};
+          if (fuelDataList != null && fuelDataList.isNotEmpty)
+            _fuelData = {'locked': true, 'uploaded': true};
+          if (iceDataList != null && iceDataList.isNotEmpty)
+            _iceData = {'locked': true, 'uploaded': true};
           if (dokumen?['izinMelaut'] == true) _izinMelautPath = 'uploaded';
           if (dokumen?['dokumenKapal'] == true) _dokumenKapalPath = 'uploaded';
           if (dokumen?['asuransi'] == true) _asuransiPath = 'uploaded';
         });
-        
+
         print('✅ [LOAD] Trip data loaded successfully');
       }
     } catch (e) {
@@ -101,14 +106,14 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       print('🔑 [LOAD ROLE] From UserProvider: $_userRole');
       return;
     }
-    
+
     // Fallback ke SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
-    
+
     print('🔑 [LOAD ROLE] From SharedPreferences:');
     print('   user_data string: $userDataString');
-    
+
     if (userDataString != null) {
       try {
         final userData = jsonDecode(userDataString);
@@ -121,15 +126,17 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
         print('   ❌ Error parsing user_data: $e');
       }
     }
-    
+
     print('   Final _userRole: $_userRole');
   }
 
   bool get _isNahkoda => _userRole?.toLowerCase() == 'nahkoda';
-  bool get _isCrew => _userRole?.toLowerCase() == 'crew' || _userRole?.toLowerCase() == 'abk';
+  bool get _isCrew =>
+      _userRole?.toLowerCase() == 'crew' || _userRole?.toLowerCase() == 'abk';
 
   // ONE BY ONE checks
-  bool get _fuelUploaded => _fuelData != null && (_fuelData!['uploaded'] == true);
+  bool get _fuelUploaded =>
+      _fuelData != null && (_fuelData!['uploaded'] == true);
   bool get _iceUploaded => _iceData != null && (_iceData!['uploaded'] == true);
   bool get _fuelLocked => _fuelData != null && (_fuelData!['locked'] == true);
   bool get _iceLocked => _iceData != null && (_iceData!['locked'] == true);
@@ -139,22 +146,33 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
 
   bool get _crewComplete => _fuelUploaded && _iceUploaded;
   bool get _crewLocked => _fuelLocked && _iceLocked;
-  bool get _nahkodaComplete => _izinMelautUploaded && _dokumenKapalUploaded && _asuransiUploaded;
+  bool get _nahkodaComplete =>
+      _izinMelautUploaded && _dokumenKapalUploaded && _asuransiUploaded;
   bool get _canSubmit => _crewComplete && _nahkodaComplete;
 
   @override
   Widget build(BuildContext context) {
     // Langsung tampilkan UI, loading di background
-    print('\n' + '='*60);
+    print('\n' + '=' * 60);
     print('🔍 DEBUG PRE-TRIP FORM V2');
-    print('='*60);
-    print('🆔 TRIP ID: ${widget.tripId}');  // <-- TRIP ID
-    print('👤 POV: ${_isCrew ? "CREW" : _isNahkoda ? "NAHKODA" : "UNKNOWN"}');
+    print('=' * 60);
+    print('🆔 TRIP ID: ${widget.tripId}'); // <-- TRIP ID
+    print(
+      '👤 POV: ${_isCrew
+          ? "CREW"
+          : _isNahkoda
+          ? "NAHKODA"
+          : "UNKNOWN"}',
+    );
     print('   Role: $_userRole');
     print('   isCrew: $_isCrew | isNahkoda: $_isNahkoda');
     print('\n📁 Upload Status:');
-    print('   Fuel: ${_fuelData != null ? (_fuelUploaded ? "✓ Uploaded" : "🔒 Locked") : "✗ Not Done"}');
-    print('   Ice: ${_iceData != null ? (_iceUploaded ? "✓ Uploaded" : "🔒 Locked") : "✗ Not Done"}');
+    print(
+      '   Fuel: ${_fuelData != null ? (_fuelUploaded ? "✓ Uploaded" : "🔒 Locked") : "✗ Not Done"}',
+    );
+    print(
+      '   Ice: ${_iceData != null ? (_iceUploaded ? "✓ Uploaded" : "🔒 Locked") : "✗ Not Done"}',
+    );
     print('   Izin: ${_izinMelautPath != null ? "✓ Done" : "✗ Not Done"}');
     print('   Dokumen: ${_dokumenKapalPath != null ? "✓ Done" : "✗ Not Done"}');
     print('   Asuransi: ${_asuransiPath != null ? "✓ Done" : "✗ Not Done"}');
@@ -165,17 +183,33 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
     print('   Can Submit: $_canSubmit');
     if (_isNahkoda) {
       print('\n👁️ NAHKODA VIEW:');
-      print('   Step 1-2 (Crew): ${_crewComplete ? "HIJAU" : "KUNING (Waiting)"}');
-      print('   Step 3 (Izin): ${_crewComplete && !_izinMelautUploaded ? "KUNING" : "ABU"}');
+      print(
+        '   Step 1-2 (Crew): ${_crewComplete ? "HIJAU" : "KUNING (Waiting)"}',
+      );
+      print(
+        '   Step 3 (Izin): ${_crewComplete && !_izinMelautUploaded ? "KUNING" : "ABU"}',
+      );
     }
     if (_isCrew) {
       print('\n👁️ CREW VIEW:');
       print('   Step 1 (Fuel): ${!_fuelUploaded ? "BIRU" : "HIJAU"}');
-      print('   Step 2 (Ice): ${_fuelUploaded && !_iceUploaded ? "BIRU" : !_fuelUploaded ? "ABU" : "HIJAU"}');
-      print('   Step 3-5 (Nahkoda): ${_crewComplete && !_nahkodaComplete ? "KUNING (Waiting)" : _nahkodaComplete ? "HIJAU" : "ABU"}');
+      print(
+        '   Step 2 (Ice): ${_fuelUploaded && !_iceUploaded
+            ? "BIRU"
+            : !_fuelUploaded
+            ? "ABU"
+            : "HIJAU"}',
+      );
+      print(
+        '   Step 3-5 (Nahkoda): ${_crewComplete && !_nahkodaComplete
+            ? "KUNING (Waiting)"
+            : _nahkodaComplete
+            ? "HIJAU"
+            : "ABU"}',
+      );
     }
-    print('='*60 + '\n');
-    
+    print('=' * 60 + '\n');
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -195,7 +229,11 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -213,7 +251,11 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
                     // Debug button untuk reset data
                     IconButton(
                       onPressed: _resetDebugData,
-                      icon: Icon(Icons.refresh, color: Colors.white.withOpacity(0.7), size: 20),
+                      icon: Icon(
+                        Icons.refresh,
+                        color: Colors.white.withOpacity(0.7),
+                        size: 20,
+                      ),
                       tooltip: 'Reset Data (Debug)',
                     ),
                   ],
@@ -261,9 +303,12 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
     final vesselNumber = kapal?['nomorRegistrasi'] ?? '-';
     final captainName = nahkoda?['nama'] ?? nahkoda?['username'] ?? '-';
     final crewCount = (widget.tripData?['awakKapal'] as List?)?.length ?? 0;
-    final departureHarbor = widget.tripData?['pelabuhanAsal'] ?? widget.tripData?['areaTangkap']?['nama'] ?? 'Belum ditentukan';
+    final departureHarbor =
+        widget.tripData?['pelabuhanAsal'] ??
+        widget.tripData?['areaTangkap']?['nama'] ??
+        'Belum ditentukan';
     final duration = widget.tripData?['durasi'] ?? 0;
-    
+
     // Parse tanggal
     DateTime? departureDate;
     DateTime? returnDate;
@@ -277,9 +322,9 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
     } catch (e) {
       print('⚠️ Error parsing dates: $e');
     }
-    
+
     final dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
-    
+
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -315,7 +360,11 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.sailing, color: Colors.white, size: 24),
+                  child: const Icon(
+                    Icons.sailing,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -344,7 +393,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
               ],
             ),
           ),
-          
+
           // Info Detail
           Padding(
             padding: const EdgeInsets.all(16),
@@ -373,7 +422,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Pelabuhan
                 _buildInfoItem(
                   Icons.anchor,
@@ -382,7 +431,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
                   Colors.teal,
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Tanggal & Durasi
                 Row(
                   children: [
@@ -390,7 +439,9 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
                       child: _buildInfoItem(
                         Icons.calendar_today,
                         'Tanggal Berangkat',
-                        departureDate != null ? dateFormat.format(departureDate) : '-',
+                        departureDate != null
+                            ? dateFormat.format(departureDate)
+                            : '-',
                         Colors.green,
                       ),
                     ),
@@ -421,8 +472,13 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       ),
     );
   }
-  
-  Widget _buildInfoItem(IconData icon, String label, String value, Color color) {
+
+  Widget _buildInfoItem(
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -440,10 +496,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -471,7 +524,13 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -480,32 +539,102 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
             children: [
               Icon(Icons.track_changes, color: Color(0xFF1B4F9C), size: 24),
               SizedBox(width: 12),
-              Text('Progress Persiapan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+              Text(
+                'Progress Persiapan',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
             ],
           ),
           SizedBox(height: 24),
 
-          _buildStep(1, 'Upload BBM', 'Crew', _fuelUploaded, !_fuelUploaded && _isCrew, false, Icons.local_gas_station, Colors.blue),
+          _buildStep(
+            1,
+            'Upload BBM',
+            'Crew',
+            _fuelUploaded,
+            !_fuelUploaded && _isCrew,
+            false,
+            Icons.local_gas_station,
+            Colors.blue,
+          ),
           _buildConnector(_fuelUploaded),
-          _buildStep(2, 'Upload Es', 'Crew', _iceUploaded, !_iceUploaded && _isCrew && _fuelUploaded, !_fuelUploaded, Icons.ac_unit, Colors.cyan),
+          _buildStep(
+            2,
+            'Upload Es',
+            'Crew',
+            _iceUploaded,
+            !_iceUploaded && _isCrew && _fuelUploaded,
+            !_fuelUploaded,
+            Icons.ac_unit,
+            Colors.cyan,
+          ),
           _buildConnector(_iceUploaded),
-          _buildStep(3, 'Izin Melaut', 'Nahkoda', _izinMelautUploaded, !_izinMelautUploaded && _isNahkoda && _crewComplete, !_crewComplete, Icons.sailing, Colors.green),
+          _buildStep(
+            3,
+            'Izin Melaut',
+            'Nahkoda',
+            _izinMelautUploaded,
+            !_izinMelautUploaded && _isNahkoda && _crewComplete,
+            !_crewComplete,
+            Icons.sailing,
+            Colors.green,
+          ),
           _buildConnector(_izinMelautUploaded),
-          _buildStep(4, 'Dokumen Kapal', 'Nahkoda', _dokumenKapalUploaded, !_dokumenKapalUploaded && _isNahkoda && _izinMelautUploaded, !_izinMelautUploaded, Icons.description, Colors.orange),
+          _buildStep(
+            4,
+            'Dokumen Kapal',
+            'Nahkoda',
+            _dokumenKapalUploaded,
+            !_dokumenKapalUploaded && _isNahkoda && _izinMelautUploaded,
+            !_izinMelautUploaded,
+            Icons.description,
+            Colors.orange,
+          ),
           _buildConnector(_dokumenKapalUploaded),
-          _buildStep(5, 'Asuransi', 'Nahkoda', _asuransiUploaded, !_asuransiUploaded && _isNahkoda && _dokumenKapalUploaded, !_dokumenKapalUploaded, Icons.security, Colors.purple),
+          _buildStep(
+            5,
+            'Asuransi',
+            'Nahkoda',
+            _asuransiUploaded,
+            !_asuransiUploaded && _isNahkoda && _dokumenKapalUploaded,
+            !_dokumenKapalUploaded,
+            Icons.security,
+            Colors.purple,
+          ),
           _buildConnector(_canSubmit),
-          _buildStep(6, 'Siap Berangkat', 'Trip', _canSubmit, false, !_canSubmit, Icons.check_circle, Colors.green),
+          _buildStep(
+            6,
+            'Siap Berangkat',
+            'Trip',
+            _canSubmit,
+            false,
+            !_canSubmit,
+            Icons.check_circle,
+            Colors.green,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStep(int num, String title, String subtitle, bool done, bool active, bool locked, IconData icon, Color color) {
+  Widget _buildStep(
+    int num,
+    String title,
+    String subtitle,
+    bool done,
+    bool active,
+    bool locked,
+    IconData icon,
+    Color color,
+  ) {
     Color circleColor;
     IconData displayIcon;
     String statusDebug = '';
-    
+
     if (done) {
       // HIJAU - sudah upload berhasil
       circleColor = Colors.green;
@@ -583,19 +712,18 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       displayIcon = Icons.lock;
       statusDebug = 'ABU (Default)';
     }
-    
+
     // Debug print
-    print('🎨 Step $num ($title): $statusDebug | done=$done, active=$active, locked=$locked');
-    
+    print(
+      '🎨 Step $num ($title): $statusDebug | done=$done, active=$active, locked=$locked',
+    );
+
     return Row(
       children: [
         Container(
           width: 48,
           height: 48,
-          decoration: BoxDecoration(
-            color: circleColor,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: circleColor, shape: BoxShape.circle),
           child: Icon(displayIcon, color: Colors.white, size: 24),
         ),
         SizedBox(width: 16),
@@ -603,8 +731,18 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[800])),
-              Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[800],
+                ),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
             ],
           ),
         ),
@@ -624,14 +762,20 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   Widget _buildCrewSection() {
     // Jika crew sudah complete (uploaded), jangan tampilkan section ini
     if (_crewComplete) return SizedBox.shrink();
-    
+
     return Container(
       margin: EdgeInsets.all(16),
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -640,18 +784,44 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
             children: [
               Container(
                 padding: EdgeInsets.all(10),
-                decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: Icon(Icons.assignment_ind, color: Colors.blue, size: 24),
               ),
               SizedBox(width: 12),
-              Text('Tugas Crew', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+              Text(
+                'Tugas Crew',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
             ],
           ),
           SizedBox(height: 20),
 
-          _buildUploadCard('Data Bahan Bakar', Icons.local_gas_station, Colors.blue, _fuelUploaded, _fuelLocked, () => _navigateToFuelUpload(), false),
+          _buildUploadCard(
+            'Data Bahan Bakar',
+            Icons.local_gas_station,
+            Colors.blue,
+            _fuelUploaded,
+            _fuelLocked,
+            () => _navigateToFuelUpload(),
+            false,
+          ),
           SizedBox(height: 16),
-          _buildUploadCard('Data Es', Icons.ac_unit, Colors.cyan, _iceUploaded, _iceLocked, () => _navigateToIceUpload(), !_fuelLocked),
+          _buildUploadCard(
+            'Data Es',
+            Icons.ac_unit,
+            Colors.cyan,
+            _iceUploaded,
+            _iceLocked,
+            () => _navigateToIceUpload(),
+            !_fuelLocked,
+          ),
         ],
       ),
     );
@@ -660,7 +830,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   Widget _buildNahkodaSection() {
     // Jika sudah lock, jangan tampilkan section ini
     if (_isLocked) return SizedBox.shrink();
-    
+
     if (!_crewComplete && _isNahkoda) {
       return Container(
         margin: EdgeInsets.all(16),
@@ -678,9 +848,19 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Menunggu Crew', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange[800])),
+                  Text(
+                    'Menunggu Crew',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange[800],
+                    ),
+                  ),
                   SizedBox(height: 4),
-                  Text('Crew sedang upload BBM & Es', style: TextStyle(fontSize: 13, color: Colors.orange[700])),
+                  Text(
+                    'Crew sedang upload BBM & Es',
+                    style: TextStyle(fontSize: 13, color: Colors.orange[700]),
+                  ),
                 ],
               ),
             ),
@@ -695,7 +875,13 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -704,53 +890,121 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
             children: [
               Container(
                 padding: EdgeInsets.all(10),
-                decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.admin_panel_settings, color: Colors.orange, size: 24),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.admin_panel_settings,
+                  color: Colors.orange,
+                  size: 24,
+                ),
               ),
               SizedBox(width: 12),
-              Expanded(child: Text('Tugas Nahkoda', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800]))),
+              Expanded(
+                child: Text(
+                  'Tugas Nahkoda',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
             ],
           ),
           SizedBox(height: 12),
           Container(
             padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Row(
               children: [
                 Icon(Icons.email, color: Colors.blue, size: 20),
                 SizedBox(width: 12),
-                Expanded(child: Text('Surat perizinan dikirim admin via email', style: TextStyle(fontSize: 12, color: Colors.blue[800]))),
+                Expanded(
+                  child: Text(
+                    'Surat perizinan dikirim admin via email',
+                    style: TextStyle(fontSize: 12, color: Colors.blue[800]),
+                  ),
+                ),
               ],
             ),
           ),
           SizedBox(height: 20),
 
-          _buildUploadCard('Izin Melaut', Icons.sailing, Colors.green, _izinMelautUploaded, false, () => _pickDoc('izinMelaut'), _isLocked),
+          _buildUploadCard(
+            'Izin Melaut',
+            Icons.sailing,
+            Colors.green,
+            _izinMelautUploaded,
+            false,
+            () => _pickDoc('izinMelaut'),
+            _isLocked,
+          ),
           SizedBox(height: 16),
-          _buildUploadCard('Dokumen Kapal', Icons.description, Colors.blue, _dokumenKapalUploaded, false, () => _pickDoc('dokumenKapal'), _isLocked),
+          _buildUploadCard(
+            'Dokumen Kapal',
+            Icons.description,
+            Colors.blue,
+            _dokumenKapalUploaded,
+            false,
+            () => _pickDoc('dokumenKapal'),
+            _isLocked,
+          ),
           SizedBox(height: 16),
-          _buildUploadCard('Asuransi', Icons.security, Colors.purple, _asuransiUploaded, false, () => _pickDoc('asuransi'), _isLocked),
+          _buildUploadCard(
+            'Asuransi',
+            Icons.security,
+            Colors.purple,
+            _asuransiUploaded,
+            false,
+            () => _pickDoc('asuransi'),
+            _isLocked,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildUploadCard(String title, IconData icon, Color color, bool uploaded, bool locked, VoidCallback onTap, bool isLocked) {
+  Widget _buildUploadCard(
+    String title,
+    IconData icon,
+    Color color,
+    bool uploaded,
+    bool locked,
+    VoidCallback onTap,
+    bool isLocked,
+  ) {
     // Status: uploaded (hijau check) > locked (orange lock) > not done (biru/abu)
     bool isDone = uploaded;
     bool isLockedData = locked && !uploaded;
-    
+
     return InkWell(
       onTap: isDone || isLocked ? null : onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isLocked ? Colors.grey[100] : isDone ? Colors.green.withOpacity(0.1) : isLockedData ? Colors.orange.withOpacity(0.1) : color.withOpacity(0.1),
+          color: isLocked
+              ? Colors.grey[100]
+              : isDone
+              ? Colors.green.withOpacity(0.1)
+              : isLockedData
+              ? Colors.orange.withOpacity(0.1)
+              : color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isLocked ? Colors.grey[300]! : isDone ? Colors.green : isLockedData ? Colors.orange : color.withOpacity(0.3), 
-            width: 2
+            color: isLocked
+                ? Colors.grey[300]!
+                : isDone
+                ? Colors.green
+                : isLockedData
+                ? Colors.orange
+                : color.withOpacity(0.3),
+            width: 2,
           ),
         ),
         child: Row(
@@ -758,13 +1012,25 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
             Container(
               padding: EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isLocked ? Colors.grey[300] : isDone ? Colors.green : isLockedData ? Colors.orange : color, 
-                borderRadius: BorderRadius.circular(10)
+                color: isLocked
+                    ? Colors.grey[300]
+                    : isDone
+                    ? Colors.green
+                    : isLockedData
+                    ? Colors.orange
+                    : color,
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                isLocked ? Icons.lock : isDone ? Icons.check : isLockedData ? Icons.lock_outline : icon, 
-                color: Colors.white, 
-                size: 20
+                isLocked
+                    ? Icons.lock
+                    : isDone
+                    ? Icons.check
+                    : isLockedData
+                    ? Icons.lock_outline
+                    : icon,
+                color: Colors.white,
+                size: 20,
               ),
             ),
             SizedBox(width: 16),
@@ -773,27 +1039,45 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title, 
+                    title,
                     style: TextStyle(
-                      fontSize: 16, 
-                      fontWeight: FontWeight.w600, 
-                      color: isLocked ? Colors.grey[500] : isDone ? Colors.green[800] : isLockedData ? Colors.orange[800] : Colors.grey[800]
-                    )
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isLocked
+                          ? Colors.grey[500]
+                          : isDone
+                          ? Colors.green[800]
+                          : isLockedData
+                          ? Colors.orange[800]
+                          : Colors.grey[800],
+                    ),
                   ),
                   if (isLockedData) ...[
                     SizedBox(height: 4),
                     Text(
-                      'Data terkunci, siap dikirim', 
-                      style: TextStyle(fontSize: 12, color: Colors.orange[700])
+                      'Data terkunci, siap dikirim',
+                      style: TextStyle(fontSize: 12, color: Colors.orange[700]),
                     ),
                   ],
                 ],
               ),
             ),
             Icon(
-              isLocked ? Icons.lock : isDone ? Icons.check_circle : isLockedData ? Icons.lock_clock : Icons.upload_file, 
-              color: isLocked ? Colors.grey[400] : isDone ? Colors.green : isLockedData ? Colors.orange : color, 
-              size: 24
+              isLocked
+                  ? Icons.lock
+                  : isDone
+                  ? Icons.check_circle
+                  : isLockedData
+                  ? Icons.lock_clock
+                  : Icons.upload_file,
+              color: isLocked
+                  ? Colors.grey[400]
+                  : isDone
+                  ? Colors.green
+                  : isLockedData
+                  ? Colors.orange
+                  : color,
+              size: 24,
             ),
           ],
         ),
@@ -804,14 +1088,17 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
   Widget _buildSubmitButton() {
     // Nahkoda: Tombol LOCK PILIHAN jika semua file sudah dipilih tapi belum lock
     if (_isNahkoda && !_isLocked) {
-      bool allFilesPicked = _izinMelautPath != null && _dokumenKapalPath != null && _asuransiPath != null;
-      
+      bool allFilesPicked =
+          _izinMelautPath != null &&
+          _dokumenKapalPath != null &&
+          _asuransiPath != null;
+
       return Container(
         margin: EdgeInsets.all(16),
         width: double.infinity,
         child: Container(
           decoration: BoxDecoration(
-            gradient: allFilesPicked 
+            gradient: allFilesPicked
                 ? LinearGradient(
                     colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
                     begin: Alignment.topLeft,
@@ -836,16 +1123,32 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
               backgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
               padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isLoading
-                ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                ? SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.lock, size: 24, color: Colors.white),
                       SizedBox(width: 12),
-                      Text('LOCK DATA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text(
+                        'LOCK DATA',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ],
                   ),
           ),
@@ -858,7 +1161,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       print('   ✅ Masuk kondisi CREW');
       if (_crewComplete) {
         print('   ✅ Crew Complete - Check if nahkoda got approval');
-        
+
         // Jika nahkoda sudah dapat izin (semua dokumen nahkoda sudah upload), langsung navigasi
         if (_nahkodaComplete) {
           print('   ✅ Nahkoda complete - Auto navigate to waiting schedule');
@@ -867,7 +1170,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
             if (mounted) _submitCrewData();
           });
         }
-        
+
         return Container(
           margin: EdgeInsets.all(16),
           padding: EdgeInsets.all(20),
@@ -884,10 +1187,17 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Upload Selesai!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[800])),
+                    Text(
+                      'Upload Selesai!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[800],
+                      ),
+                    ),
                     SizedBox(height: 4),
                     Text(
-                      _nahkodaComplete 
+                      _nahkodaComplete
                           ? 'Nahkoda sudah menyelesaikan dokumen. Menuju waiting schedule...'
                           : 'Menunggu Nahkoda menyelesaikan dokumen',
                       style: TextStyle(fontSize: 13, color: Colors.green[700]),
@@ -899,16 +1209,18 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
           ),
         );
       }
-      
+
       // Crew bisa upload data BBM/Es - tombol aktif jika kedua data sudah locked
       print('   🔵 Crew belum complete - Show SIMPAN DATA button');
-      print('   crewLocked: $_crewLocked (fuel: $_fuelLocked, ice: $_iceLocked)');
+      print(
+        '   crewLocked: $_crewLocked (fuel: $_fuelLocked, ice: $_iceLocked)',
+      );
       return Container(
         margin: EdgeInsets.all(16),
         width: double.infinity,
         child: Container(
           decoration: BoxDecoration(
-            gradient: _crewLocked 
+            gradient: _crewLocked
                 ? LinearGradient(
                     colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
                     begin: Alignment.topLeft,
@@ -933,16 +1245,32 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
               backgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
               padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isLoading
-                ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                ? SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.save_rounded, size: 24, color: Colors.white),
                       SizedBox(width: 12),
-                      Text('SIMPAN DATA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text(
+                        'SIMPAN DATA',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ],
                   ),
           ),
@@ -957,7 +1285,7 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       width: double.infinity,
       child: Container(
         decoration: BoxDecoration(
-          gradient: canProceed 
+          gradient: canProceed
               ? LinearGradient(
                   colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
                   begin: Alignment.topLeft,
@@ -982,22 +1310,29 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             padding: EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.arrow_forward, size: 24, color: Colors.white),
               SizedBox(width: 12),
-              Text('LANJUT', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(
+                'LANJUT',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
-
-
 
   Future<void> _navigateToFuelUpload() async {
     final result = await Navigator.push(
@@ -1006,11 +1341,14 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
         builder: (context) => UploadFuelScreen(tripId: widget.tripId!),
       ),
     );
-    
+
     if (result != null && result is Map<String, dynamic>) {
       setState(() => _fuelData = result);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data BBM berhasil di-lock!'), backgroundColor: Colors.orange),
+        SnackBar(
+          content: Text('Data BBM berhasil di-lock!'),
+          backgroundColor: Colors.orange,
+        ),
       );
     }
   }
@@ -1022,25 +1360,36 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
         builder: (context) => UploadIceScreen(tripId: widget.tripId!),
       ),
     );
-    
+
     if (result != null && result is Map<String, dynamic>) {
       setState(() => _iceData = result);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data Es berhasil di-lock!'), backgroundColor: Colors.orange),
+        SnackBar(
+          content: Text('Data Es berhasil di-lock!'),
+          backgroundColor: Colors.orange,
+        ),
       );
     }
   }
 
   Future<void> _pickDoc(String type) async {
     if (_isLocked) return; // Tidak bisa pilih file jika sudah lock
-    
+
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png']);
-      
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      );
+
       if (result != null && result.files.single.path != null) {
         final file = result.files.single;
         if (file.size > 10 * 1024 * 1024) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ukuran file maksimal 10MB'), backgroundColor: Colors.red));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ukuran file maksimal 10MB'),
+              backgroundColor: Colors.red,
+            ),
+          );
           return;
         }
         setState(() {
@@ -1050,7 +1399,12 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memilih file'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memilih file'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -1059,10 +1413,18 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Konfirmasi Data'),
-        content: Text('Pastikan semua dokumen sudah benar. Setelah dikunci, Anda tidak bisa mengubah pilihan.'),
+        content: Text(
+          'Pastikan semua dokumen sudah benar. Setelah dikunci, Anda tidak bisa mengubah pilihan.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Batal')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text('Ya, Lock')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Ya, Lock'),
+          ),
         ],
       ),
     );
@@ -1074,20 +1436,26 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Dokumen terkunci. Klik LANJUT untuk melanjutkan.'), backgroundColor: Colors.green),
+      SnackBar(
+        content: Text('Dokumen terkunci. Klik LANJUT untuk melanjutkan.'),
+        backgroundColor: Colors.green,
+      ),
     );
   }
 
   Future<void> _submitCrewData() async {
     if (!_crewLocked) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Harap lock data BBM dan Es terlebih dahulu'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Harap lock data BBM dan Es terlebih dahulu'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-    
+
     try {
       // Upload Fuel Data
       if (_fuelData != null && !_fuelUploaded) {
@@ -1130,7 +1498,10 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data berhasil disimpan!'), backgroundColor: Colors.green),
+        SnackBar(
+          content: Text('Data berhasil disimpan!'),
+          backgroundColor: Colors.green,
+        ),
       );
 
       // Reload data
@@ -1138,7 +1509,10 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
     } catch (e) {
       print('❌ Error uploading crew data: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan data: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Gagal menyimpan data: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -1149,19 +1523,22 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
     print('\n🔵 [SUBMIT] Button clicked');
     print('🔵 [SUBMIT] tripId: ${widget.tripId}');
     print('🔵 [SUBMIT] tripData keys: ${widget.tripData?.keys.toList()}');
-    
+
     // Validasi tripId
     if (widget.tripId == null) {
       print('❌ [SUBMIT] Error: tripId is null');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: Trip ID tidak tersedia'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error: Trip ID tidak tersedia'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
-    
+
     // Pastikan tripData tidak null
     final tripData = widget.tripData ?? {};
-    
+
     // Navigate ke PreTrackingScreen dengan membawa path dokumen
     NavigationHelper.pushNoTransition(
       context,
@@ -1169,11 +1546,13 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
         tripId: widget.tripId!,
         tripData: {
           ...tripData,
-          'pendingDocuments': _isNahkoda ? {
-            'izinMelaut': _izinMelautPath,
-            'dokumenKapal': _dokumenKapalPath,
-            'asuransi': _asuransiPath,
-          } : null,
+          'pendingDocuments': _isNahkoda
+              ? {
+                  'izinMelaut': _izinMelautPath,
+                  'dokumenKapal': _dokumenKapalPath,
+                  'asuransi': _asuransiPath,
+                }
+              : null,
         },
       ),
     );
@@ -1196,7 +1575,9 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
             Text('Reset Data'),
           ],
         ),
-        content: Text('Reset semua data upload untuk testing?\n\nData yang sudah diupload ke server tidak akan terhapus.'),
+        content: Text(
+          'Reset semua data upload untuk testing?\n\nData yang sudah diupload ke server tidak akan terhapus.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -1230,7 +1611,3 @@ class _PreTripFormV2State extends State<PreTripFormV2> {
     }
   }
 }
-
-
-
-

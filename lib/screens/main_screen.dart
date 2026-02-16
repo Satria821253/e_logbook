@@ -21,6 +21,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
@@ -53,6 +54,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _showTracking = false;
   Timer? _toggleTimer;
   DateTime? _berlayarStartTime;
+  Timer? _periodicCheckTimer;
+  int _checkRetryCount = 0;
   
   @override
   void initState() {
@@ -89,13 +92,37 @@ class _MainScreenState extends State<MainScreen> {
   }
   
   void _startPeriodicCheck() {
-    Timer.periodic(Duration(seconds: 30), (timer) {
-      if (mounted) {
-        _checkTripStatus();
-      } else {
-        timer.cancel();
+    _periodicCheckTimer?.cancel();
+    _scheduleNextCheck();
+  }
+
+  void _scheduleNextCheck() {
+    _periodicCheckTimer?.cancel();
+    
+    final interval = Duration(seconds: 30 + (_checkRetryCount * 10));
+    _periodicCheckTimer = Timer(interval, () async {
+      if (!mounted) return;
+      
+      final hasConnection = await _hasInternetConnection();
+      if (!hasConnection) {
+        _checkRetryCount++;
+        _scheduleNextCheck();
+        return;
       }
+      
+      await _checkTripStatus();
+      _checkRetryCount = 0;
+      _scheduleNextCheck();
     });
+  }
+
+  Future<bool> _hasInternetConnection() async {
+    try {
+      final result = await Connectivity().checkConnectivity();
+      return result != ConnectivityResult.none;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<void> _checkTripStatus() async {
@@ -145,6 +172,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _toggleTimer?.cancel();
+    _periodicCheckTimer?.cancel();
     super.dispose();
   }
   

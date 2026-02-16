@@ -149,13 +149,12 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     try {
       print('🔄 [MySchedules] Ensuring vessel data is available...');
       
-      // Panggil VesselService untuk fetch data
       final vesselService = VesselService();
-      final vesselData = await vesselService.getVesselData(forceRefresh: false);
+      final vesselId = await vesselService.getVesselIdFromUserSettings() ?? 
+                       await vesselService.getVesselIdFromTrip();
       
-      if (vesselData != null) {
-        print('✅ [MySchedules] Vessel data fetched successfully');
-        print('🚢 [MySchedules] Kapal: ${vesselData['kapal']?['namaKapal']}');
+      if (vesselId != null) {
+        print('✅ [MySchedules] Vessel ID found: $vesselId');
       } else {
         print('⚠️ [MySchedules] No vessel data available');
       }

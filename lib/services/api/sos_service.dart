@@ -26,14 +26,16 @@ class SosService {
         throw Exception('Token tidak ditemukan. Silakan login kembali.');
       }
 
-      // Get vessel data
-      final vesselData = await VesselService().getVesselData();
-      if (vesselData == null) {
+      // Get vessel ID
+      final vesselService = VesselService();
+      final vesselId = await vesselService.getVesselIdFromUserSettings() ?? 
+                       await vesselService.getVesselIdFromTrip();
+      
+      if (vesselId == null) {
         throw Exception('Data kapal tidak ditemukan');
       }
 
-      final kapalId = vesselData['kapal']['id'];
-      print('🚢 [SOS] Kapal ID: $kapalId');
+      print('🚢 [SOS] Kapal ID: $vesselId');
 
       // Get current location
       print('📍 [SOS] Getting current location...');
@@ -49,7 +51,7 @@ class SosService {
           : note!.trim();
 
       final requestData = {
-        'kapalId': kapalId,
+        'kapalId': vesselId,
         'location': {'lat': position.latitude, 'lng': position.longitude},
         'note': message,
       };
