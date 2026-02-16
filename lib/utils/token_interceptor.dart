@@ -12,12 +12,18 @@ class TokenInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode == 401) {
-      final message = err.response?.data['message']?.toString().toLowerCase() ?? '';
+      final message = err.response?.data is Map 
+          ? (err.response?.data['message']?.toString().toLowerCase() ?? '')
+          : '';
       
-      // Check if token expired
-      if (message.contains('expired') || message.contains('invalid token')) {
-        debugPrint('🔐 Token expired, logging out...');
+      // Check if token expired or invalid
+      if (message.contains('expired') || 
+          message.contains('invalid') || 
+          message.contains('token') ||
+          err.response?.statusCode == 401) {
+        debugPrint('🔐 Token expired/invalid (401), logging out...');
         await _handleTokenExpired();
+        handler.reject(err); // Reject to prevent further processing
         return;
       }
     }

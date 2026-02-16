@@ -13,6 +13,7 @@ import 'package:e_logbook/routes/route_generator.dart';
 import 'package:e_logbook/screens/splash_screen.dart';
 import 'package:e_logbook/widgets/initialization_error_screen.dart';
 import 'package:e_logbook/services/fcm/fcm_service.dart';
+import 'package:e_logbook/utils/auth_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,9 +61,12 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
