@@ -193,9 +193,9 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
         
         return Polygon(
           points: points,
-          color: Colors.blue.withOpacity(0.2),
-          borderColor: Colors.blue,
-          borderStrokeWidth: 3,
+          color: Colors.blue.shade100,
+          borderColor: Colors.blue.shade600,
+          borderStrokeWidth: 4,
         );
       }).toList(),
     );
@@ -214,9 +214,9 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
             return CircleMarker(
               point: zone.centerPoint!,
               radius: zone.radiusMeters ?? 1000,
-              color: color.withOpacity(0.15),
+              color: color.withAlpha(40),
               borderColor: color,
-              borderStrokeWidth: 2,
+              borderStrokeWidth: 2.5,
             );
           }).toList(),
         ),
@@ -232,9 +232,9 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
             final color = _getZoneColor(zone.type);
             return Polygon(
               points: zone.polygonCoordinates!,
-              color: color.withOpacity(0.15),
+              color: color.withAlpha(40),
               borderColor: color,
-              borderStrokeWidth: 2,
+              borderStrokeWidth: 2.5,
             );
           }).toList(),
         ),
@@ -253,10 +253,10 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
           point: harborCenter,
           radius: widget.zoneRadius * 1000,
           color: widget.isViolating
-              ? Colors.red.withOpacity(0.2)
-              : Colors.green.withOpacity(0.2),
-          borderColor: widget.isViolating ? Colors.red : Colors.green,
-          borderStrokeWidth: 3,
+              ? Colors.red.withAlpha(50)
+              : Colors.green.withAlpha(50),
+          borderColor: widget.isViolating ? Colors.red.shade600 : Colors.green.shade600,
+          borderStrokeWidth: 3.5,
         ),
       ],
     );
@@ -269,10 +269,10 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
       // Garis dari harbor ke kapal
       Polyline(
         points: [harborCenter, vesselPosition],
-        strokeWidth: 3,
+        strokeWidth: 3.5,
         color: widget.isViolating
-            ? Colors.red.withOpacity(0.7)
-            : Colors.blue.withOpacity(0.7),
+            ? Colors.red.shade700
+            : Colors.blue.shade600,
         pattern: const StrokePattern.dotted(),
       ),
     ];
@@ -301,8 +301,8 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
           polylines.add(
             Polyline(
               points: [vesselPosition, zoneCenter],
-              strokeWidth: 2,
-              color: Colors.green.withOpacity(0.6),
+              strokeWidth: 2.5,
+              color: Colors.green.shade700,
               pattern: StrokePattern.dashed(segments: const [10, 5]),
             ),
           );
@@ -332,7 +332,7 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
                 border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withAlpha(77),
                     blurRadius: 4,
                   ),
                 ],
@@ -366,7 +366,7 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
               border: Border.all(color: Colors.white, width: widget.isMinimized ? 2 : 3),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withAlpha(77),
                   blurRadius: widget.isMinimized ? 4 : 8,
                 ),
               ],
@@ -412,7 +412,7 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
               boxShadow: [
                 BoxShadow(
                   color: (widget.isViolating ? Colors.red : Colors.green)
-                      .withOpacity(0.5),
+                      .withAlpha(128),
                   blurRadius: widget.isMinimized ? 4 : 12,
                   spreadRadius: widget.isMinimized ? 1 : 4,
                 ),
@@ -575,7 +575,7 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withAlpha(26),
               blurRadius: 8,
             ),
           ],
@@ -670,7 +670,7 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: badgeColor.withOpacity(0.4),
+              color: badgeColor.withAlpha(102),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),

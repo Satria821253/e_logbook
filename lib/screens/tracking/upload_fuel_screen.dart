@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../../services/api/trip_service.dart';
 
 class UploadFuelScreen extends StatefulWidget {
   final int tripId;
@@ -334,35 +333,52 @@ class _UploadFuelScreenState extends State<UploadFuelScreen> {
   }
 
   Widget _buildSubmitButton() {
-    bool canSubmit = _fuelAmountController.text.isNotEmpty &&
+    bool canLock = _fuelAmountController.text.isNotEmpty &&
         _fuelPriceController.text.isNotEmpty &&
         _fuelFilePath != null;
 
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: canSubmit ? LinearGradient(colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)]) : null,
-        color: canSubmit ? null : Colors.grey,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ElevatedButton(
-        onPressed: canSubmit && !_isLoading ? _submit : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: canLock 
+              ? LinearGradient(
+                  colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: canLock ? null : Colors.grey,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: canLock
+              ? [
+                  BoxShadow(
+                    color: Color(0xFF1B4F9C).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
-        child: _isLoading
-            ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.save, size: 24, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('SIMPAN DATA BBM', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                ],
-              ),
+        child: ElevatedButton(
+          onPressed: canLock && !_isLoading ? _lockData : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            padding: EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: _isLoading
+              ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock, size: 24, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('LOCK DATA BBM', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -440,7 +456,7 @@ class _UploadFuelScreenState extends State<UploadFuelScreen> {
   }
 
 
-  Future<void> _submit() async {
+  Future<void> _lockData() async {
     if (_fuelAmountController.text.isEmpty || _fuelPriceController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Jumlah dan harga wajib diisi'), backgroundColor: Colors.red),
@@ -455,62 +471,24 @@ class _UploadFuelScreenState extends State<UploadFuelScreen> {
       return;
     }
 
-    print('\n' + '='*60);
-    print('⛽ UPLOAD FUEL DATA - SCREEN LAYER');
-    print('='*60);
-    print('📤 [FUEL-SCREEN] Trip ID: ${widget.tripId}');
-    print('📤 [FUEL-SCREEN] Jenis: $_selectedFuelType');
-    print('📤 [FUEL-SCREEN] Jumlah: ${_fuelAmountController.text} L');
-    print('📤 [FUEL-SCREEN] Harga/L: Rp ${_fuelPriceController.text}');
-    print('📤 [FUEL-SCREEN] Total: Rp ${double.parse(_fuelAmountController.text) * double.parse(_fuelPriceController.text)}');
-    print('📤 [FUEL-SCREEN] Tanggal: ${_selectedDate.toIso8601String()}');
-    print('📤 [FUEL-SCREEN] Lokasi: ${_fuelLocationController.text.isNotEmpty ? _fuelLocationController.text : "(kosong)"}');
-    print('📤 [FUEL-SCREEN] Keterangan: ${_fuelNotesController.text.isNotEmpty ? _fuelNotesController.text : "(kosong)"}');
-    print('📤 [FUEL-SCREEN] Bukti: ${_fuelFilePath ?? "(tidak ada)"}');
-    print('🔄 [FUEL-SCREEN] Calling TripService.uploadFuelData()...');
-    print('='*60 + '\n');
+    // Simpan data sementara dan kembali dengan status locked
+    final fuelData = {
+      'jenisBahanBakar': _selectedFuelType,
+      'jumlahLiter': double.parse(_fuelAmountController.text),
+      'hargaPerLiter': double.parse(_fuelPriceController.text),
+      'totalHarga': double.parse(_fuelAmountController.text) * double.parse(_fuelPriceController.text),
+      'tanggalPengisian': _selectedDate.toIso8601String(),
+      'buktiFilePath': _fuelFilePath,
+      'lokasiPengisian': _fuelLocationController.text.isNotEmpty ? _fuelLocationController.text : null,
+      'keterangan': _fuelNotesController.text.isNotEmpty ? _fuelNotesController.text : null,
+      'locked': true,
+    };
 
-    setState(() => _isLoading = true);
-    try {
-      final result = await TripService.uploadFuelData(
-        tripId: widget.tripId,
-        jenisBahanBakar: _selectedFuelType,
-        jumlahLiter: double.parse(_fuelAmountController.text),
-        hargaPerLiter: double.parse(_fuelPriceController.text),
-        totalHarga: double.parse(_fuelAmountController.text) * double.parse(_fuelPriceController.text),
-        tanggalPengisian: _selectedDate.toIso8601String(),
-        buktiFilePath: _fuelFilePath,
-        lokasiPengisian: _fuelLocationController.text.isNotEmpty ? _fuelLocationController.text : null,
-        keterangan: _fuelNotesController.text.isNotEmpty ? _fuelNotesController.text : null,
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Data BBM berhasil di-lock!'), backgroundColor: Colors.green),
+    );
 
-      print('\n' + '='*60);
-      print('✅ FUEL UPLOAD SUCCESS - SCREEN LAYER');
-      print('='*60);
-      print('📊 [FUEL-SCREEN] Response: $result');
-      print('📊 [FUEL-SCREEN] Success: ${result['success']}');
-      print('📊 [FUEL-SCREEN] Message: ${result['message']}');
-      print('='*60 + '\n');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data BBM berhasil disimpan!'), backgroundColor: Colors.green),
-      );
-
-      Navigator.pop(context, true);
-    } catch (e) {
-      print('\n' + '='*60);
-      print('❌ FUEL UPLOAD FAILED - SCREEN LAYER');
-      print('='*60);
-      print('❌ [FUEL-SCREEN] Error: $e');
-      print('❌ [FUEL-SCREEN] Error Type: ${e.runtimeType}');
-      print('='*60 + '\n');
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
+    Navigator.pop(context, fuelData);
   }
 
   @override

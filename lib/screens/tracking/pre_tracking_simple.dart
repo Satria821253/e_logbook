@@ -96,6 +96,41 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
     
     final estimatedDuration = tripData['durasi'] ?? widget.tripData['estimatedDuration'] ?? 1;
     
+    // Ambil data kapal dari response API
+    final kapal = tripData['kapal'] ?? {};
+    final nahkoda = tripData['nahkoda'] ?? {};
+    final areaTangkap = tripData['areaTangkap'] ?? {};
+    
+    // Pelabuhan opsional - bisa kosong
+    String selectedHarbor = tripData['pelabuhanAsal'] ?? 
+                           tripData['pelabuhan'] ?? 
+                           areaTangkap['nama'] ?? 
+                           '';
+    
+    // Koordinat pelabuhan - gunakan koordinat area tangkap atau default
+    Map<String, double>? harborCoordinates;
+    if (areaTangkap['latitude'] != null && areaTangkap['longitude'] != null) {
+      harborCoordinates = {
+        'latitude': (areaTangkap['latitude'] as num).toDouble(),
+        'longitude': (areaTangkap['longitude'] as num).toDouble(),
+      };
+      print('📍 [NAVIGATE] Using areaTangkap coordinates: $harborCoordinates');
+    } else if (widget.tripData['harborCoordinates'] != null) {
+      harborCoordinates = widget.tripData['harborCoordinates'];
+      print('📍 [NAVIGATE] Using widget harborCoordinates: $harborCoordinates');
+    } else {
+      // Default koordinat (Jakarta Bay sebagai fallback)
+      harborCoordinates = {
+        'latitude': -6.1075,
+        'longitude': 106.8975,
+      };
+      print('⚠️ [NAVIGATE] Using default coordinates (Jakarta Bay)');
+    }
+    
+    print('🚢 [NAVIGATE] Vessel: ${kapal['namaKapal']}');
+    print('⚓ [NAVIGATE] Harbor: ${selectedHarbor.isEmpty ? "(Tidak ada)" : selectedHarbor}');
+    print('📊 [NAVIGATE] Area Tangkap: ${areaTangkap['nama'] ?? "(Tidak ada)"}');
+    
     if (!mounted) return;
     
     NavigationHelper.pushReplacementNoTransition(
@@ -103,11 +138,11 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
       WaitingScheduleScreen(
         scheduledDepartureTime: departureTime,
         tripData: {
-          'vesselName': widget.tripData['vesselName'] ?? '',
-          'vesselNumber': widget.tripData['vesselNumber'] ?? '',
-          'captainName': widget.tripData['captainName'] ?? '',
-          'crewCount': widget.tripData['crewCount'] ?? 0,
-          'selectedHarbor': widget.tripData['departureHarbor'] ?? '',
+          'vesselName': kapal['namaKapal'] ?? kapal['nama'] ?? '',
+          'vesselNumber': kapal['nomorRegistrasi'] ?? '',
+          'captainName': nahkoda['nama'] ?? nahkoda['username'] ?? '',
+          'crewCount': (tripData['awakKapal'] as List?)?.length ?? 0,
+          'selectedHarbor': selectedHarbor,
           'departureTime': departureTime,
           'estimatedReturnDate': estimatedReturnDate,
           'estimatedDuration': estimatedDuration,
@@ -115,7 +150,7 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
           'fuelAmount': totalFuel > 0 ? totalFuel : (widget.tripData['fuelAmount'] ?? 0.0),
           'iceStorage': totalIce > 0 ? totalIce : (widget.tripData['iceStorage'] ?? 0.0),
           'notes': widget.tripData['notes'],
-          'harborCoordinates': widget.tripData['harborCoordinates'],
+          'harborCoordinates': harborCoordinates,
           'zoneRadius': 50.0,
           'userRole': userRole == 'nahkoda' ? 'Nahkoda' : 'ABK',
           'userName': userProvider.user?.name ?? '',
@@ -205,6 +240,9 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
 
   Future<void> _submitAndRequestApproval() async {
     print('\n🔵 [PRE-TRACKING] KIRIM clicked!');
+    print('🔵 [PRE-TRACKING] tripId: ${widget.tripId}');
+    print('🔵 [PRE-TRACKING] tripData keys: ${widget.tripData.keys.toList()}');
+    
     setState(() => _isSubmitting = true);
 
     try {
@@ -241,6 +279,8 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
         }
         
         print('✅ [PRE-TRACKING] All documents uploaded');
+      } else {
+        print('⚠️ [PRE-TRACKING] No pending documents to upload');
       }
 
       if (!mounted) return;
@@ -248,18 +288,43 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
       // Navigate ke WaitingApprovalScreen
       print('➡️ [PRE-TRACKING] Navigating to WaitingApprovalScreen...');
       final userProvider = Provider.of<UserProvider>(context, listen: false);
+      
+      // Ambil data kapal dan nahkoda dari tripData atau _tripDetail
+      final kapal = _tripDetail.isNotEmpty ? _tripDetail['kapal'] : widget.tripData['kapal'];
+      final nahkoda = _tripDetail.isNotEmpty ? _tripDetail['nahkoda'] : widget.tripData['nahkoda'];
+      
+      // Parse tanggal dengan safe handling
+      DateTime departureDate = DateTime.now();
+      if (widget.tripData['departureDate'] != null) {
+        if (widget.tripData['departureDate'] is DateTime) {
+          departureDate = widget.tripData['departureDate'];
+        } else if (widget.tripData['departureDate'] is String) {
+          try {
+            departureDate = DateTime.parse(widget.tripData['departureDate']);
+          } catch (e) {
+            print('⚠️ [PRE-TRACKING] Failed to parse departureDate: $e');
+          }
+        }
+      } else if (widget.tripData['tanggalBerangkat'] != null) {
+        try {
+          departureDate = DateTime.parse(widget.tripData['tanggalBerangkat']);
+        } catch (e) {
+          print('⚠️ [PRE-TRACKING] Failed to parse tanggalBerangkat: $e');
+        }
+      }
+      
       NavigationHelper.pushReplacementNoTransition(
         context,
         WaitingApprovalScreen(
           tripData: {
             'tripId': widget.tripId,
-            'vesselName': widget.tripData['vesselName'] ?? '',
-            'vesselNumber': widget.tripData['vesselNumber'] ?? '',
-            'captainName': widget.tripData['captainName'] ?? '',
-            'crewCount': widget.tripData['crewCount'] ?? 0,
-            'departureHarbor': widget.tripData['departureHarbor'] ?? '',
-            'departureDate': widget.tripData['departureDate'] ?? DateTime.now(),
-            'estimatedDuration': widget.tripData['estimatedDuration'] ?? 1,
+            'vesselName': kapal?['namaKapal'] ?? kapal?['nama'] ?? '',
+            'vesselNumber': kapal?['nomorRegistrasi'] ?? '',
+            'captainName': nahkoda?['nama'] ?? nahkoda?['username'] ?? '',
+            'crewCount': (_tripDetail['awakKapal'] as List?)?.length ?? 0,
+            'departureHarbor': _tripDetail['pelabuhanAsal'] ?? '',
+            'departureDate': departureDate,
+            'estimatedDuration': _tripDetail['durasi'] ?? widget.tripData['durasi'] ?? 1,
             'emergencyContact': widget.tripData['emergencyContact'] ?? '',
             'fuelAmount': widget.tripData['fuelAmount'] ?? 0.0,
             'iceStorage': widget.tripData['iceStorage'] ?? 0.0,
@@ -406,7 +471,10 @@ class _PreTrackingScreenSimpleState extends State<PreTrackingScreenSimple> {
                         _buildInfoRow(
                           Icons.anchor,
                           'Pelabuhan',
-                          _tripDetail['pelabuhanAsal'] ?? widget.tripData['departureHarbor'] ?? '-',
+                          _tripDetail['pelabuhanAsal'] ?? 
+                          _tripDetail['pelabuhan'] ?? 
+                          (_tripDetail['areaTangkap']?['nama']) ?? 
+                          'Tidak ditentukan',
                         ),
                         SizedBox(height: 8),
                         _buildInfoRow(

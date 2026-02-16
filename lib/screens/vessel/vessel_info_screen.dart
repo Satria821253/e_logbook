@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
-import 'package:e_logbook/utils/navigation_helper.dart';
 import '../../provider/user_provider.dart';
 import '../../services/api/vessel_service.dart';
 import '../../services/realtime/realtime_update_service.dart';
-import 'vessel_documents_screen.dart';
+import '../../utils/network_error_handler.dart';
+import '../../utils/navigation_helper.dart';
+import 'vessel_detail_screen.dart';
 
 class VesselInfoScreen extends StatefulWidget {
   final Map<String, dynamic>? arguments;
@@ -22,27 +23,38 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
   Map<String, dynamic>? _vesselData;
   bool _isLoading = false;
 
+  void _onVesselUpdate() {
+    print('\n🔔 [VESSEL_INFO] _onVesselUpdate called, mounted: $mounted');
+    if (mounted) {
+      print('   Reloading vessel data...');
+      _loadVesselData();
+    } else {
+      print('   ⚠️ Widget not mounted, skipping reload');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    print('\n🚀 [VESSEL_INFO] initState called');
     _loadVesselData();
     
-    // Register listener untuk auto-update
-    RealtimeUpdateService.addListener('vessel', () {
-      if (mounted) {
-        print('🔔 Vessel data changed, auto-refreshing...');
-        _loadVesselData();
-      }
-    });
+    print('   Adding vessel listener...');
+    RealtimeUpdateService.addListener('vessel', _onVesselUpdate);
   }
 
   Future<void> _loadVesselData() async {
+    print('\n🔄 [VESSEL_INFO] Loading vessel data...');
     setState(() => _isLoading = true);
+    
     try {
-      final vesselData = await VesselService().getVesselData();
+      print('   Fetching vessel detail...');
+      final detailData = await VesselService().getVesselDetail();
+      print('   Vessel detail received: ${detailData != null}');
       
       if (mounted) {
-        if (vesselData == null || vesselData['kapal'] == null) {
+        if (detailData == null) {
+          print('   ⚠️ No vessel found');
           setState(() {
             vesselName = 'Belum ada kapal yang ditugaskan';
             vesselNumber = '-';
@@ -51,25 +63,32 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
           });
           _showNoVesselDialog();
         } else {
+          print('   ✅ Vessel data loaded: ${detailData['namaKapal']}');
           setState(() {
-            _vesselData = vesselData;
-            final kapalInfo = vesselData['kapal'];
-            vesselName = kapalInfo['namaKapal'] ?? 'Tidak ada nama';
-            vesselNumber = kapalInfo['nomorRegistrasi'] ?? '-';
+            _vesselData = detailData;
+            vesselName = detailData['namaKapal'] ?? 'Tidak ada nama';
+            vesselNumber = detailData['nomorRegistrasi'] ?? '-';
             _isLoading = false;
           });
         }
       }
     } catch (e) {
+      print('   ❌ Error loading vessel data: $e');
       if (mounted) {
         setState(() {
-          vesselName = 'Belum ada kapal yang ditugaskan';
+          vesselName = NetworkErrorHandler.getErrorMessage(e);
           vesselNumber = '-';
           _isLoading = false;
         });
+        NetworkErrorHandler.showErrorDialog(
+          context,
+          message: NetworkErrorHandler.getErrorMessage(e),
+          onRetry: _loadVesselData,
+        );
       }
     }
   }
+
   void _showNoVesselDialog() {
     showDialog(
       context: context,
@@ -122,9 +141,12 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
     );
   }
 
+
   @override
   void dispose() {
-    RealtimeUpdateService.removeListener('vessel');
+    print('\n🗑️ [VESSEL_INFO] dispose called');
+    print('   Removing vessel listener...');
+    RealtimeUpdateService.removeListener('vessel', _onVesselUpdate);
     super.dispose();
   }
 
@@ -168,24 +190,6 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildVesselInfoCard(isNahkoda),
-                              SizedBox(height: 24),
-                              
-                              // Section Title
-                              Padding(
-                                padding: EdgeInsets.only(left: 4, bottom: 12),
-                                child: Text(
-                                  'Menu Operasional',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[800],
-                                  ),
-                                ),
-                              ),
-                              
-                              // Menu Grid
-                              _buildMenuGrid(isNahkoda),
-                              
                               SizedBox(height: 24),
                             ],
                           ),
@@ -248,112 +252,93 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
   }
 
   Widget _buildVesselInfoCard(bool isNahkoda) {
-    final nahkoda = _vesselData?['nahkoda'] as Map<String, dynamic>?;
-    print('🔍 [VesselInfo] isNahkoda: $isNahkoda');
-    print('🔍 [VesselInfo] nahkoda data: $nahkoda');
+    final statusOperasional = _vesselData?['statusOperasional'];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF1B4F9C).withOpacity(0.1), Color(0xFF2563EB).withOpacity(0.05)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
+    return InkWell(
+      onTap: _vesselData != null
+          ? () {
+              NavigationHelper.pushNoTransition(
+                context,
+                VesselDetailScreen(vesselData: _vesselData!),
+              );
+            }
+          : null,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: Offset(0, 4),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B4F9C).withOpacity(0.1), Color(0xFF2563EB).withOpacity(0.05)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    child: Icon(Icons.info_outline, color: Colors.white, size: 24),
                   ),
-                  child: Icon(Icons.info_outline, color: Colors.white, size: 24),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Informasi Detail',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1B4F9C),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Informasi Detail',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1B4F9C),
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Data kapal terdaftar',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                      ),
-                    ],
+                        SizedBox(height: 4),
+                        Text(
+                          'Tap untuk lihat detail lengkap',
+                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              children: [
-                // Info Nahkoda - HANYA untuk ABK
-                if (!isNahkoda && nahkoda != null) ...[
-                  () {
-                    print('✅ [VesselInfo] Menampilkan info nahkoda untuk crew: ${nahkoda['nama']}');
-                    return _buildDetailRow(
-                      icon: Icons.person,
-                      label: 'Nahkoda',
-                      value: nahkoda['nama'] ?? 'Tidak ada data',
-                      color: Color(0xFF10B981),
-                    );
-                  }(),
-                  SizedBox(height: 16),
-                ] else if (!isNahkoda) ...[
-                  () {
-                    print('⚠️ [VesselInfo] Data nahkoda tidak tersedia untuk crew');
-                    return SizedBox.shrink();
-                  }(),
-                ] else ...[
-                  () {
-                    print('ℹ️ [VesselInfo] User adalah nahkoda, info nahkoda tidak ditampilkan');
-                    return SizedBox.shrink();
-                  }(),
+                  Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 20),
                 ],
-                
-                // Status (example - bisa diganti dengan data real)
-                _buildDetailRow(
-                  icon: Icons.verified,
-                  label: 'Status',
-                  value: 'Aktif',
-                  color: Color(0xFF10B981),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+            Padding(
+              padding: EdgeInsets.all(20),
+              child: _buildDetailRow(
+                icon: Icons.verified,
+                label: 'Status Operasional',
+                value: statusOperasional ?? 'active',
+                color: Color(0xFF10B981),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -407,92 +392,6 @@ class _VesselInfoScreenState extends State<VesselInfoScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMenuGrid(bool isNahkoda) {
-    return Column(
-      children: [
-        // Dokumen Kapal - Untuk semua
-        _buildMenuCard(
-          icon: Icons.description_rounded,
-          title: 'Dokumen Kapal',
-          subtitle: 'Sertifikat & dokumen kapal',
-          gradient: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-          onTap: () => NavigationHelper.pushNoTransition(context, VesselDocumentsScreen()),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMenuCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required List<Color> gradient,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: gradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: gradient[0].withOpacity(0.3),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: Colors.white, size: 28),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios_rounded, size: 18, color: Colors.white.withOpacity(0.8)),
-            ],
-          ),
-        ),
       ),
     );
   }

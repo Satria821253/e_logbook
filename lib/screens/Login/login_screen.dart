@@ -3,6 +3,8 @@ import 'package:e_logbook/screens/main_screen.dart';
 import 'package:e_logbook/widgets/account_inactive_dialog.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
 import 'package:e_logbook/services/local/user_activity_service.dart';
+import 'package:e_logbook/services/fcm/fcm_service.dart';
+import 'package:e_logbook/services/fcm/fcm_token_service.dart';
 import 'package:e_logbook/models/user_model.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/utils/vessel_cache_helper.dart';
@@ -568,6 +570,16 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           final userProvider = Provider.of<UserProvider>(context, listen: false);
           await userProvider.setUser(user);
+          
+          // Send FCM token to backend
+          try {
+            String? fcmToken = await FCMService.getToken();
+            if (fcmToken != null) {
+              await FCMTokenService.sendTokenToBackend(fcmToken, user.id.toString());
+            }
+          } catch (e) {
+            print('⚠️ Failed to send FCM token: $e');
+          }
           
           Navigator.pushAndRemoveUntil(
             context,

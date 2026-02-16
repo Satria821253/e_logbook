@@ -11,7 +11,7 @@ class ApiConfig {
   // BASE URL untuk Gemini API
   static String get geminiBaseUrl => 
       dotenv.env['GEMINI_BASE_URL'] ?? 
-      'https://generativelanguage.googleapis.com/v1beta/models';
+      'https://generativelanguage.googleapis.com/v1beta';
 
   // Model terbaru dan terbaik: Gemini 1.5 Flash
   static String get geminiModel => dotenv.env['GEMINI_MODEL'] ?? 'gemini-1.5-flash';

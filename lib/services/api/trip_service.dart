@@ -4,6 +4,13 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:shared_preferences/shared_preferences.dart';
 
+class TokenExpiredException implements Exception {
+  final String message;
+  TokenExpiredException(this.message);
+  @override
+  String toString() => message;
+}
+
 class TripService {
   static const String baseUrl = 'https://elogbookipb.web.id';
 
@@ -39,6 +46,10 @@ class TripService {
         print('✅ [TRIPS] All trips retrieved');
         print('========== GET ALL TRIPS END (SUCCESS) ==========\n');
         return result;
+      } else if (response.statusCode == 401) {
+        print('🔐 [TRIPS] Token expired (401)');
+        print('========== GET ALL TRIPS END (TOKEN EXPIRED) ==========\n');
+        throw TokenExpiredException('Token sudah expired');
       } else {
         print('❌ [TRIPS] Failed: ${response.statusCode}');
         print('========== GET ALL TRIPS END (FAILED) ==========\n');

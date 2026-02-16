@@ -1,461 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class VesselService {
   static const String baseUrl = 'https://elogbookipb.web.id';
-
-  Future<Map<String, dynamic>?> getVesselData({
-    bool forceRefresh = false,
-  }) async {
-    try {
-      print('\n========== getVesselData START ==========');
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-
-      if (token == null) {
-        throw Exception('Token tidak ditemukan');
-      }
-
-      // Ambil user data
-      final userDataString = prefs.getString('user_data');
-      int? currentUserId;
-      String? actualRole;
-
-      if (userDataString != null) {
-        try {
-          final userData = json.decode(userDataString);
-          currentUserId = userData['id'];
-          actualRole = userData['role'] ?? userData['user_role'] ?? userData['userRole'];
-          print('📊 [DEBUG] user_data: $userData');
-          print('👤 [DEBUG] Role: $actualRole, User ID: $currentUserId');
-        } catch (e) {
-          print('❌ Failed to parse user_data: $e');
-        }
-      }
-
-      print('🎯 Role: $actualRole, Force refresh? $forceRefresh');
-
-      // Gunakan endpoint /trip untuk semua role
-      print('🌐 Using /trip endpoint...');
-      return await _getVesselDataFromTrip(token, currentUserId, forceRefresh);
-    } catch (e) {
-      print('❌ Error in getVesselData: $e');
-      print('========== getVesselData END (ERROR) ==========\n');
-      return null;
-    }
-  }
-
-  Future<Map<String, dynamic>?> _getVesselDataFromTrip(
-    String token,
-    int? currentUserId,
-    bool forceRefresh,
-  ) async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/api/trip'),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-
-        if (responseData['success'] == true && responseData['data'] != null) {
-          final trips = responseData['data'] as List;
-
-          if (trips.isNotEmpty) {
-            Map<String, dynamic>? myActiveTrip;
-            DateTime? latestUpdate;
-            
-            for (var trip in trips) {
-              final nahkodaId = trip['nahkodaId'];
-              final awakKapal = trip['awakKapal'] as List?;
-              final status = trip['status']?.toString().toLowerCase();
-              
-              // Skip trip yang sudah selesai
-              if (status == 'selesai' || status == 'completed') {
-                continue;
-              }
-              
-              // Cek apakah user adalah nahkoda atau crew
-              final isNahkoda = currentUserId != null && nahkodaId == currentUserId;
-              final isCrew = currentUserId != null && awakKapal != null && awakKapal.contains(currentUserId);
-              
-              if (isNahkoda || isCrew) {
-                // Prioritaskan trip dengan status 'berlayar' (aktif tracking)
-                if (status == 'berlayar') {
-                  myActiveTrip = trip;
-                  break; // Langsung ambil yang sedang berlayar
-                }
-                
-                // Jika belum ada trip atau trip ini lebih baru, simpan
-                if (myActiveTrip == null) {
-                  myActiveTrip = trip;
-                  latestUpdate = DateTime.parse(trip['updatedAt'] ?? trip['createdAt']);
-                } else {
-                  final currentUpdate = DateTime.parse(trip['updatedAt'] ?? trip['createdAt']);
-                  if (latestUpdate == null || currentUpdate.isAfter(latestUpdate)) {
-                    myActiveTrip = trip;
-                    latestUpdate = currentUpdate;
-                  }
-                }
-              }
-            }
-            
-            if (myActiveTrip == null) {
-              return null;
-            }
-            
-            final kapal = myActiveTrip['kapal'];
-            final nahkoda = myActiveTrip['nahkoda'];
-
-            return {
-              'kapal': {
-                'id': kapal['id'],
-                'namaKapal': kapal['namaKapal'],
-                'nomorRegistrasi': kapal['nomorRegistrasi'],
-              },
-              'nahkoda': nahkoda != null ? {
-                'id': nahkoda['id'],
-                'nama': nahkoda['nama'],
-                'username': nahkoda['username'],
-              } : null,
-              'tripId': myActiveTrip['id'],
-              'tripStatus': myActiveTrip['status'],
-            };
-          }
-        }
-      }
-
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<Map<String, dynamic>> uploadBahanBakar({
-    required String jenisBahanBakar,
-    required double jumlahLiter,
-    required double hargaPerLiter,
-    required double totalHarga,
-    required String tanggalPengisian,
-    String? lokasiPengisian,
-    String? keterangan,
-    String? buktiFilePath,
-  }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-
-      if (token == null) {
-        throw Exception('Token tidak ditemukan');
-      }
-
-      final vesselData = await getVesselData();
-
-      if (vesselData == null) {
-        throw Exception('Tidak ada kapal yang di-assign.');
-      }
-
-      final kapalId = vesselData['kapal']['id'];
-
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/mobile/vessel/$kapalId/fuel-data'),
-      );
-
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['jenisBahanBakar'] = jenisBahanBakar;
-      request.fields['jumlahLiter'] = jumlahLiter.toString();
-      request.fields['hargaPerLiter'] = hargaPerLiter.toString();
-      request.fields['totalHarga'] = totalHarga.toString();
-      request.fields['tanggalPengisian'] = tanggalPengisian;
-      request.fields['lokasiPengisian'] = lokasiPengisian ?? '';
-      request.fields['keterangan'] = keterangan ?? '';
-
-      if (buktiFilePath != null && buktiFilePath.isNotEmpty) {
-        final file = File(buktiFilePath);
-        if (await file.exists()) {
-          String contentType = 'image/jpeg';
-          if (buktiFilePath.toLowerCase().endsWith('.png')) {
-            contentType = 'image/png';
-          }
-
-          request.files.add(
-            await http.MultipartFile.fromPath(
-              'bukti',
-              buktiFilePath,
-              contentType: http_parser.MediaType.parse(contentType),
-            ),
-          );
-        }
-      }
-
-      final streamedResponse = await request.send().timeout(
-        const Duration(minutes: 2),
-      );
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Gagal upload bahan bakar: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error: $e');
-    }
-  }
-
-  Future<Map<String, dynamic>> uploadIceData({
-    required String jenisEs,
-    required double jumlahKg,
-    required double hargaPerKg,
-    required double totalHarga,
-    required String tanggalPembelian,
-    String? lokasiPembelian,
-    String? keterangan,
-    String? buktiFilePath,
-  }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-
-      if (token == null) {
-        throw Exception('Token tidak ditemukan');
-      }
-
-      final vesselData = await getVesselData();
-
-      if (vesselData == null) {
-        throw Exception('Tidak ada kapal yang di-assign.');
-      }
-
-      final kapalId = vesselData['kapal']['id'];
-      var url = '$baseUrl/api/mobile/vessel/$kapalId/ice-data';
-
-      var request = http.MultipartRequest('POST', Uri.parse(url));
-
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['jenisEs'] = jenisEs;
-      request.fields['jumlahKg'] = jumlahKg.toString();
-      request.fields['hargaPerKg'] = hargaPerKg.toString();
-      request.fields['totalHarga'] = totalHarga.toString();
-      request.fields['tanggalPembelian'] = tanggalPembelian;
-
-      if (lokasiPembelian != null && lokasiPembelian.isNotEmpty) {
-        request.fields['lokasiPembelian'] = lokasiPembelian;
-      }
-
-      if (keterangan != null && keterangan.isNotEmpty) {
-        request.fields['keterangan'] = keterangan;
-      }
-
-      if (buktiFilePath != null && buktiFilePath.isNotEmpty) {
-        final file = File(buktiFilePath);
-        if (await file.exists()) {
-          String contentType = 'image/jpeg';
-          if (buktiFilePath.toLowerCase().endsWith('.png')) {
-            contentType = 'image/png';
-          }
-
-          request.files.add(
-            await http.MultipartFile.fromPath(
-              'bukti',
-              buktiFilePath,
-              contentType: http_parser.MediaType.parse(contentType),
-            ),
-          );
-        }
-      }
-
-      var streamedResponse = await request.send().timeout(
-        const Duration(minutes: 2),
-      );
-      var response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        RealtimeUpdateService.notifyListeners('ice');
-        return json.decode(response.body);
-      } else {
-        throw Exception('Gagal upload data es: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error: $e');
-    }
-  }
-
-  Future<Map<String, dynamic>?> getIceData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-
-      if (token == null) {
-        throw Exception('Token tidak ditemukan');
-      }
-
-      final vesselData = await getVesselData();
-      if (vesselData == null) {
-        throw Exception('Tidak ada kapal yang di-assign.');
-      }
-
-      final kapalId = vesselData['kapal']['id'];
-      final url = '$baseUrl/api/mobile/vessel/$kapalId/ice-data';
-
-      final response = await http
-          .get(
-            Uri.parse(url),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          return responseData['data'];
-        }
-      }
-
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<Map<String, dynamic>> updateBahanBakar({
-    required String fuelId,
-    required String jenisBahanBakar,
-    required double jumlahLiter,
-    required double hargaPerLiter,
-    required double totalHarga,
-    required String tanggalPengisian,
-    String? lokasiPengisian,
-    String? keterangan,
-    String? buktiFilePath,
-  }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-
-      if (token == null) {
-        throw Exception('Token tidak ditemukan');
-      }
-
-      final vesselData = await getVesselData();
-
-      if (vesselData == null) {
-        throw Exception('Tidak ada kapal yang di-assign.');
-      }
-
-      final kapalId = vesselData['kapal']['id'];
-      final url = '$baseUrl/api/mobile/vessel/$kapalId/bahan-bakar/$fuelId';
-
-      var request = http.MultipartRequest('PUT', Uri.parse(url));
-
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['jenisBahanBakar'] = jenisBahanBakar;
-      request.fields['jumlahLiter'] = jumlahLiter.toString();
-      request.fields['hargaPerLiter'] = hargaPerLiter.toString();
-      request.fields['totalHarga'] = totalHarga.toString();
-      request.fields['tanggalPengisian'] = tanggalPengisian;
-
-      if (lokasiPengisian != null && lokasiPengisian.isNotEmpty) {
-        request.fields['lokasiPengisian'] = lokasiPengisian;
-      }
-
-      if (keterangan != null && keterangan.isNotEmpty) {
-        request.fields['keterangan'] = keterangan;
-      }
-
-      if (buktiFilePath != null && buktiFilePath.isNotEmpty) {
-        final file = File(buktiFilePath);
-        if (await file.exists()) {
-          String contentType = 'image/jpeg';
-          if (buktiFilePath.toLowerCase().endsWith('.png')) {
-            contentType = 'image/png';
-          }
-
-          request.files.add(
-            await http.MultipartFile.fromPath(
-              'bukti',
-              buktiFilePath,
-              contentType: http_parser.MediaType.parse(contentType),
-            ),
-          );
-        }
-      }
-
-      final streamedResponse = await request.send().timeout(
-        const Duration(minutes: 2),
-      );
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Gagal update data BBM: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error: $e');
-    }
-  }
-
-  Future<Map<String, dynamic>> getVesselDocuments({
-    bool forceRefresh = true,
-  }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-
-      if (token == null) {
-        throw Exception('Token tidak ditemukan');
-      }
-
-      final vesselData = await getVesselData(forceRefresh: forceRefresh);
-
-      if (vesselData == null) {
-        return {'sertifikatJalan': [], 'dataBahanBakar': []};
-      }
-
-      final kapalId = vesselData['kapal']['id'];
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-
-      final response = await http
-          .get(
-            Uri.parse(
-              '$baseUrl/api/mobile/vessel/$kapalId/documents?t=$timestamp',
-            ),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-
-        if (responseData['success'] == true) {
-          return responseData['data'];
-        }
-        return {'sertifikatJalan': [], 'dataBahanBakar': []};
-      } else {
-        throw Exception('Gagal mengambil dokumen kapal: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error: $e');
-    }
-  }
 
   Future<Map<String, dynamic>> getFuelSummary({
     DateTime? startDate,
@@ -469,14 +20,12 @@ class VesselService {
         throw Exception('Token tidak ditemukan');
       }
 
-      final vesselData = await getVesselData();
-
-      if (vesselData == null) {
+      final vesselId = await getVesselIdFromUserSettings() ?? await getVesselIdFromTrip();
+      if (vesselId == null) {
         throw Exception('Tidak ada kapal yang di-assign.');
       }
 
-      final kapalId = vesselData['kapal']['id'];
-      final url = '$baseUrl/mobile/vessel/$kapalId/fuel-summary';
+      final url = '$baseUrl/mobile/vessel/$vesselId/fuel-summary';
 
       final response = await http
           .get(
@@ -518,16 +67,14 @@ class VesselService {
         throw Exception('Token tidak ditemukan');
       }
 
-      final vesselData = await getVesselData();
-      if (vesselData == null) {
+      final vesselId = await getVesselIdFromUserSettings() ?? await getVesselIdFromTrip();
+      if (vesselId == null) {
         throw Exception('Tidak ada kapal yang di-assign.');
       }
 
-      final kapalId = vesselData['kapal']['id'];
-
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('$baseUrl/api/mobile/vessel/$kapalId/documents'),
+        Uri.parse('$baseUrl/api/mobile/vessel/$vesselId/documents'),
       );
 
       request.headers['Authorization'] = 'Bearer $token';
@@ -579,6 +126,268 @@ class VesselService {
       }
     } catch (e) {
       throw Exception('Error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> getVesselDetail() async {
+    print('\n🔍 [VESSEL_SERVICE] getVesselDetail called');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      final userDataString = prefs.getString('user_data');
+
+      if (token == null || userDataString == null) {
+        print('❌ [VESSEL_SERVICE] Token or user_data is null');
+        throw Exception('Token tidak ditemukan');
+      }
+
+      final userData = json.decode(userDataString);
+      final currentUserId = userData['id'];
+      final userRole = userData['role']?.toString().toLowerCase();
+      print('👤 [VESSEL_SERVICE] User ID: $currentUserId, Role: $userRole');
+
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        print('❌ [VESSEL_SERVICE] Tidak ada koneksi internet');
+        throw Exception('Tidak ada koneksi internet');
+      }
+
+      // 1. Get all vessels first
+      final vesselUrl = '$baseUrl/api/kapal';
+      print('📡 [VESSEL_SERVICE] Calling: $vesselUrl');
+
+      final vesselResponse = await http
+          .get(
+            Uri.parse(vesselUrl),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📥 [VESSEL_SERVICE] Vessels response: ${vesselResponse.statusCode}');
+
+      List<dynamic> allVessels = [];
+      if (vesselResponse.statusCode == 200) {
+        allVessels = json.decode(vesselResponse.body) as List;
+        print('🚢 [VESSEL_SERVICE] Total vessels: ${allVessels.length}');
+
+        // Find vessel by nahkodaId or abk
+        for (var vessel in allVessels) {
+          final nahkodaId = vessel['nahkodaId'];
+          final abkList = vessel['abk'] as List?;
+          
+          final isNahkoda = nahkodaId == currentUserId;
+          final isAbk = abkList?.any((abk) => abk['id'] == currentUserId) ?? false;
+
+          if (isNahkoda || isAbk) {
+            print('✅ [VESSEL_SERVICE] Found vessel in /api/kapal: ${vessel['namaKapal']}');
+            return vessel;
+          }
+        }
+        print('⚠️ [VESSEL_SERVICE] No direct assignment in /api/kapal');
+      }
+
+      // 2. Fallback: get from trip, then find vessel detail
+      final tripUrl = '$baseUrl/api/trip';
+      print('📡 [VESSEL_SERVICE] Fallback to: $tripUrl');
+
+      final tripResponse = await http
+          .get(
+            Uri.parse(tripUrl),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📥 [VESSEL_SERVICE] Trip response: ${tripResponse.statusCode}');
+
+      if (tripResponse.statusCode == 200) {
+        final responseData = json.decode(tripResponse.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final trips = responseData['data'] as List;
+          print('🚢 [VESSEL_SERVICE] Total trips: ${trips.length}');
+
+          for (var trip in trips) {
+            final status = trip['status']?.toString().toLowerCase();
+            if (status == 'selesai' || status == 'completed') continue;
+
+            final nahkodaId = trip['nahkodaId'];
+            final awakKapal = trip['awakKapal'] as List?;
+            
+            final isNahkoda = nahkodaId == currentUserId;
+            final isCrew = awakKapal?.contains(currentUserId) ?? false;
+
+            if (isNahkoda || isCrew) {
+              final kapalFromTrip = trip['kapal'];
+              if (kapalFromTrip != null) {
+                final vesselId = kapalFromTrip['id'];
+                print('🔍 [VESSEL_SERVICE] Found trip vessel ID: $vesselId');
+                
+                // Try to find full vessel detail from allVessels
+                if (allVessels.isNotEmpty) {
+                  final fullVessel = allVessels.firstWhere(
+                    (v) => v['id'] == vesselId,
+                    orElse: () => null,
+                  );
+                  
+                  if (fullVessel != null) {
+                    print('✅ [VESSEL_SERVICE] Found full vessel detail from /api/kapal: ${fullVessel['namaKapal']}');
+                    return fullVessel;
+                  }
+                }
+                
+                // Fallback to trip vessel data
+                print('⚠️ [VESSEL_SERVICE] Using vessel data from trip: ${kapalFromTrip['namaKapal']}');
+                return kapalFromTrip;
+              }
+            }
+          }
+        }
+      }
+
+      print('❌ [VESSEL_SERVICE] No vessel found');
+      return null;
+    } catch (e, stackTrace) {
+      print('❌ [VESSEL_SERVICE] Exception: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  Future<String?> getVesselIdFromUserSettings() async {
+    print('\n🔍 [VESSEL_SERVICE] getVesselIdFromUserSettings called');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      final userDataString = prefs.getString('user_data');
+      
+      if (token == null || userDataString == null) {
+        print('❌ [VESSEL_SERVICE] Token or user_data is null');
+        return null;
+      }
+      
+      final userData = json.decode(userDataString);
+      final currentUserId = userData['id'];
+      print('👤 [VESSEL_SERVICE] Current user ID: $currentUserId');
+
+      final url = '$baseUrl/api/kapal';
+      print('📡 [VESSEL_SERVICE] Calling: $url');
+
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📥 [VESSEL_SERVICE] Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final vessels = json.decode(response.body) as List;
+        print('🚢 [VESSEL_SERVICE] Total vessels: ${vessels.length}');
+        
+        for (var vessel in vessels) {
+          final nahkodaId = vessel['nahkodaId'];
+          final abkList = vessel['abk'] as List?;
+          
+          final isNahkoda = nahkodaId == currentUserId;
+          final isAbk = abkList?.any((abk) => abk['id'] == currentUserId) ?? false;
+
+          if (isNahkoda || isAbk) {
+            final vesselId = vessel['id'].toString();
+            print('✅ [VESSEL_SERVICE] Vessel ID from kapal: $vesselId');
+            return vesselId;
+          }
+        }
+      }
+      print('❌ [VESSEL_SERVICE] No vessel ID from user settings');
+      return null;
+    } catch (e) {
+      print('❌ [VESSEL_SERVICE] Error in getVesselIdFromUserSettings: $e');
+      return null;
+    }
+  }
+
+  Future<String?> getVesselIdFromTrip() async {
+    print('\n🔍 [VESSEL_SERVICE] getVesselIdFromTrip called');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      final userDataString = prefs.getString('user_data');
+      
+      if (token == null || userDataString == null) {
+        print('❌ [VESSEL_SERVICE] Token or user_data is null');
+        return null;
+      }
+      
+      final userData = json.decode(userDataString);
+      final currentUserId = userData['id'];
+      print('👤 [VESSEL_SERVICE] Current user ID: $currentUserId');
+
+      final url = '$baseUrl/api/trip';
+      print('📡 [VESSEL_SERVICE] Calling: $url');
+
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📥 [VESSEL_SERVICE] Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('✅ [VESSEL_SERVICE] Success: ${responseData['success']}');
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final trips = responseData['data'] as List;
+          print('🚢 [VESSEL_SERVICE] Total trips: ${trips.length}');
+          
+          for (var i = 0; i < trips.length; i++) {
+            final trip = trips[i];
+            final nahkodaId = trip['nahkodaId'];
+            final awakKapal = trip['awakKapal'] as List?;
+            final status = trip['status']?.toString().toLowerCase();
+            
+            print('   Trip #${i + 1}: status=$status, nahkodaId=$nahkodaId');
+            
+            if (status == 'selesai' || status == 'completed') {
+              print('      Skipped (completed)');
+              continue;
+            }
+            
+            final isNahkoda = currentUserId != null && nahkodaId == currentUserId;
+            final isCrew = currentUserId != null && awakKapal != null && awakKapal.contains(currentUserId);
+            
+            print('      isNahkoda=$isNahkoda, isCrew=$isCrew');
+            
+            if (isNahkoda || isCrew) {
+              final kapal = trip['kapal'];
+              print('      Kapal data: $kapal');
+              if (kapal != null && kapal['id'] != null) {
+                final vesselId = kapal['id'].toString();
+                print('✅ [VESSEL_SERVICE] Vessel ID from trip: $vesselId');
+                return vesselId;
+              }
+            }
+          }
+        }
+      }
+      print('❌ [VESSEL_SERVICE] No vessel ID from trip');
+      return null;
+    } catch (e) {
+      print('❌ [VESSEL_SERVICE] Error in getVesselIdFromTrip: $e');
+      return null;
     }
   }
 }

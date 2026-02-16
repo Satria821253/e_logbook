@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "335882165611",
+    "project_id": "ipbelogbook",
+    "storage_bucket": "ipbelogbook.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:335882165611:android:b20725a57bc1b373fc402e",
+        "android_client_info": {
+          "package_name": "com.example.e_logbook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqn8xXSySHTmuOd_41RGhmYHooBbKO9Eo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

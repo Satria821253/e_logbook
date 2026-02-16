@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:e_logbook/provider/catch_provider.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/zone_alert.dart';
@@ -11,9 +12,16 @@ import 'package:e_logbook/config/app_initializer.dart';
 import 'package:e_logbook/routes/route_generator.dart';
 import 'package:e_logbook/screens/splash_screen.dart';
 import 'package:e_logbook/widgets/initialization_error_screen.dart';
+import 'package:e_logbook/services/fcm/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase
+  await Firebase.initializeApp();
+  
+  // Initialize FCM
+  await FCMService.initialize();
   
   // Force unlock all orientations
   await SystemChrome.setPreferredOrientations([
@@ -52,9 +60,12 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),

@@ -1,9 +1,9 @@
+import 'package:e_logbook/routes/app_routes.dart';
 import 'package:e_logbook/screens/splash_screen.dart';
 import 'package:e_logbook/screens/page/edit_profile_screen.dart';
 import 'package:e_logbook/screens/settings/settings_screen.dart';
 import 'package:e_logbook/screens/settings/change_password_screen.dart';
 import 'package:e_logbook/screens/help_screen.dart';
-import 'package:e_logbook/screens/vessel/vessel_info_screen.dart';
 import 'package:e_logbook/screens/notification_screen.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
@@ -28,40 +28,49 @@ class _ProfileScreenState extends State<ProfileScreen>
     with WidgetsBindingObserver {
   String? _cachedPhotoPath;
 
+  void _onProfileUpdate() {
+    print('\n🔔 [PROFILE] _onProfileUpdate called, mounted: $mounted');
+    if (mounted) {
+      print('🔔 Profile changed, auto-refreshing...');
+      _loadProfile();
+    }
+  }
+
+  void _onDocumentsUpdate() {
+    print('\n🔔 [PROFILE] _onDocumentsUpdate called, mounted: $mounted');
+    if (mounted) {
+      print('🔔 Documents changed, refreshing profile...');
+      _loadProfile();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    print('\n🚀 [PROFILE] initState called');
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Load cached photo dulu (instant)
     _loadCachedPhoto();
-    
+
     // Baru load profile dari API di background
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadProfile();
     });
 
     // Register listener untuk auto-update profile
-    RealtimeUpdateService.addListener('profile', () {
-      if (mounted) {
-        print('🔔 Profile changed, auto-refreshing...');
-        _loadProfile();
-      }
-    });
-
-    RealtimeUpdateService.addListener('documents', () {
-      if (mounted) {
-        print('🔔 Documents changed, refreshing profile...');
-        _loadProfile();
-      }
-    });
+    print('   Adding profile & documents listeners...');
+    RealtimeUpdateService.addListener('profile', _onProfileUpdate);
+    RealtimeUpdateService.addListener('documents', _onDocumentsUpdate);
   }
 
   @override
   void dispose() {
+    print('\n🗑️ [PROFILE] dispose called');
     WidgetsBinding.instance.removeObserver(this);
-    RealtimeUpdateService.removeListener('profile');
-    RealtimeUpdateService.removeListener('documents');
+    print('   Removing profile & documents listeners...');
+    RealtimeUpdateService.removeListener('profile', _onProfileUpdate);
+    RealtimeUpdateService.removeListener('documents', _onDocumentsUpdate);
     super.dispose();
   }
 
@@ -89,10 +98,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       print('🔄 Loading profile from API...');
 
       if (mounted) {
-        final userProvider = Provider.of<UserProvider>(
-          context,
-          listen: false,
-        );
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
 
         // Sync from API to get fresh data
         await userProvider.syncProfileFromAPI();
@@ -102,10 +108,14 @@ class _ProfileScreenState extends State<ProfileScreen>
         final photoUrl = userProvider.user?.profilePicture;
         if (photoUrl != null && photoUrl.startsWith('http')) {
           // Extract filename tanpa timestamp untuk comparison
-          final newFileName = photoUrl.split('/').last.split('?').first; // e.g., "10-1769597437577.png"
+          final newFileName = photoUrl
+              .split('/')
+              .last
+              .split('?')
+              .first; // e.g., "10-1769597437577.png"
           final cachedUrl = await ProfilePhotoCache.getCachedPhotoUrl();
           final cachedFileName = cachedUrl?.split('/').last.split('?').first;
-          
+
           // Hanya download jika filename berbeda (foto benar-benar baru)
           if (cachedFileName != newFileName) {
             print('📥 New photo detected: $newFileName (old: $cachedFileName)');
@@ -178,9 +188,15 @@ class _ProfileScreenState extends State<ProfileScreen>
               return Stack(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+                    icon: const Icon(
+                      Icons.notifications_outlined,
+                      color: Colors.white,
+                    ),
                     onPressed: () {
-                      NavigationHelper.pushNoTransition(context, NotificationScreen());
+                      NavigationHelper.pushNoTransition(
+                        context,
+                        NotificationScreen(),
+                      );
                     },
                   ),
                   if (notifProvider.unreadCount > 0)
@@ -199,7 +215,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         child: Center(
                           child: Text(
-                            notifProvider.unreadCount > 99 ? '99+' : '${notifProvider.unreadCount}',
+                            notifProvider.unreadCount > 99
+                                ? '99+'
+                                : '${notifProvider.unreadCount}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 8,
@@ -216,7 +234,10 @@ class _ProfileScreenState extends State<ProfileScreen>
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
             onPressed: () {
-              NavigationHelper.pushNoTransition(context, const SettingsScreen());
+              NavigationHelper.pushNoTransition(
+                context,
+                const SettingsScreen(),
+              );
             },
           ),
         ],
@@ -292,11 +313,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     final size = MediaQuery.of(context).size;
     final shortestSide = size.shortestSide;
     final isTablet = ResponsiveHelper.isTablet(context);
-    
+
     print('👤 [HEADER] Building Profile Header:');
     print('   ShortestSide: ${shortestSide.toStringAsFixed(1)}');
     print('   IsTablet: $isTablet');
-    print('   Using SizedBox width: ${shortestSide >= 540 ? "245 (tablet)" : "60 (mobile)"}');
+    print(
+      '   Using SizedBox width: ${shortestSide >= 540 ? "245 (tablet)" : "60 (mobile)"}',
+    );
 
     return Container(
       width: double.infinity,
@@ -306,7 +329,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         children: [
           GestureDetector(
             onTap: () {
-              final userProvider = Provider.of<UserProvider>(context, listen: false);
+              final userProvider = Provider.of<UserProvider>(
+                context,
+                listen: false,
+              );
               final photoUrl = userProvider.user?.profilePicture;
               if (photoUrl != null && photoUrl.isNotEmpty) {
                 _showPhotoPreview(photoUrl);
@@ -331,8 +357,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                     builder: (context, userProvider, child) {
                       final user = userProvider.user;
                       final photoUrl = user?.profilePicture;
-                      print('🔍 [UI] Building CircleAvatar with photo: $photoUrl');
-                      
+                      print(
+                        '🔍 [UI] Building CircleAvatar with photo: $photoUrl',
+                      );
+
                       final hasValidPhoto =
                           photoUrl != null &&
                           photoUrl.isNotEmpty &&
@@ -347,7 +375,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
                       // Prioritas: cached photo > URL dari API
                       ImageProvider? imageProvider;
-                      
+
                       if (_cachedPhotoPath != null) {
                         // Gunakan cached photo (instant)
                         imageProvider = FileImage(File(_cachedPhotoPath!));
@@ -364,7 +392,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                       }
 
                       return CircleAvatar(
-                        key: ValueKey(_cachedPhotoPath ?? photoUrl ?? 'default'),
+                        key: ValueKey(
+                          _cachedPhotoPath ?? photoUrl ?? 'default',
+                        ),
                         radius: radius,
                         backgroundColor: Colors.grey[200],
                         backgroundImage: imageProvider,
@@ -415,7 +445,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                           maxLines: 1,
                         ),
                       ),
-                      SizedBox(width: ResponsiveHelper.width(context, mobile: 8, tablet: 10)),
+                      SizedBox(
+                        width: ResponsiveHelper.width(
+                          context,
+                          mobile: 8,
+                          tablet: 10,
+                        ),
+                      ),
                       InkWell(
                         onTap: () async {
                           print('🖱️ [PROFILE] Edit TAPPED!');
@@ -622,19 +658,14 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildMenuSection() {
-    final size = MediaQuery.of(context).size;
-    final screenWidth = size.width;
-    final shortestSide = size.shortestSide;
-    final isTablet = ResponsiveHelper.isTablet(context); // FIX: Use ResponsiveHelper
-    
-    print('📋 [MENU] Building Menu Section:');
-    print('   ScreenWidth: ${screenWidth.toStringAsFixed(1)}');
-    print('   ShortestSide: ${shortestSide.toStringAsFixed(1)}');
-    print('   IsTablet (ResponsiveHelper): $isTablet');
-    print('   Layout: ${isTablet ? "GRID" : "LIST"}');
+    final isTablet = ResponsiveHelper.isTablet(
+      context,
+    ); // FIX: Use ResponsiveHelper
 
     return Padding(
-      padding: isTablet ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16),
+      padding: isTablet
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -645,7 +676,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: ResponsiveHelper.height(context, mobile: 8, tablet: 10)),
+          SizedBox(
+            height: ResponsiveHelper.height(context, mobile: 8, tablet: 10),
+          ),
           isTablet ? _buildTabletMenuGrid() : _buildMobileMenuList(),
         ],
       ),
@@ -658,15 +691,18 @@ class _ProfileScreenState extends State<ProfileScreen>
         _buildMenuItem(
           icon: Icons.directions_boat_rounded,
           title: 'Informasi Kapal',
-          subtitle: 'Kelola persediaan dan sertifikat',
-          onTap: () => NavigationHelper.pushNoTransition(context, VesselInfoScreen()),
+          subtitle: 'Lihat informasi kapal',
+          onTap: () => Navigator.pushNamed(context, AppRoutes.vesselInfo),
         ),
         SizedBox(height: 12),
         _buildMenuItem(
           icon: Icons.lock_outline,
           title: 'Ganti Password',
           subtitle: 'Ubah password akun Anda',
-          onTap: () => NavigationHelper.pushNoTransition(context, const ChangePasswordScreen()),
+          onTap: () => NavigationHelper.pushNoTransition(
+            context,
+            const ChangePasswordScreen(),
+          ),
         ),
         SizedBox(height: 12),
         _buildMenuItem(
@@ -682,7 +718,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           icon: Icons.help_outline_rounded,
           title: 'Bantuan',
           subtitle: 'Pusat bantuan dan FAQ',
-          onTap: () => NavigationHelper.pushNoTransition(context, const HelpScreen()),
+          onTap: () =>
+              NavigationHelper.pushNoTransition(context, const HelpScreen()),
         ),
         SizedBox(height: 12),
         _buildMenuItem(
@@ -707,28 +744,24 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
         final menuItems = <Widget>[];
-
-        menuItems.add(
-          _buildMenuItem(
-            icon: Icons.directions_boat_rounded,
-            title: 'Informasi Kapal',
-            subtitle: 'Kelola persediaan dan sertifikat',
-            onTap: () => NavigationHelper.pushNoTransition(context, VesselInfoScreen()),
-          ),
-        );
-
         menuItems.addAll([
           _buildMenuItem(
             icon: Icons.lock_outline,
             title: 'Ganti Password',
             subtitle: 'Ubah password akun Anda',
-            onTap: () => NavigationHelper.pushNoTransition(context, const ChangePasswordScreen()),
+            onTap: () => NavigationHelper.pushNoTransition(
+              context,
+              const ChangePasswordScreen(),
+            ),
           ),
           _buildMenuItem(
             icon: Icons.settings,
             title: 'Pengaturan',
             subtitle: 'Kelola pengaturan aplikasi',
-            onTap: () => NavigationHelper.pushNoTransition(context, const SettingsScreen()),
+            onTap: () => NavigationHelper.pushNoTransition(
+              context,
+              const SettingsScreen(),
+            ),
           ),
           _buildMenuItem(
             icon: Icons.assessment_outlined,
@@ -745,7 +778,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             icon: Icons.help_outline_rounded,
             title: 'Bantuan',
             subtitle: 'Pusat bantuan dan FAQ',
-            onTap: () => NavigationHelper.pushNoTransition(context, const HelpScreen()),
+            onTap: () =>
+                NavigationHelper.pushNoTransition(context, const HelpScreen()),
           ),
           _buildMenuItem(
             icon: Icons.info_outline_rounded,
@@ -758,18 +792,20 @@ class _ProfileScreenState extends State<ProfileScreen>
         final isLandscape = ResponsiveHelper.isLandscape(context);
         final size = MediaQuery.of(context).size;
         final shortestSide = size.shortestSide;
-        
+
         print('🏛️ [GRID] Building Menu Grid:');
         print('   IsLandscape: $isLandscape');
         print('   ShortestSide: ${shortestSide.toStringAsFixed(1)}');
-        
+
         return GridView.builder(
           padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: isLandscape ? 4.5 : (shortestSide < 800 ? 3.2 : 3.5),
+            childAspectRatio: isLandscape
+                ? 4.5
+                : (shortestSide < 800 ? 3.2 : 3.5),
             crossAxisSpacing: shortestSide < 800 ? 10 : 12,
             mainAxisSpacing: shortestSide < 800 ? 6 : 8,
           ),
@@ -808,7 +844,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         Navigator.pushAndRemoveUntil(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const SplashScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const SplashScreen(),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),
@@ -865,7 +902,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                   children: [
                     _buildInfoRow('Versi', '1.0.0+1'),
                     const Divider(height: 20),
-                    _buildInfoRow('copyright', '2026 IPB University \nAll rights reserved'),
+                    _buildInfoRow(
+                      'copyright',
+                      '2026 IPB University \nAll rights reserved',
+                    ),
                   ],
                 ),
               ),
@@ -889,7 +929,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                   child: const Text(
                     'Tutup',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -904,10 +947,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-        ),
+        Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
         Text(
           value,
           style: const TextStyle(
@@ -967,7 +1007,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final size = MediaQuery.of(context).size;
     final shortestSide = size.shortestSide;
     final isSmallTablet = shortestSide < 800;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,

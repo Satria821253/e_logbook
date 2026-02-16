@@ -2,16 +2,8 @@ import 'package:e_logbook/screens/tracking/active_tracking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 
-import '../screens/tracking/pre_trip_fromscreen.dart';
-
 class TrackingRoutes {
   // Pre-trip and tracking screens
-  static void navigateToPreTripForm(BuildContext context, {Map<String, dynamic>? tripData}) {
-    NavigationHelper.pushNoTransition(
-      context,
-      PreTripFormScreen(tripData: tripData),
-    );
-  }
 
 
   static void navigateToActiveTracking(BuildContext context, {

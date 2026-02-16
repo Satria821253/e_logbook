@@ -3,9 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import '../screens/data_raw_screen.dart';
 import '../screens/crew/screens/fish_photo_tips_screen.dart';
-import '../screens/crew/screens/crew_my_trips_screen.dart';
 import '../screens/schedules/my_schedules_screen.dart';
-import '../screens/schedules/trip_history_screen.dart';
+import '../screens/schedules/trip_info_screen.dart';
 import 'common_routes.dart';
 
 class CrewRoutes {
@@ -23,20 +22,13 @@ class CrewRoutes {
     );
   }
 
-  static void navigateToMyTripsHistory(BuildContext context) {
+  static void navigateToTripInfo(BuildContext context) {
     NavigationHelper.pushNoTransition(
       context,
-      const TripHistoryScreen(),
+      const TripInfoScreen(),
     );
   }
-
-  static void navigateToMyTrips(BuildContext context) {
-    NavigationHelper.pushNoTransition(
-      context,
-      const CrewMyTripsScreen(),
-    );
-  }
-
+  
   static void navigateToFishPhotoTips(BuildContext context) {
     NavigationHelper.pushNoTransition(
       context,

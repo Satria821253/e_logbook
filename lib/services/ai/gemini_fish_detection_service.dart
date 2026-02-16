@@ -43,20 +43,46 @@ class GeminiFishDetectionService {
 
   static Future<FishDetectionResult> detectFish(File image) async {
     try {
+      debugPrint('\n🔍 ========== GEMINI AI DETECTION START ==========');
+      debugPrint('📁 Image path: ${image.path}');
+      
       final Uint8List imageBytes = await image.readAsBytes();
+      final fileSizeMB = (imageBytes.length / (1024 * 1024)).toStringAsFixed(2);
+      debugPrint('📦 Image size: ${fileSizeMB}MB (${imageBytes.length} bytes)');
+      
       final String base64Image = base64Encode(imageBytes);
+      final base64SizeKB = (base64Image.length / 1024).toStringAsFixed(2);
+      debugPrint('🔐 Base64 size: ${base64SizeKB}KB');
 
-      // PROMPT OPTIMASI TINGGI
+      // PROMPT OPTIMASI TINGGI - FOKUS PEMBEDAAN IKAN MIRIP
       final String prompt = """
-Analisis gambar ikan ini dengan teliti dan berikan informasi dalam format JSON. PENTING: Gunakan bahasa Indonesia untuk semua field.
+Anda adalah ahli identifikasi ikan laut Indonesia dengan keahlian khusus membedakan spesies yang mirip.
+
+🐟 PERBEDAAN KRITIS IKAN YANG SERING TERTUKAR:
+
+1. TONGKOL vs CAKALANG vs TUNA:
+   - TONGKOL (15-30cm): Tubuh PENDEK & BULAT seperti torpedo, corak "batik" gelap di punggung, perut putih bersih, TIDAK ada gigi tajam
+   - CAKALANG (25-40cm): Tubuh torpedo sedang, 4-6 GARIS HORIZONTAL GELAP di perut/samping bawah, punggung biru gelap
+   - TUNA (40-80cm+): Tubuh BESAR torpedo, sirip kuning cerah, daging merah tua, tidak ada garis horizontal
+   - TENGGIRI (30-60cm): Tubuh SANGAT PANJANG & PIPIH seperti cerutu, GIGI TAJAM BESAR terlihat jelas, garis vertikal tipis samar
+
+2. KEMBUNG vs LAYANG vs SELAR:
+   - KEMBUNG (12-20cm): Tubuh pipih OVAL LEBAR, perak mengkilap, mata besar, sisik besar terlihat jelas, TIDAK ada garis kuning, bentuk lebih gemuk
+   - LAYANG (10-18cm): Tubuh ramping MEMANJANG LANGSING, ekor bercabang SANGAT DALAM (seperti gunting), mata sangat besar, bentuk torpedo kecil
+   - SELAR (15-25cm): Mirip kembung tapi ada GARIS KUNING TEGAS di samping tubuh dari kepala ke ekor
+
+3. KAKAP vs KERAPU:
+   - KAKAP (25-50cm): Warna merah/pink solid, tubuh ramping, mulut besar runcing
+   - KERAPU (30-60cm): Tubuh tebal gemuk, POLA BELANG-BELANG/BINTIK coklat/hijau, mulut sangat besar
 
 IDENTIFIKASI BERDASARKAN CIRI FISIK & UKURAN STANDAR:
 - IKAN TONGKOL: Ukuran 15-30cm, tubuh torpedo PENDEK dan BULAT (seperti peluru), corak "batik" atau garis miring gelap di punggung belakang, perut putih bersih, TIDAK memiliki gigi tajam panjang
 - IKAN TENGGIRI: Ukuran 30-60cm, tubuh sangat PANJANG dan PIPIH ke samping (seperti cerutu), memiliki GIGI tajam yang terlihat jelas (predator), garis-garis vertikal tipis samar di samping tubuh, warna abu-abu keperakan
-- IKAN CAKALANG: Ukuran 25-40cm, tubuh torpedo, 4-6 garis horizontal gelap di perut/samping, punggung gelap
-- IKAN KEMBUNG: Ukuran 12-20cm, tubuh pipih perak mengkilap, mata besar
-- IKAN LAYANG: Ukuran 10-18cm, tubuh ramping perak, mata besar, ekor bercabang
-- IKAN SELAR: Ukuran 15-25cm, mirip kembung tapi ada garis kuning di samping
+- IKAN CAKALANG: Ukuran 25-40cm, tubuh torpedo, 4-6 garis horizontal gelap TEGAS di perut/samping bawah, punggung biru gelap
+- IKAN TUNA: Ukuran 40-80cm+, tubuh besar torpedo, sirip kuning cerah, daging merah tua, tidak ada garis
+- IKAN KEMBUNG: Ukuran 12-20cm, tubuh pipih OVAL LEBAR seperti daun, perak mengkilap, mata besar, sisik besar terlihat jelas, TIDAK ada garis kuning, bentuk gemuk
+- IKAN LAYANG: Ukuran 10-18cm, tubuh ramping MEMANJANG LANGSING seperti torpedo kecil, ekor bercabang SANGAT DALAM (seperti gunting terbuka), mata sangat besar, lebih kurus dari kembung
+- IKAN SELAR: Ukuran 15-25cm, mirip kembung tapi ada GARIS KUNING TEGAS di samping dari kepala ke ekor
 - IKAN KAKAP: Ukuran 25-50cm, warna merah/pink, mulut besar
 - IKAN KERAPU: Ukuran 30-60cm, tubuh tebal, mulut besar, warna belang-belang
 - IKAN KUWE: Ukuran 40-80cm, tubuh tinggi pipih, warna keperakan
@@ -67,9 +93,20 @@ IDENTIFIKASI BERDASARKAN CIRI FISIK & UKURAN STANDAR:
 - UDANG: Ukuran 8-20cm, tubuh melengkung, antena panjang, kaki renang
 
 PERBEDAAN KRITIS TONGKOL vs TENGGIRI:
-- TONGKOL: Tubuh pendek bulat seperti peluru, corak batik di punggung, gigi kecil
-- TENGGIRI: Tubuh panjang pipih seperti cerutu, garis vertikal tipis, gigi tajam besar
+- TONGKOL: Tubuh pendek bulat seperti peluru, corak batik di punggung, gigi kecil, ukuran 15-30cm
+- TENGGIRI: Tubuh panjang pipih seperti cerutu, garis vertikal tipis, GIGI TAJAM BESAR, ukuran 30-60cm
 - UKURAN: Jika ikan terlihat sangat panjang (>35cm), kemungkinan besar TENGGIRI
+- GIGI: Jika terlihat gigi tajam besar = TENGGIRI, gigi kecil = TONGKOL
+
+PERBEDAAN KRITIS CAKALANG vs TONGKOL:
+- CAKALANG: 4-6 GARIS HORIZONTAL GELAP TEGAS di perut/samping bawah
+- TONGKOL: Corak "batik" atau garis MIRING di punggung, perut putih bersih
+
+PERBEDAAN KRITIS KEMBUNG vs LAYANG:
+- KEMBUNG: Tubuh OVAL LEBAR seperti daun, gemuk, sisik besar terlihat, ekor bercabang sedang
+- LAYANG: Tubuh MEMANJANG LANGSING seperti torpedo, kurus, ekor bercabang SANGAT DALAM seperti gunting
+- BENTUK: Jika ikan terlihat gemuk oval = KEMBUNG, jika langsing memanjang = LAYANG
+- EKOR: Ekor bercabang sangat dalam (>45°) = LAYANG, bercabang sedang = KEMBUNG
 
 PENTING - Format fishType:
 - Tongkol, Cakalang, Tuna, Tenggiri: "Ikan Pelagis Besar"
@@ -96,9 +133,9 @@ ESTIMASI BERAT BERDASARKAN UKURAN:
 - Cumi-cumi (15-40cm): 0.2-1.2kg per ekor
 - Udang (8-20cm): 0.05-0.3kg per ekor
 
-Jawab HANYA dengan JSON valid:
+Jawab HANYA dengan JSON valid (tanpa markdown, tanpa backticks):
 {
-  "fishName": "string (nama Indonesia, contoh: Ikan Tongkol)",
+  "fishName": "string (nama Indonesia SPESIFIK, contoh: Ikan Kembung, Ikan Layang, Ikan Tongkol)",
   "fishType": "string (kategori dari daftar di atas)",
   "condition": "string (Segar/Cukup Segar/Kurang Segar)",
   "estimatedLength": number,
@@ -106,9 +143,11 @@ Jawab HANYA dengan JSON valid:
   "estimatedQuantity": number,
   "confidence": number,
   "freshness": "string (deskripsi kesegaran)",
-  "notes": "string (penjelasan identifikasi dan estimasi ukuran)"
+  "notes": "string (WAJIB jelaskan ciri khas yang membedakan dari ikan mirip. Contoh untuk Kembung: 'Teridentifikasi sebagai Kembung karena tubuh oval lebar gemuk dengan sisik besar, bukan Layang yang lebih langsing dengan ekor bercabang sangat dalam'. Contoh untuk Layang: 'Teridentifikasi sebagai Layang karena tubuh langsing memanjang dengan ekor bercabang sangat dalam seperti gunting, bukan Kembung yang lebih gemuk oval')"
 }
 """;
+
+      debugPrint('📝 Prompt length: ${prompt.length} chars');
 
       final Map<String, dynamic> requestBody = {
         "contents": [
@@ -121,22 +160,43 @@ Jawab HANYA dengan JSON valid:
             ],
           },
         ],
+        "generationConfig": {
+          "temperature": 0.4,  // Lower = more consistent
+          "topK": 32,
+          "topP": 0.8,
+          "maxOutputTokens": 2048,
+        },
       };
+      
+      debugPrint('⚙️ Generation config: temp=0.4, topK=32, topP=0.8');
 
+      final apiUrl = '$_baseUrl?key=${ApiConfig.geminiApiKey}';
+      debugPrint('🌐 API URL: ${apiUrl.replaceAll(ApiConfig.geminiApiKey, "***KEY***")}');
+      debugPrint('📤 Sending request to Gemini API...');
+      
       final response = await http
           .post(
-            Uri.parse('$_baseUrl?key=${ApiConfig.geminiApiKey}'),
+            Uri.parse(apiUrl),
             headers: {'Content-Type': 'application/json'},
             body: json.encode(requestBody),
           )
           .timeout(ApiConfig.requestTimeout);
+      
+      debugPrint('📥 Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
+        debugPrint('✅ API Response OK');
         final Map<String, dynamic> responseData = json.decode(response.body);
         final String? generatedText =
             responseData['candidates']?[0]['content']?['parts']?[0]['text'];
 
-        if (generatedText == null) throw Exception('Respons AI kosong');
+        if (generatedText == null) {
+          debugPrint('❌ Empty AI response');
+          throw Exception('Respons AI kosong');
+        }
+        
+        debugPrint('📝 AI Response length: ${generatedText.length} chars');
+        debugPrint('📄 AI Response preview: ${generatedText.substring(0, generatedText.length > 200 ? 200 : generatedText.length)}...');
 
         // Extract JSON dengan lebih aman
         String jsonText = generatedText.trim();
@@ -149,12 +209,17 @@ Jawab HANYA dengan JSON valid:
         }
 
         final Map<String, dynamic> fishData = json.decode(jsonText);
+        debugPrint('✅ JSON parsed successfully');
+        debugPrint('🐟 Detected fish: ${fishData['fishName']}');
+        debugPrint('📊 Raw data: $fishData');
 
         // Ekstraksi nilai dengan fallback
         double rawWeight = (fishData['estimatedWeight'] ?? 0.5).toDouble();
         double rawLength = (fishData['estimatedLength'] ?? 20.0).toDouble();
         int quantity = (fishData['estimatedQuantity'] ?? 1).toInt();
         String fishName = fishData['fishName'] ?? 'Ikan Tidak Teridentifikasi';
+        
+        debugPrint('⚖️ Raw weight: ${rawWeight}kg, Length: ${rawLength}cm, Qty: $quantity');
 
         // Normalisasi berat per ekor
         double unitWeight = _validateAndNormalizeWeight(
@@ -162,6 +227,10 @@ Jawab HANYA dengan JSON valid:
           rawLength,
           fishName,
         );
+        
+        debugPrint('✅ Normalized unit weight: ${unitWeight.toStringAsFixed(2)}kg');
+        debugPrint('✅ Total weight: ${(unitWeight * quantity).toStringAsFixed(2)}kg');
+        debugPrint('========== GEMINI AI DETECTION SUCCESS ==========\n');
 
         return FishDetectionResult(
           fishName: fishName,
@@ -178,11 +247,15 @@ Jawab HANYA dengan JSON valid:
           unitWeight: unitWeight,
         );
       } else {
-        debugPrint('❌ Server Error ${response.statusCode}: ${response.body}');
+        debugPrint('❌ Server Error ${response.statusCode}');
+        debugPrint('📄 Response body: ${response.body}');
+        debugPrint('========== GEMINI AI DETECTION FAILED ==========\n');
         throw Exception('Server Error: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('❌ Error: $e');
+      debugPrint('❌ Exception caught: $e');
+      debugPrint('📍 Stack trace: ${StackTrace.current}');
+      debugPrint('========== GEMINI AI DETECTION ERROR ==========\n');
       rethrow;
     }
   }

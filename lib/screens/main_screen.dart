@@ -1,18 +1,17 @@
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/notification_provider.dart';
 import 'package:e_logbook/provider/tracking_minimize_provider.dart';
-import 'package:e_logbook/screens/crew/screens/create_catch_screen.dart';
 import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_floating_menu.dart';
 import 'package:e_logbook/screens/nahkoda/widgets/nahkoda_tracking_button.dart';
 import 'package:e_logbook/screens/crew/widgets/crew_floating_menu.dart';
 import 'package:e_logbook/screens/crew/widgets/crew_tracking_button.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
-import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:e_logbook/utils/profile_photo_cache.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
 import 'package:e_logbook/services/api/trip_service.dart';
 import 'package:e_logbook/services/nitification/local_notification_service.dart';
 import 'package:e_logbook/widgets/sos_alert_dialog.dart';
+import 'package:e_logbook/routes/app_routes.dart';
 import 'package:e_logbook/routes/crew_routes.dart';
 import 'package:e_logbook/routes/nahkoda_routes.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
@@ -22,10 +21,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-import 'dart:math' show sin;
 import 'dart:async';
 import 'dart:convert';
 import 'home_screen.dart';
@@ -55,6 +54,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _showTracking = false;
   Timer? _toggleTimer;
   DateTime? _berlayarStartTime;
+  Timer? _periodicCheckTimer;
+  int _checkRetryCount = 0;
   
   @override
   void initState() {
@@ -91,13 +92,37 @@ class _MainScreenState extends State<MainScreen> {
   }
   
   void _startPeriodicCheck() {
-    Timer.periodic(Duration(seconds: 30), (timer) {
-      if (mounted) {
-        _checkTripStatus();
-      } else {
-        timer.cancel();
+    _periodicCheckTimer?.cancel();
+    _scheduleNextCheck();
+  }
+
+  void _scheduleNextCheck() {
+    _periodicCheckTimer?.cancel();
+    
+    final interval = Duration(seconds: 30 + (_checkRetryCount * 10));
+    _periodicCheckTimer = Timer(interval, () async {
+      if (!mounted) return;
+      
+      final hasConnection = await _hasInternetConnection();
+      if (!hasConnection) {
+        _checkRetryCount++;
+        _scheduleNextCheck();
+        return;
       }
+      
+      await _checkTripStatus();
+      _checkRetryCount = 0;
+      _scheduleNextCheck();
     });
+  }
+
+  Future<bool> _hasInternetConnection() async {
+    try {
+      final result = await Connectivity().checkConnectivity();
+      return result != ConnectivityResult.none;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<void> _checkTripStatus() async {
@@ -147,6 +172,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _toggleTimer?.cancel();
+    _periodicCheckTimer?.cancel();
     super.dispose();
   }
   
@@ -392,7 +418,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildCatchFAB(double fabSize) {
     return GestureDetector(
       key: const ValueKey('catch'),
-      onTap: () => NavigationHelper.pushNoTransition(context, const CreateCatchScreen()),
+      onTap: () => _handleCreateCatch(context),
       child: Container(
         width: 90,
         height: 90,
@@ -657,7 +683,7 @@ class _MainScreenState extends State<MainScreen> {
             right: ResponsiveHelper.width(context, mobile: 20, tablet: 30),
             bottom: ResponsiveHelper.height(context, mobile: 35, tablet: 50),
             child: _buildAnimatedFAB(
-              onTap: () => NavigationHelper.pushNoTransition(context, const CreateCatchScreen()),
+              onTap: () => _handleCreateCatch(context),
               icon: Icons.add,
             ),
           ),
@@ -1055,291 +1081,287 @@ class _MainScreenState extends State<MainScreen> {
     IconData? icon,
     bool isLottie = false,
   }) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.elasticOut,
-      builder: (context, scaleValue, child) {
-        return Transform.scale(
-          scale: scaleValue,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 1500),
-            curve: Curves.easeInOut,
-            builder: (context, pulseValue, child) {
-              return AnimatedBuilder(
-                animation: AlwaysStoppedAnimation(pulseValue),
-                builder: (context, child) {
-                  final pulse = (pulseValue * 2 * 3.14159);
-                  final shadowOpacity = 0.3 + (0.3 * (1 + sin(pulse)) / 2);
-                  final shadowBlur = 12.0 + (8.0 * (1 + sin(pulse)) / 2);
-                  
-                  return Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF1565C0).withOpacity(shadowOpacity),
-                          blurRadius: shadowBlur,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: onTap,
-                        customBorder: const CircleBorder(),
-                        splashColor: Colors.white.withOpacity(0.3),
-                        highlightColor: Colors.white.withOpacity(0.1),
-                        child: isLottie ? _buildLottieFAB() : _buildIconFAB(icon!),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-            onEnd: () {
-              if (mounted) {
-                setState(() {});
-              }
-            },
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: ResponsiveHelper.width(context, mobile: 60, tablet: 70),
+        height: ResponsiveHelper.height(context, mobile: 60, tablet: 70),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildIconFAB(IconData icon) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final fabSize = screenWidth < 800 ? 48.0 : 54.0;
-    final iconSize = screenWidth < 800 ? 22.0 : 26.0;
-    
-    return Ink(
-      width: fabSize,
-      height: fabSize,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1B4F9C), Color(0xFF2563EB)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: iconSize,
-      ),
-    );
-  }
-
-  Widget _buildLottieFAB() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final fabSize = screenWidth < 800 ? 50.0 : 56.0;
-    final borderWidth = screenWidth < 800 ? 2.5 : 3.0;
-    
-    final now = DateTime.now();
-    final isNight = now.hour >= 18 || now.hour < 6;
-    final lottieAsset = isNight 
-        ? 'assets/animations/tripmalam.json'
-        : 'assets/animations/tripsiang.json';
-
-    return Container(
-      width: fabSize,
-      height: fabSize,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFF1565C0), width: borderWidth),
-      ),
-      child: ClipOval(
-        child: Lottie.asset(
-          lottieAsset,
-          fit: BoxFit.cover,
-          repeat: true,
-          animate: true,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(
-              Icons.directions_boat,
-              color: Color(0xFF1565C0),
-              size: 40,
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmergencyFAB() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final fabSize = screenWidth < 800 ? 48.0 : 54.0;
-    
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.elasticOut,
-      builder: (context, scaleValue, child) {
-        return Transform.scale(
-          scale: scaleValue,
-          child: GestureDetector(
-            onTap: () async {
-              final success = await showSosAlertDialog(context);
-              if (success == true && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text('🚨 Sinyal Darurat Terkirim!'),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 3),
-                  ),
-                );
-              }
-            },
-            child: Container(
-              width: fabSize,
-              height: fabSize,
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.red, width: 2.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 0),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Lottie.asset(
-                  'assets/animations/alert.json',
-                  fit: BoxFit.contain,
-                  repeat: true,
-                  animate: true,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<Map<String, dynamic>?> _getTripData() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return {
-      'vesselName': 'KM Bahari Jaya',
-      'vesselNumber': 'KP-12345-JKT',
-      'crewCount': 8,
-      'departureHarbor': 'Pelabuhan Muara Baru',
-      'estimatedDuration': 5,
-      'departureDate': DateTime.now().add(const Duration(days: 2)),
-      'estimatedReturnDate': DateTime.now().add(const Duration(days: 7)),
-      'fuelSupply': 500.0,
-      'iceSupply': 1000.0,
-      'status': 'scheduled',
-    };
-  }
-
-  void _showNoTripDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.schedule,
-                color: Colors.orange,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Belum Ada Penjadwalan Trip',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1B4F9C).withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        content: const Text(
-          'Admin belum mengirim informasi trip. Silakan hubungi admin untuk penjadwalan trip atau cek Info Trip untuk melihat jadwal terbaru.',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Navigate to trip info
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B4F9C),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+        child: isLottie
+            ? Lottie.asset(
+                'assets/animations/PreTrip.json',
+                fit: BoxFit.contain,
+                repeat: true,
+                animate: true,
+              )
+            : Icon(
+                icon ?? Icons.add,
+                color: Colors.white,
+                size: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
               ),
-            ),
-            child: const Text('Cek Info Trip'),
-          ),
-        ],
       ),
     );
   }
-
-  void _handleTripPreparation(BuildContext context) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+  
+  Widget _buildEmergencyFAB() {
+    return GestureDetector(
+      onTap: () async {
+        final success = await showSosAlertDialog(context);
+        if (success == true && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('🚨 Sinyal Darurat Terkirim!')),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      },
+      child: Container(
+        width: ResponsiveHelper.width(context, mobile: 56, tablet: 64),
+        height: ResponsiveHelper.height(context, mobile: 56, tablet: 64),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Colors.red, Colors.redAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.warning_rounded,
+          color: Colors.white,
+          size: ResponsiveHelper.width(context, mobile: 28, tablet: 32),
+        ),
       ),
     );
-
+  }
+  void _handleTripPreparation(BuildContext context) async {
     try {
-      final tripData = await _getTripData();
-      Navigator.pop(context);
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      int? currentUserId;
       
-      if (tripData == null) {
-        _showNoTripDialog(context);
-      } else {
-        Navigator.pushNamed(
-          context,
-          '/pre-trip-form',
-          arguments: tripData,
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        currentUserId = userData['id'];
+      }
+      
+      if (currentUserId == null) return;
+      
+      final response = await TripService.getAllTrips();
+      if (response['success'] == true && response['data'] != null) {
+        final allTrips = List<Map<String, dynamic>>.from(response['data']);
+        
+        final activeTrip = allTrips.firstWhere(
+          (trip) {
+            final nahkodaId = trip['nahkodaId'];
+            final status = trip['status']?.toLowerCase();
+            return nahkodaId == currentUserId && 
+                   (status == 'berlayar' || status == 'sedang_melaut');
+          },
+          orElse: () => {},
         );
+        
+        if (activeTrip.isNotEmpty && mounted) {
+          // Langsung ke tracking jika ada trip aktif
+          Navigator.pushNamed(context, '/active-tracking', arguments: {
+            'tripId': activeTrip['id'],
+            'lat': 0.0,
+            'lng': 0.0,
+          });
+        } else if (mounted) {
+          // Ke jadwal tugas jika belum ada trip aktif
+          NahkodaRoutes.navigateToMySchedules(context);
+        }
       }
     } catch (e) {
-      Navigator.pop(context);
-      _showNoTripDialog(context);
+      print('❌ Error handling trip preparation: $e');
+      if (mounted) {
+        NahkodaRoutes.navigateToMySchedules(context);
+      }
     }
+  }
+
+  void _handleCreateCatch(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      int? currentUserId;
+      
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        currentUserId = userData['id'];
+      }
+      
+      if (currentUserId == null) return;
+      
+      final response = await TripService.getAllTrips();
+      if (response['success'] == true && response['data'] != null) {
+        final allTrips = List<Map<String, dynamic>>.from(response['data']);
+        
+        // Filter trip milik user
+        final myTrips = allTrips.where((trip) {
+          final nahkodaId = trip['nahkodaId'];
+          final awakKapal = trip['awakKapal'] as List?;
+          final status = trip['status']?.toLowerCase();
+          
+          final isMyTrip = (nahkodaId == currentUserId) ||
+                           (awakKapal != null && awakKapal.contains(currentUserId));
+          
+          return isMyTrip && (status == 'berlayar' || status == 'selesai');
+        }).toList();
+        
+        if (myTrips.isEmpty) {
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.sailing, color: Colors.orange.shade700, size: 24),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Trip Belum Dimulai',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Anda belum bisa mencatat tangkapan karena:',
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                    SizedBox(height: 12),
+                    _buildInfoRow(Icons.close, 'Belum ada trip aktif', Colors.red),
+                    SizedBox(height: 8),
+                    _buildInfoRow(Icons.info_outline, 'Status trip harus "Berlayar" atau "Selesai"', Colors.orange),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.lightbulb_outline, color: Colors.blue.shade700, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Mulai trip terlebih dahulu untuk mencatat hasil tangkapan',
+                              style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Mengerti', style: TextStyle(fontSize: 16)),
+                  ),
+                ],
+              ),
+            );
+          }
+          return;
+        }
+        
+        // Prioritas: 1. Berlayar, 2. Selesai, 3. Terbaru
+        myTrips.sort((a, b) {
+          final statusA = a['status']?.toLowerCase() ?? '';
+          final statusB = b['status']?.toLowerCase() ?? '';
+          
+          if (statusA == 'berlayar') return -1;
+          if (statusB == 'berlayar') return 1;
+          if (statusA == 'selesai') return -1;
+          if (statusB == 'selesai') return 1;
+          
+          return (b['id'] ?? 0).compareTo(a['id'] ?? 0);
+        });
+        
+        final selectedTrip = myTrips.first;
+        final tripId = selectedTrip['id'];
+        
+        if (mounted) {
+          // Gunakan named route dengan tripId
+          Navigator.pushNamed(
+            context,
+            AppRoutes.createCatch,
+            arguments: {'tripId': tripId},
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error handling create catch: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memeriksa status trip'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildInfoRow(IconData icon, String text, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+          ),
+        ),
+      ],
+    );
   }
 }

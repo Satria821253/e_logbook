@@ -61,6 +61,11 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDq8iGgIDkAV8XgKDCsvgNuPcViWbDhbvA"/>
         
+        <!-- FCM Notification Channel -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="e_logbook_channel" />
+        
         <!-- Notification receivers -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
