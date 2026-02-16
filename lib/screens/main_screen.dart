@@ -951,8 +951,6 @@ class _MainScreenState extends State<MainScreen> {
     final iconSize = screenWidth < 800 ? 13.0 : 14.0;
     final fontSize = screenWidth < 800 ? 10.0 : 11.0;
     
-    print('🔧 Building sidebar item: $label, selected: $isSelected, right margin: $rightMargin');
-    
     return Padding(
       padding: EdgeInsets.only(
         left: 12,
@@ -980,10 +978,7 @@ class _MainScreenState extends State<MainScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: InkWell(
-              onTap: () {
-                print('🖱️ Sidebar item clicked: $label');
-                navProvider.setIndex(index);
-              },
+              onTap: () => navProvider.setIndex(index),
               splashColor: const Color(0xFF1B4F9C).withOpacity(0.1),
               highlightColor: const Color(0xFF1B4F9C).withOpacity(0.05),
               child: Container(
@@ -1020,8 +1015,6 @@ class _MainScreenState extends State<MainScreen> {
     final rightMargin = screenWidth < 800 ? 20.0 : 24.0;
     final iconSize = screenWidth < 800 ? 13.0 : 14.0;
     final fontSize = screenWidth < 800 ? 10.0 : 11.0;
-    
-    print('🔧 Building action item: $label with right margin: $rightMargin');
     return Padding(
       padding: EdgeInsets.only(
         left: 12,
@@ -1042,10 +1035,7 @@ class _MainScreenState extends State<MainScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: InkWell(
-              onTap: () {
-                print('🖱️ Action item clicked: $label');
-                onTap();
-              },
+              onTap: onTap,
               splashColor: isEmergency ? Colors.red.withOpacity(0.2) : const Color(0xFF1B4F9C).withOpacity(0.1),
               highlightColor: isEmergency ? Colors.red.withOpacity(0.1) : const Color(0xFF1B4F9C).withOpacity(0.05),
               child: Container(
@@ -1165,50 +1155,8 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
   void _handleTripPreparation(BuildContext context) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-      int? currentUserId;
-      
-      if (userDataString != null) {
-        final userData = json.decode(userDataString);
-        currentUserId = userData['id'];
-      }
-      
-      if (currentUserId == null) return;
-      
-      final response = await TripService.getAllTrips();
-      if (response['success'] == true && response['data'] != null) {
-        final allTrips = List<Map<String, dynamic>>.from(response['data']);
-        
-        final activeTrip = allTrips.firstWhere(
-          (trip) {
-            final nahkodaId = trip['nahkodaId'];
-            final status = trip['status']?.toLowerCase();
-            return nahkodaId == currentUserId && 
-                   (status == 'berlayar' || status == 'sedang_melaut');
-          },
-          orElse: () => {},
-        );
-        
-        if (activeTrip.isNotEmpty && mounted) {
-          // Langsung ke tracking jika ada trip aktif
-          Navigator.pushNamed(context, '/active-tracking', arguments: {
-            'tripId': activeTrip['id'],
-            'lat': 0.0,
-            'lng': 0.0,
-          });
-        } else if (mounted) {
-          // Ke jadwal tugas jika belum ada trip aktif
-          NahkodaRoutes.navigateToMySchedules(context);
-        }
-      }
-    } catch (e) {
-      print('❌ Error handling trip preparation: $e');
-      if (mounted) {
-        NahkodaRoutes.navigateToMySchedules(context);
-      }
-    }
+    // Selalu redirect ke MySchedules untuk handle trip dengan benar
+    NahkodaRoutes.navigateToMySchedules(context);
   }
 
   void _handleCreateCatch(BuildContext context) async {

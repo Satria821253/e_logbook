@@ -9,6 +9,7 @@ import '../../services/api/vessel_service.dart';
 import '../../services/nitification/local_notification_service.dart';
 import '../tracking/active_tracking_screen.dart';
 import '../../utils/auth_helper.dart';
+import '../../constants/harbor_coordinates.dart';
 
 class MySchedulesScreen extends StatefulWidget {
   const MySchedulesScreen({Key? key}) : super(key: key);
@@ -544,6 +545,11 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     final nahkoda = tripData['nahkoda'] ?? {};
     final areaTangkap = tripData['areaTangkap'] ?? {};
 
+    print('🔍 [NAVIGATE] DEBUG tripData keys: ${tripData.keys}');
+    print('🔍 [NAVIGATE] DEBUG kapal: $kapal');
+    print('🔍 [NAVIGATE] DEBUG nahkoda: $nahkoda');
+    print('🔍 [NAVIGATE] DEBUG areaTangkap: $areaTangkap');
+
     // Hitung total BBM dan Es dengan null safety
     double totalFuel = 0.0;
     double totalIce = 0.0;
@@ -589,28 +595,48 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       estimatedReturnDate = null;
     }
 
-    // Koordinat pelabuhan dengan null safety
-    Map<String, double> harborCoordinates;
+    // Koordinat pelabuhan - coba dari berbagai sumber
+    Map<String, double>? harborCoordinates;
     try {
-      final lat = areaTangkap['latitude'];
-      final lng = areaTangkap['longitude'];
+      // Prioritas 1: Dari areaTangkap
+      var lat = areaTangkap['latitude'];
+      var lng = areaTangkap['longitude'];
       
-      if (lat != null && lng != null) {
-        harborCoordinates = {
-          'lat': (lat is num) ? lat.toDouble() : double.parse(lat.toString()),
-          'lng': (lng is num) ? lng.toDouble() : double.parse(lng.toString()),
-        };
-      } else {
-        harborCoordinates = {
-          'lat': -6.1075,
-          'lng': 106.8975,
-        };
+      // Prioritas 2: Dari tripData langsung
+      if (lat == null || lng == null) {
+        lat = tripData['latitude'];
+        lng = tripData['longitude'];
       }
+      
+      // Prioritas 3: Dari harbor_coordinates constants berdasarkan nama pelabuhan
+      if (lat == null || lng == null) {
+        final harborName = tripData['pelabuhanAsal'] ?? areaTangkap['nama'];
+        if (harborName != null && harborName.toString().isNotEmpty) {
+          print('🔍 [NAVIGATE] Trying to get coordinates for harbor: $harborName');
+          final coords = getHarborCoordinates(harborName.toString());
+          lat = coords['lat'];
+          lng = coords['lng'];
+          print('✅ [NAVIGATE] Found coordinates from constants: $coords');
+        }
+      }
+      
+      // Prioritas 4: Fallback ke Jakarta jika masih null
+      if (lat == null || lng == null) {
+        print('⚠️ [NAVIGATE] No coordinates found, using default Jakarta');
+        lat = -6.1075;
+        lng = 106.7975;
+      }
+      
+      harborCoordinates = {
+        'lat': (lat is num) ? lat.toDouble() : double.parse(lat.toString()),
+        'lng': (lng is num) ? lng.toDouble() : double.parse(lng.toString()),
+      };
+      print('✅ [NAVIGATE] Final harbor coordinates: $harborCoordinates');
     } catch (e) {
-      print('⚠️ [NAVIGATE] Error parsing coordinates: $e, using default');
+      print('⚠️ [NAVIGATE] Error parsing coordinates: $e, using default Jakarta');
       harborCoordinates = {
         'lat': -6.1075,
-        'lng': 106.8975,
+        'lng': 106.7975,
       };
     }
 
@@ -638,22 +664,22 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
 
     print('🚀 [NAVIGATE] Navigating to ActiveTrackingScreen...');
     
-    // UPDATE: Ubah status trip menjadi 'berlayar' sebelum navigasi
-    try {
-      print('📡 [NAVIGATE] Updating trip status to BERLAYAR...');
-      final updateResponse = await TripService.updateTripStatus(
-        tripData['id'],
-        'berlayar',
-      );
-      
-      if (updateResponse['success'] == true) {
-        print('✅ [NAVIGATE] Trip status updated to BERLAYAR');
-      } else {
-        print('⚠️ [NAVIGATE] Failed to update trip status, continuing anyway');
-      }
-    } catch (e) {
-      print('⚠️ [NAVIGATE] Error updating trip status: $e, continuing anyway');
-    }
+    // Skip update status - akan dihandle oleh backend saat tracking dimulai
+    // try {
+    //   print('📡 [NAVIGATE] Updating trip status to BERLAYAR...');
+    //   final updateResponse = await TripService.updateTripStatus(
+    //     tripData['id'],
+    //     'berlayar',
+    //   );
+    //   
+    //   if (updateResponse['success'] == true) {
+    //     print('✅ [NAVIGATE] Trip status updated to BERLAYAR');
+    //   } else {
+    //     print('⚠️ [NAVIGATE] Failed to update trip status, continuing anyway');
+    //   }
+    // } catch (e) {
+    //   print('⚠️ [NAVIGATE] Error updating trip status: $e, continuing anyway');
+    // }
     
     try {
       // Use push with fullscreenDialog to prevent parent rebuild

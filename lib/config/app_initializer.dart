@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
+import 'package:e_logbook/services/api/iot_service.dart';
 import 'package:e_logbook/services/local/offline_sync_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:e_logbook/services/local/crash_reporter.dart';
@@ -23,11 +24,16 @@ class AppInitializer {
         throw Exception('API Key Gemini belum dikonfigurasi');
       }
       
+      debugPrint('✅ Gemini API Key: ${ApiConfig.geminiApiKey.substring(0, 10)}...');
+      debugPrint('✅ Gemini Model: ${ApiConfig.geminiModel}');
+      debugPrint('✅ Gemini Base URL: ${ApiConfig.geminiBaseUrl}');
+      
       // Initialize notification service
       await LocalNotificationService.initialize();
       
       await _cleanupCache();
       AuthService.init();
+      IoTService.init();
       await initializeDateFormatting('id_ID', null);
       _startBackgroundServices();
       
