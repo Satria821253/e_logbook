@@ -8,6 +8,7 @@ import '../../services/api/trip_service.dart';
 import '../../services/api/vessel_service.dart';
 import '../../services/nitification/local_notification_service.dart';
 import '../tracking/active_tracking_screen.dart';
+import '../../utils/auth_helper.dart';
 
 class MySchedulesScreen extends StatefulWidget {
   const MySchedulesScreen({Key? key}) : super(key: key);
@@ -276,6 +277,13 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       }
     } catch (e) {
       print('❌ [MySchedules] Error loading schedules: $e');
+      
+      // Check if token expired
+      if (AuthHelper.isTokenExpiredError(e) && mounted) {
+        await AuthHelper.handleTokenExpired(context);
+        return;
+      }
+      
       if (!mounted) return;
       setState(() {
         _schedules = [];
