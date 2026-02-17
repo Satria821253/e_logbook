@@ -5,6 +5,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
 import 'package:e_logbook/services/api/iot_service.dart';
+import 'package:e_logbook/services/api/dashboard_service.dart';
+import 'package:e_logbook/services/api/catch_service.dart';
 import 'package:e_logbook/services/local/offline_sync_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:e_logbook/services/local/crash_reporter.dart';
@@ -58,6 +60,8 @@ class AppInitializer {
       await _cleanupCache();
       AuthService.init();
       IoTService.init();
+      DashboardService.init();
+      CatchService.init();
       await initializeDateFormatting('id_ID', null);
       _startBackgroundServices();
       

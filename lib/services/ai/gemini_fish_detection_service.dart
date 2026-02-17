@@ -64,96 +64,60 @@ class GeminiFishDetectionService {
       final base64SizeKB = (base64Image.length / 1024).toStringAsFixed(2);
       debugPrint('🔐 Base64 size: ${base64SizeKB}KB');
 
-      // PROMPT OPTIMASI TINGGI - FOKUS PEMBEDAAN IKAN MIRIP
+      // PROMPT SEDERHANA - FOKUS CIRI VISUAL JELAS
       final String prompt = """
-Anda adalah ahli identifikasi ikan laut Indonesia dengan keahlian khusus membedakan spesies yang mirip.
+Anda ahli identifikasi ikan Indonesia. PERHATIKAN DENGAN TELITI!
 
-🐟 PERBEDAAN KRITIS IKAN YANG SERING TERTUKAR:
+🔴 PERBEDAAN KRITIS KEMBUNG vs SELAR:
 
-1. TONGKOL vs CAKALANG vs TUNA:
-   - TONGKOL (15-30cm): Tubuh PENDEK & BULAT seperti torpedo, corak "batik" gelap di punggung, perut putih bersih, TIDAK ada gigi tajam
-   - CAKALANG (25-40cm): Tubuh torpedo sedang, 4-6 GARIS HORIZONTAL GELAP di perut/samping bawah, punggung biru gelap
-   - TUNA (40-80cm+): Tubuh BESAR torpedo, sirip kuning cerah, daging merah tua, tidak ada garis horizontal
-   - TENGGIRI (30-60cm): Tubuh SANGAT PANJANG & PIPIH seperti cerutu, GIGI TAJAM BESAR terlihat jelas, garis vertikal tipis samar
+**KEMBUNG** (12-20cm):
+- Tubuh OVAL LEBAR gemuk
+- Sisik BESAR terlihat jelas
+- Warna perak mengkilap
+- ❌ TIDAK ADA GARIS KUNING di samping tubuh
+- Jika TIDAK ada garis kuning = PASTI KEMBUNG
 
-2. KEMBUNG vs LAYANG vs SELAR:
-   - KEMBUNG (12-20cm): Tubuh pipih OVAL LEBAR, perak mengkilap, mata besar, sisik besar terlihat jelas, TIDAK ada garis kuning, bentuk lebih gemuk
-   - LAYANG (10-18cm): Tubuh ramping MEMANJANG LANGSING, ekor bercabang SANGAT DALAM (seperti gunting), mata sangat besar, bentuk torpedo kecil
-   - SELAR (15-25cm): Mirip kembung tapi ada GARIS KUNING TEGAS di samping tubuh dari kepala ke ekor
+**SELAR** (15-25cm):
+- Mirip kembung
+- ✅ ADA GARIS KUNING TEGAS di samping dari kepala ke ekor
+- Jika ADA garis kuning = PASTI SELAR
 
-3. KAKAP vs KERAPU:
-   - KAKAP (25-50cm): Warna merah/pink solid, tubuh ramping, mulut besar runcing
-   - KERAPU (30-60cm): Tubuh tebal gemuk, POLA BELANG-BELANG/BINTIK coklat/hijau, mulut sangat besar
+🔍 IKAN LAIN:
 
-IDENTIFIKASI BERDASARKAN CIRI FISIK & UKURAN STANDAR:
-- IKAN TONGKOL: Ukuran 15-30cm, tubuh torpedo PENDEK dan BULAT (seperti peluru), corak "batik" atau garis miring gelap di punggung belakang, perut putih bersih, TIDAK memiliki gigi tajam panjang
-- IKAN TENGGIRI: Ukuran 30-60cm, tubuh sangat PANJANG dan PIPIH ke samping (seperti cerutu), memiliki GIGI tajam yang terlihat jelas (predator), garis-garis vertikal tipis samar di samping tubuh, warna abu-abu keperakan
-- IKAN CAKALANG: Ukuran 25-40cm, tubuh torpedo, 4-6 garis horizontal gelap TEGAS di perut/samping bawah, punggung biru gelap
-- IKAN TUNA: Ukuran 40-80cm+, tubuh besar torpedo, sirip kuning cerah, daging merah tua, tidak ada garis
-- IKAN KEMBUNG: Ukuran 12-20cm, tubuh pipih OVAL LEBAR seperti daun, perak mengkilap, mata besar, sisik besar terlihat jelas, TIDAK ada garis kuning, bentuk gemuk
-- IKAN LAYANG: Ukuran 10-18cm, tubuh ramping MEMANJANG LANGSING seperti torpedo kecil, ekor bercabang SANGAT DALAM (seperti gunting terbuka), mata sangat besar, lebih kurus dari kembung
-- IKAN SELAR: Ukuran 15-25cm, mirip kembung tapi ada GARIS KUNING TEGAS di samping dari kepala ke ekor
-- IKAN KAKAP: Ukuran 25-50cm, warna merah/pink, mulut besar
-- IKAN KERAPU: Ukuran 30-60cm, tubuh tebal, mulut besar, warna belang-belang
-- IKAN KUWE: Ukuran 40-80cm, tubuh tinggi pipih, warna keperakan
-- IKAN BANDENG: Ukuran 20-35cm, perak mengkilap, mulut kecil, tubuh memanjang
-- IKAN BAWAL: Ukuran 15-30cm, pipih bulat, perak, bentuk oval
-- IKAN BARONANG: Ukuran 20-35cm, tubuh pipih, warna kuning/coklat, duri beracun
-- CUMI-CUMI: Ukuran 15-40cm (termasuk tentakel), tubuh lunak, tentakel, mata besar
-- UDANG: Ukuran 8-20cm, tubuh melengkung, antena panjang, kaki renang
+**LAYANG** (10-18cm):
+- Tubuh LANGSING memanjang (bukan oval)
+- Ekor bercabang SANGAT DALAM
+- Lebih KURUS dari kembung
 
-PERBEDAAN KRITIS TONGKOL vs TENGGIRI:
-- TONGKOL: Tubuh pendek bulat seperti peluru, corak batik di punggung, gigi kecil, ukuran 15-30cm
-- TENGGIRI: Tubuh panjang pipih seperti cerutu, garis vertikal tipis, GIGI TAJAM BESAR, ukuran 30-60cm
-- UKURAN: Jika ikan terlihat sangat panjang (>35cm), kemungkinan besar TENGGIRI
-- GIGI: Jika terlihat gigi tajam besar = TENGGIRI, gigi kecil = TONGKOL
+**TONGKOL** (15-30cm):
+- Tubuh torpedo BULAT
+- Corak gelap di punggung
+- Perut putih
 
-PERBEDAAN KRITIS CAKALANG vs TONGKOL:
-- CAKALANG: 4-6 GARIS HORIZONTAL GELAP TEGAS di perut/samping bawah
-- TONGKOL: Corak "batik" atau garis MIRING di punggung, perut putih bersih
+**TENGGIRI** (30-60cm):
+- Tubuh PANJANG seperti cerutu
+- GIGI TAJAM terlihat
 
-PERBEDAAN KRITIS KEMBUNG vs LAYANG:
-- KEMBUNG: Tubuh OVAL LEBAR seperti daun, gemuk, sisik besar terlihat, ekor bercabang sedang
-- LAYANG: Tubuh MEMANJANG LANGSING seperti torpedo, kurus, ekor bercabang SANGAT DALAM seperti gunting
-- BENTUK: Jika ikan terlihat gemuk oval = KEMBUNG, jika langsing memanjang = LAYANG
-- EKOR: Ekor bercabang sangat dalam (>45°) = LAYANG, bercabang sedang = KEMBUNG
+**CAKALANG** (25-40cm):
+- 4-6 GARIS HORIZONTAL di perut
 
-PENTING - Format fishType:
-- Tongkol, Cakalang, Tuna, Tenggiri: "Ikan Pelagis Besar"
-- Kembung, Layang, Selar, Lemuru: "Ikan Pelagis Kecil"
-- Kakap, Kerapu, Kuwe, Baronang: "Ikan Karang"
-- Bandeng: "Ikan Air Payau"
-- Bawal: "Ikan Laut"
-- Cumi-cumi: "Moluska"
-- Udang: "Krustasea"
+⚠️ INSTRUKSI PENTING:
+1. Lihat apakah ada GARIS KUNING di samping tubuh
+2. Jika ADA garis kuning = SELAR
+3. Jika TIDAK ada garis kuning + tubuh oval gemuk = KEMBUNG
+4. Jangan asal tebak!
 
-ESTIMASI TINGGI/PANJANG BERDASARKAN PROPORSI TUBUH:
-- Perhatikan proporsi kepala terhadap tubuh (kepala ikan umumnya 1/4-1/5 panjang total)
-- Gunakan objek referensi jika ada (tangan manusia ~18-20cm)
-- Bandingkan dengan ukuran standar species yang teridentifikasi
-- Untuk ikan pipih (bawal, pari): ukur panjang terpanjang
-- Untuk cumi-cumi: ukur dari ujung tubuh ke ujung tentakel
-
-ESTIMASI BERAT BERDASARKAN UKURAN:
-- Tongkol (15-30cm): 0.2-1.0kg per ekor
-- Cakalang (25-40cm): 0.5-2.0kg per ekor
-- Tuna (40-80cm): 2.0-15.0kg per ekor
-- Kembung/Layang (10-20cm): 0.1-0.4kg per ekor
-- Kakap/Kerapu (25-50cm): 0.8-4.0kg per ekor
-- Cumi-cumi (15-40cm): 0.2-1.2kg per ekor
-- Udang (8-20cm): 0.05-0.3kg per ekor
-
-Jawab HANYA dengan JSON valid (tanpa markdown, tanpa backticks):
+Jawab HANYA JSON (tanpa markdown):
 {
-  "fishName": "string (nama Indonesia SPESIFIK, contoh: Ikan Kembung, Ikan Layang, Ikan Tongkol)",
-  "fishType": "string (kategori dari daftar di atas)",
-  "condition": "string (Segar/Cukup Segar/Kurang Segar)",
-  "estimatedLength": number,
-  "estimatedWeight": number,
-  "estimatedQuantity": number,
-  "confidence": number,
-  "freshness": "string (deskripsi kesegaran)",
-  "notes": "string (WAJIB jelaskan ciri khas yang membedakan dari ikan mirip. Contoh untuk Kembung: 'Teridentifikasi sebagai Kembung karena tubuh oval lebar gemuk dengan sisik besar, bukan Layang yang lebih langsing dengan ekor bercabang sangat dalam'. Contoh untuk Layang: 'Teridentifikasi sebagai Layang karena tubuh langsing memanjang dengan ekor bercabang sangat dalam seperti gunting, bukan Kembung yang lebih gemuk oval')"
+  "fishName": "Ikan [Nama]",
+  "fishType": "Ikan Pelagis Kecil",
+  "condition": "Segar",
+  "estimatedLength": 15,
+  "estimatedWeight": 0.2,
+  "estimatedQuantity": 1,
+  "confidence": 0.9,
+  "freshness": "Segar",
+  "notes": "Ciri khas: [jelaskan apa yang terlihat]"
 }
 """;
 
@@ -171,10 +135,10 @@ Jawab HANYA dengan JSON valid (tanpa markdown, tanpa backticks):
           },
         ],
         "generationConfig": {
-          "temperature": 0.4,  // Lower = more consistent
-          "topK": 32,
-          "topP": 0.8,
-          "maxOutputTokens": 2048,
+          "temperature": 0.2,  // Lower = more consistent
+          "topK": 20,
+          "topP": 0.7,
+          "maxOutputTokens": 1024,
         },
       };
       
@@ -206,10 +170,14 @@ Jawab HANYA dengan JSON valid (tanpa markdown, tanpa backticks):
         }
         
         debugPrint('📝 AI Response length: ${generatedText.length} chars');
-        debugPrint('📄 AI Response preview: ${generatedText.substring(0, generatedText.length > 200 ? 200 : generatedText.length)}...');
+        debugPrint('📄 FULL AI Response:');
+        debugPrint(generatedText);
+        debugPrint('=' * 60);
 
         // Extract JSON dengan lebih aman
         String jsonText = generatedText.trim();
+        
+        // Remove markdown code blocks
         if (jsonText.contains('```')) {
           final regExp = RegExp(r'```(?:json)?([\s\S]*?)```');
           final match = regExp.firstMatch(jsonText);
@@ -217,6 +185,13 @@ Jawab HANYA dengan JSON valid (tanpa markdown, tanpa backticks):
             jsonText = match.group(1)!.trim();
           }
         }
+        
+        // Sanitize JSON - fix unterminated strings
+        jsonText = _sanitizeJson(jsonText);
+        
+        debugPrint('🔧 Sanitized JSON:');
+        debugPrint(jsonText);
+        debugPrint('=' * 60);
 
         final Map<String, dynamic> fishData = json.decode(jsonText);
         debugPrint('✅ JSON parsed successfully');
@@ -335,6 +310,84 @@ Jawab HANYA dengan JSON valid (tanpa markdown, tanpa backticks):
       debugPrint('========== GEMINI AI DETECTION ERROR ==========\n');
       rethrow;
     }
+  }
+
+  static String _sanitizeJson(String jsonText) {
+    // Remove newlines and carriage returns
+    jsonText = jsonText.replaceAll('\n', ' ');
+    jsonText = jsonText.replaceAll('\r', '');
+    jsonText = jsonText.trim();
+    
+    // Check if JSON is complete
+    int openBraces = '{'.allMatches(jsonText).length;
+    int closeBraces = '}'.allMatches(jsonText).length;
+    
+    debugPrint('🔍 JSON validation: { count=$openBraces, } count=$closeBraces');
+    
+    // If truncated, try to complete it
+    if (openBraces > closeBraces) {
+      debugPrint('⚠️ JSON truncated, attempting to fix...');
+      
+      // Find last complete field
+      int lastComma = jsonText.lastIndexOf(',');
+      int lastColon = jsonText.lastIndexOf(':');
+      
+      // If there's an incomplete field after last comma
+      if (lastColon > lastComma) {
+        // Find the field name
+        int fieldStart = jsonText.lastIndexOf('"', lastColon - 1);
+        if (fieldStart > 0) {
+          int fieldNameStart = jsonText.lastIndexOf('"', fieldStart - 1);
+          String fieldName = jsonText.substring(fieldNameStart + 1, fieldStart);
+          debugPrint('⚠️ Incomplete field: $fieldName');
+          
+          // Check if value is started but not closed
+          String afterColon = jsonText.substring(lastColon + 1).trim();
+          if (afterColon.startsWith('"')) {
+            // String value not closed, close it
+            jsonText = jsonText.substring(0, lastColon) + ': ""';
+            debugPrint('✅ Removed incomplete string field');
+          } else {
+            // Number or other value, remove the incomplete field
+            jsonText = jsonText.substring(0, fieldNameStart);
+            debugPrint('✅ Removed incomplete field');
+          }
+        }
+      }
+      
+      // Remove trailing comma if exists
+      jsonText = jsonText.trimRight();
+      if (jsonText.endsWith(',')) {
+        jsonText = jsonText.substring(0, jsonText.length - 1);
+      }
+      
+      // Close all open braces
+      while (openBraces > closeBraces) {
+        jsonText += '}';
+        closeBraces++;
+      }
+      
+      debugPrint('✅ JSON fixed: $jsonText');
+    }
+    
+    // Escape internal quotes in string values
+    final fieldRegex = RegExp(r'"(\w+)"\s*:\s*"([^"]*?)"');
+    jsonText = fieldRegex.allMatches(jsonText).fold(jsonText, (text, match) {
+      String fieldName = match.group(1) ?? '';
+      String value = match.group(2) ?? '';
+      // Only escape if there are unescaped quotes
+      if (value.contains('"') && !value.contains('\\"')) {
+        value = value.replaceAll('"', '\\"');
+        return text.replaceRange(
+          match.start,
+          match.end,
+          '"$fieldName": "$value"',
+        );
+      }
+      return text;
+    });
+    
+    return jsonText;
   }
 
   static double _validateAndNormalizeWeight(

@@ -6,10 +6,12 @@ import 'package:e_logbook/screens/settings/change_password_screen.dart';
 import 'package:e_logbook/screens/help_screen.dart';
 import 'package:e_logbook/screens/notification_screen.dart';
 import 'package:e_logbook/services/api/auth_service.dart';
+import 'package:e_logbook/services/api/dashboard_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:e_logbook/provider/user_provider.dart';
 import 'package:e_logbook/provider/navigation_provider.dart';
 import 'package:e_logbook/provider/notification_provider.dart';
+import 'package:e_logbook/provider/catch_provider.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:e_logbook/utils/profile_photo_cache.dart';
@@ -27,6 +29,9 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with WidgetsBindingObserver {
   String? _cachedPhotoPath;
+  int _myTrips = 0;
+  int _activeTrips = 0;
+  bool _isLoadingDashboard = true;
 
   void _onProfileUpdate() {
     print('\n🔔 [PROFILE] _onProfileUpdate called, mounted: $mounted');
@@ -99,10 +104,17 @@ class _ProfileScreenState extends State<ProfileScreen>
 
       if (mounted) {
         final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final catchProvider = Provider.of<CatchProvider>(context, listen: false);
 
         // Sync from API to get fresh data
         await userProvider.syncProfileFromAPI();
         print('✅ Profile synced from API');
+
+        // Fetch dashboard data
+        await _loadDashboardData();
+
+        // Fetch catch data untuk hitung total tangkapan
+        await catchProvider.fetchCatches();
 
         // Cache photo jika ada dan berbeda dari yang sekarang
         final photoUrl = userProvider.user?.profilePicture;
@@ -137,6 +149,34 @@ class _ProfileScreenState extends State<ProfileScreen>
       }
     } catch (e) {
       print('❌ Error loading profile: $e');
+    }
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      setState(() => _isLoadingDashboard = true);
+      
+      debugPrint('🔍 [Profile] Loading dashboard data...');
+      final response = await DashboardService.getDashboard();
+      
+      if (response['success'] == true && mounted) {
+        final data = response['data'];
+        setState(() {
+          _myTrips = data['myTrips'] ?? 0;
+          _activeTrips = data['activeTrips'] ?? 0;
+          _isLoadingDashboard = false;
+        });
+        
+        debugPrint('✅ [Profile] Dashboard loaded:');
+        debugPrint('   My Trips: $_myTrips');
+        debugPrint('   Active Trips: $_activeTrips');
+      } else {
+        setState(() => _isLoadingDashboard = false);
+        debugPrint('❌ [Profile] Dashboard load failed: ${response['message']}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading dashboard: $e');
+      if (mounted) setState(() => _isLoadingDashboard = false);
     }
   }
 
@@ -571,7 +611,27 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildStatsCard() {
     final isTablet = ResponsiveHelper.isTablet(context);
-    print('📊 [STATS] Building Stats Card - IsTablet: $isTablet');
+    final catchProvider = Provider.of<CatchProvider>(context);
+    
+    // Hitung total tangkapan dari catches
+    final totalWeight = catchProvider.catches.fold<double>(
+      0,
+      (sum, catch_) => sum + catch_.weight,
+    );
+    
+    // Hitung pengalaman (tahun sejak trip pertama)
+    int experience = 0;
+    if (catchProvider.catches.isNotEmpty) {
+      final oldestTrip = catchProvider.catches.reduce(
+        (a, b) => a.departureDate.isBefore(b.departureDate) ? a : b,
+      );
+      experience = DateTime.now().year - oldestTrip.departureDate.year;
+    }
+
+    debugPrint('📊 [Profile Stats]:');
+    debugPrint('   Total Trips: $_myTrips');
+    debugPrint('   Total Weight: ${totalWeight.toStringAsFixed(1)} kg');
+    debugPrint('   Experience: $experience years');
 
     return Padding(
       padding: isTablet
@@ -601,24 +661,40 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ],
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildStatItem('Total Trip', '145', Icons.directions_boat_rounded),
-            Container(
-              width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
-              height: ResponsiveHelper.height(context, mobile: 50, tablet: 60),
-              color: Colors.grey[300],
-            ),
-            _buildStatItem('Total Tangkapan', '1.2 Ton', Icons.scale_rounded),
-            Container(
-              width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
-              height: ResponsiveHelper.height(context, mobile: 50, tablet: 60),
-              color: Colors.grey[300],
-            ),
-            _buildStatItem('Pengalaman', '8 Tahun', Icons.star_rounded),
-          ],
-        ),
+        child: _isLoadingDashboard
+            ? Center(child: CircularProgressIndicator())
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem(
+                    'Total Trip',
+                    '$_myTrips',
+                    Icons.directions_boat_rounded,
+                  ),
+                  Container(
+                    width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
+                    height: ResponsiveHelper.height(context, mobile: 50, tablet: 60),
+                    color: Colors.grey[300],
+                  ),
+                  _buildStatItem(
+                    'Total Tangkapan',
+                    totalWeight >= 1000
+                        ? '${(totalWeight / 1000).toStringAsFixed(1)} Ton'
+                        : '${totalWeight.toStringAsFixed(0)} kg',
+                    Icons.scale_rounded,
+                  ),
+                  Container(
+                    width: ResponsiveHelper.width(context, mobile: 1, tablet: 2),
+                    height: ResponsiveHelper.height(context, mobile: 50, tablet: 60),
+                    color: Colors.grey[300],
+                  ),
+                  _buildStatItem(
+                    'Pengalaman',
+                    experience > 0 ? '$experience Tahun' : 'Baru',
+                    Icons.star_rounded,
+                  ),
+                ],
+              ),
       ),
     );
   }

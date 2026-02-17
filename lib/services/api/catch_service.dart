@@ -104,6 +104,7 @@ class CatchService {
         return {'success': false, 'message': 'Token tidak ditemukan'};
       }
 
+      debugPrint('🔍 [CatchService] Fetching catches...');
       final response = await _dio.get(
         '/mobile/catches',
         queryParameters: {
@@ -115,11 +116,26 @@ class CatchService {
         ),
       );
 
+      debugPrint('✅ [CatchService] Response: ${response.statusCode}');
+      debugPrint('📦 [CatchService] Data: ${response.data}');
+
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> catchesData = response.data['data'] ?? [];
-        final List<CatchModel> catches = catchesData
-            .map((json) => CatchModel.fromJson(json))
-            .toList();
+        debugPrint('📊 [CatchService] Found ${catchesData.length} catches');
+        
+        final List<CatchModel> catches = [];
+        for (var json in catchesData) {
+          try {
+            final catch_ = CatchModel.fromJson(json);
+            catches.add(catch_);
+            debugPrint('🐟 [Catch #${catches.length}] ${catch_.fishName} - ${catch_.vesselName} (${catch_.weight}kg)');
+          } catch (e) {
+            debugPrint('⚠️ [CatchService] Error parsing catch: $e');
+            debugPrint('📄 [CatchService] JSON: $json');
+          }
+        }
+        
+        debugPrint('✅ [CatchService] Successfully parsed ${catches.length} catches');
 
         return {
           'success': true,

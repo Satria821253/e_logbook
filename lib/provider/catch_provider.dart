@@ -1,10 +1,15 @@
 import 'package:flutter/foundation.dart';
 import '../models/catch_model.dart';
+import '../services/api/catch_service.dart';
 
 class CatchProvider with ChangeNotifier {
   final List<CatchModel> _catches = [];
+  bool _isLoading = false;
+  String? _error;
 
   List<CatchModel> get catches => [..._catches];
+  bool get isLoading => _isLoading;
+  String? get error => _error;
 
   List<CatchModel> get todayCatches {
     final now = DateTime.now();
@@ -13,6 +18,37 @@ class CatchProvider with ChangeNotifier {
           catch_.departureDate.month == now.month &&
           catch_.departureDate.day == now.day;
     }).toList();
+  }
+
+  // Fetch catches from API
+  Future<void> fetchCatches() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      debugPrint('🔍 [CatchProvider] Fetching catches from API...');
+      final response = await CatchService.getCatches();
+      
+      if (response['success'] == true) {
+        _catches.clear();
+        _catches.addAll(response['data'] as List<CatchModel>);
+        _error = null;
+        
+        debugPrint('✅ [CatchProvider] Loaded ${_catches.length} catches');
+        debugPrint('📊 [CatchProvider] Total weight: ${_catches.fold<double>(0, (sum, c) => sum + c.weight)} kg');
+        debugPrint('📊 [CatchProvider] Total revenue: Rp ${_catches.fold<double>(0, (sum, c) => sum + c.totalRevenue)}');
+      } else {
+        _error = response['message'] ?? 'Gagal mengambil data';
+        debugPrint('❌ [CatchProvider] Error: $_error');
+      }
+    } catch (e) {
+      _error = 'Terjadi kesalahan: $e';
+      debugPrint('❌ CatchProvider fetchCatches error: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   void addCatch(CatchModel catchData) {

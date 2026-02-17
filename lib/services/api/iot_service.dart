@@ -34,7 +34,7 @@ class IoTService {
         return {'success': false, 'message': 'Token tidak ditemukan'};
       }
 
-      debugPrint('\n📡 [IoT] Sending data to IoT...');
+      debugPrint('\n📡 [IoT] Sending data to IoT endpoint...');
       debugPrint('📦 [IoT] Data: $catchData');
 
       final response = await _dio.post(
@@ -47,6 +47,8 @@ class IoTService {
           'condition': catchData['condition'],
           'kapalId': catchData['kapalId'],
           'tripId': catchData['tripId'],
+          'fishing_zone': catchData['fishing_zone'],
+          'location_name': catchData['location_name'],
           'timestamp': DateTime.now().toIso8601String(),
         },
         options: Options(

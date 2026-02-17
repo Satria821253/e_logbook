@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/api_config.dart';
 import 'offline_sync_service.dart';
@@ -214,11 +215,26 @@ class CatchSubmissionService {
       debugPrint('   Path: ${imageFile.path}');
       debugPrint('   Size: ${imageSizeMB}MB');
       
+      // Determine content type based on file extension
+      final extension = imageFile.path.split('.').last.toLowerCase();
+      String contentType = 'image/jpeg'; // default
+      if (extension == 'png') {
+        contentType = 'image/png';
+      } else if (extension == 'jpg' || extension == 'jpeg') {
+        contentType = 'image/jpeg';
+      }
+      
+      debugPrint('   Content-Type: $contentType');
+      
       request.files.add(
-        await http.MultipartFile.fromPath('photo', imageFile.path),
+        await http.MultipartFile.fromPath(
+          'photo',
+          imageFile.path,
+          contentType: http_parser.MediaType.parse(contentType),
+        ),
       );
       
-      debugPrint('✅ Image file added');
+      debugPrint('✅ Image file added with content type: $contentType');
       debugPrint('\n📤 Sending request...');
       debugPrint('   Total fields: ${request.fields.length}');
       debugPrint('   Total files: ${request.files.length}');
@@ -283,10 +299,26 @@ class CatchSubmissionService {
         try {
           final errorData = json.decode(response.body);
           final errorMessage = errorData['message'] ?? 'Unknown error';
+          final errorDetail = errorData['error'] ?? '';
           debugPrint('💬 Server message: $errorMessage');
+          debugPrint('💬 Server error detail: $errorDetail');
+          
+          // Provide user-friendly message based on error
+          String userMessage = errorMessage;
+          
+          if (errorDetail.contains('uploadFile is not a function')) {
+            userMessage = 'Server sedang dalam perbaikan. Silakan coba lagi nanti atau hubungi admin.';
+            debugPrint('⚠️ Backend error: uploadFile function not available');
+          } else if (errorDetail.contains('Only image files allowed')) {
+            userMessage = 'Format file tidak didukung. Gunakan foto JPG atau PNG.';
+          } else if (response.statusCode == 413) {
+            userMessage = 'Ukuran foto terlalu besar. Maksimal 5MB.';
+          } else if (response.statusCode == 401) {
+            userMessage = 'Sesi berakhir. Silakan login kembali.';
+          }
           
           // Throw specific error message
-          throw Exception('Server Error (${response.statusCode}): $errorMessage');
+          throw Exception('Server Error (${response.statusCode}): $userMessage');
         } catch (e) {
           if (e.toString().contains('Server Error')) {
             rethrow;

@@ -1,19 +1,19 @@
 import 'package:e_logbook/widgets/catch_corousel.dart';
 import 'package:e_logbook/widgets/custom_silver_appbar.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:e_logbook/screens/documents/document_popup_helper.dart';
 import 'package:e_logbook/screens/documents/pending_popup_helper.dart';
 import 'package:e_logbook/services/api/document_service.dart';
 import 'package:e_logbook/services/realtime/realtime_update_service.dart';
 import 'package:e_logbook/services/monitoring/schedule_monitoring_service.dart';
 import 'package:flutter/material.dart';
-import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../provider/catch_provider.dart';
 import '../provider/user_provider.dart';
-import '../routes/app_routes.dart';
+import '../provider/navigation_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -77,6 +77,11 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted || _userProvider == null) return;
     
     await _userProvider!.loadUserFromStorage();
+    if (!mounted) return;
+
+    // Fetch catch history
+    final catchProvider = Provider.of<CatchProvider>(context, listen: false);
+    await catchProvider.fetchCatches();
     if (!mounted) return;
 
     if (!_hasShownPopup) {
@@ -223,6 +228,11 @@ class _HomeScreenState extends State<HomeScreen>
       print('❌ [HOME] _checkDocumentCompletion ABORT: not mounted');
       return;
     }
+
+    // Refresh catch data
+    final catchProvider = Provider.of<CatchProvider>(context, listen: false);
+    await catchProvider.fetchCatches();
+    if (!mounted) return;
 
     print('🔍 [HOME] Getting SharedPreferences...');
     final prefs = await SharedPreferences.getInstance();
@@ -739,6 +749,12 @@ class _HomeScreenState extends State<HomeScreen>
         ? 0.0
         : totalWeight / filteredCatches.length;
 
+    debugPrint('📊 [Home Stats ${_isMonthlyView ? "Monthly" : "Yearly"}]:');
+    debugPrint('   Catches: ${filteredCatches.length}');
+    debugPrint('   Total Weight: ${totalWeight.toStringAsFixed(1)} kg');
+    debugPrint('   Total Revenue: Rp ${totalRevenue.toStringAsFixed(0)}');
+    debugPrint('   Average Weight: ${averageWeight.toStringAsFixed(1)} kg');
+
     return Column(
       children: [
         Row(
@@ -1109,6 +1125,8 @@ class _HomeScreenState extends State<HomeScreen>
     final now = DateTime.now();
     List<Map<String, dynamic>> data = [];
 
+    debugPrint('📈 [Chart] Generating monthly data (last 30 days)...');
+
     for (int i = 29; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
       final dayLabel = '${date.day}';
@@ -1126,6 +1144,9 @@ class _HomeScreenState extends State<HomeScreen>
       data.add({'day': dayLabel, 'weight': dayWeight});
     }
 
+    final totalWeight = data.fold<double>(0, (sum, d) => sum + d['weight']);
+    debugPrint('✅ [Chart] Monthly data: ${data.length} days, total weight: ${totalWeight.toStringAsFixed(1)} kg');
+
     return data;
   }
 
@@ -1133,6 +1154,8 @@ class _HomeScreenState extends State<HomeScreen>
     final now = DateTime.now();
     List<Map<String, dynamic>> data = [];
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    debugPrint('📈 [Chart] Generating yearly data (last 12 months)...');
 
     for (int i = 11; i >= 0; i--) {
       // Hitung bulan yang benar dengan mengurangi dari bulan sekarang
@@ -1158,6 +1181,9 @@ class _HomeScreenState extends State<HomeScreen>
 
       data.add({'day': monthLabel, 'weight': monthWeight});
     }
+
+    final totalWeight = data.fold<double>(0, (sum, d) => sum + d['weight']);
+    debugPrint('✅ [Chart] Yearly data: ${data.length} months, total weight: ${totalWeight.toStringAsFixed(1)} kg');
 
     return data;
   }
@@ -1207,10 +1233,8 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             TextButton(
               onPressed: () {
-                NavigationHelper.pushNamedNoTransition(
-                  context,
-                  AppRoutes.history,
-                );
+                // Switch ke tab History (index 1)
+                Provider.of<NavigationProvider>(context, listen: false).setIndex(1);
               },
               child: Text(
                 'Lihat Semua',

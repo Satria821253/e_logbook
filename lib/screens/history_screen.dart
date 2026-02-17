@@ -19,6 +19,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
+    // Fetch catch data when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final catchProvider = Provider.of<CatchProvider>(context, listen: false);
+      catchProvider.fetchCatches();
+    });
   }
 
   // Orientation handling removed - let AndroidManifest handle it
@@ -71,23 +76,54 @@ class _HistoryScreenState extends State<HistoryScreen> {
   // MOBILE LAYOUT
   // ========================================================================
   Widget _buildMobileLayout(CatchProvider catchProvider) {
+    if (catchProvider.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (catchProvider.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            Text(
+              catchProvider.error!,
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => catchProvider.fetchCatches(),
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Builder(
       builder: (context) {
         final width = MediaQuery.of(context).size.width;
         double fs(double size) => size * (width / 390);
         double sp(double value) => value * (width / 390);
 
-        return ListView(
-          padding: EdgeInsets.all(sp(16)),
-          children: [
-            _buildSummaryCardMobile(catchProvider, fs, sp),
-            SizedBox(height: sp(20)),
+        return RefreshIndicator(
+          onRefresh: () => catchProvider.fetchCatches(),
+          child: ListView(
+            padding: EdgeInsets.all(sp(16)),
+            children: [
+              _buildSummaryCardMobile(catchProvider, fs, sp),
+              SizedBox(height: sp(20)),
 
-            if (catchProvider.catches.isEmpty)
-              _buildEmptyStateWithDummy(fs, sp)
-            else
-              ..._buildGroupedCatchesMobile(catchProvider.catches, fs, sp),
-          ],
+              if (catchProvider.catches.isEmpty)
+                _buildEmptyStateWithDummy(fs, sp)
+              else
+                ..._buildGroupedCatchesMobile(catchProvider.catches, fs, sp),
+            ],
+          ),
         );
       },
     );
@@ -100,39 +136,70 @@ class _HistoryScreenState extends State<HistoryScreen> {
     // Check if opened via navigation (fullscreen) or embedded in MainScreen
     final isFullscreen = ModalRoute.of(context)?.settings.name != null;
     
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(30),
-      child: Column(
-        children: [
-          // Back button only for fullscreen tablet
-          if (isFullscreen)
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF1B4F9C)),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Riwayat Tangkapan',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B4F9C),
-                  ),
-                ),
-              ],
-            ),
-          if (isFullscreen) const SizedBox(height: 20),
-          
-          _buildSummaryCardTablet(catchProvider),
-          const SizedBox(height: 20),
+    if (catchProvider.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
-          if (catchProvider.catches.isEmpty)
-            _buildEmptyStateWithDummyTablet()
-          else
-            _buildGroupedCatchesTablet(catchProvider.catches),
-        ],
+    if (catchProvider.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            Text(
+              catchProvider.error!,
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => catchProvider.fetchCatches(),
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return RefreshIndicator(
+      onRefresh: () => catchProvider.fetchCatches(),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          children: [
+            // Back button only for fullscreen tablet
+            if (isFullscreen)
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Color(0xFF1B4F9C)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Riwayat Tangkapan',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B4F9C),
+                    ),
+                  ),
+                ],
+              ),
+            if (isFullscreen) const SizedBox(height: 20),
+            
+            _buildSummaryCardTablet(catchProvider),
+            const SizedBox(height: 20),
+
+            if (catchProvider.catches.isEmpty)
+              _buildEmptyStateWithDummyTablet()
+            else
+              _buildGroupedCatchesTablet(catchProvider.catches),
+          ],
+        ),
       ),
     );
   }
@@ -331,427 +398,73 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   // ========================================================================
-  // EMPTY STATE WITH DUMMY DATA
+  // EMPTY STATE
   // ========================================================================
   Widget _buildEmptyStateWithDummy(
     double Function(double) fs,
     double Function(double) sp,
   ) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(sp(48)),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(sp(16)),
-            border: Border.all(color: Colors.grey[200]!),
+    return Container(
+      padding: EdgeInsets.all(sp(48)),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(sp(16)),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.inbox_outlined, size: fs(80), color: Colors.grey[400]),
+          SizedBox(height: sp(16)),
+          Text(
+            'Belum Ada Riwayat',
+            style: TextStyle(
+              fontSize: fs(18),
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[600],
+            ),
           ),
-          child: Column(
-            children: [
-              Icon(Icons.inbox_outlined, size: fs(80), color: Colors.grey[400]),
-              SizedBox(height: sp(16)),
-              Text(
-                'Belum Ada Riwayat',
-                style: TextStyle(
-                  fontSize: fs(18),
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[600],
-                ),
-              ),
-              SizedBox(height: sp(8)),
-              Text(
-                'Mulai catat tangkapan Anda',
-                style: TextStyle(fontSize: fs(14), color: Colors.grey[500]),
-              ),
-            ],
+          SizedBox(height: sp(8)),
+          Text(
+            'Mulai catat tangkapan Anda',
+            style: TextStyle(fontSize: fs(14), color: Colors.grey[500]),
           ),
-        ),
-        SizedBox(height: sp(24)),
-        _buildDummyDataSection(fs, sp),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildEmptyStateWithDummyTablet() {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(48),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
-          child: Column(
-            children: [
-              Icon(Icons.inbox_outlined, size: 80, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(
-                'Belum Ada Riwayat',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Mulai catat tangkapan Anda',
-                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 32),
-        _buildDummyDataSectionTablet(),
-      ],
-    );
-  }
-
-  // ========================================================================
-  // DUMMY DATA PREVIEW
-  // ========================================================================
-  Widget _buildDummyDataSection(
-    double Function(double) fs,
-    double Function(double) sp,
-  ) {
     return Container(
-      padding: EdgeInsets.all(sp(16)),
+      width: double.infinity,
+      padding: const EdgeInsets.all(48),
       decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(sp(12)),
-        border: Border.all(color: Colors.blue[100]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.blue[700], size: fs(20)),
-              SizedBox(width: sp(8)),
-              Text(
-                'Preview Data Contoh',
-                style: TextStyle(
-                  fontSize: fs(16),
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: sp(12)),
-          Text(
-            'Berikut contoh tampilan riwayat tangkapan Anda nanti:',
-            style: TextStyle(fontSize: fs(13), color: Colors.blue[700]),
-          ),
-          SizedBox(height: sp(16)),
-          ..._buildDummyItems(fs, sp),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDummyDataSectionTablet() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
+        color: Colors.grey[50],
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue[100]!),
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.blue[700], size: 24),
-              const SizedBox(width: 12),
-              Text(
-                'Preview Data Contoh',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+          Icon(Icons.inbox_outlined, size: 80, color: Colors.grey[400]),
+          const SizedBox(height: 16),
           Text(
-            'Berikut contoh tampilan riwayat tangkapan Anda nanti:',
-            style: TextStyle(fontSize: 14, color: Colors.blue[700]),
-          ),
-          const SizedBox(height: 20),
-          _buildDummyItemsTablet(),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildDummyItems(
-    double Function(double) fs,
-    double Function(double) sp,
-  ) {
-    final dummyData = _getDummyData();
-    return dummyData.map((data) => _buildDummyCard(data, fs, sp)).toList();
-  }
-
-  Widget _buildDummyItemsTablet() {
-    final dummyData = _getDummyData();
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 1.3,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: dummyData.length,
-      itemBuilder: (context, index) => _buildDummyCardTablet(dummyData[index]),
-    );
-  }
-
-  Widget _buildDummyCard(
-    Map<String, dynamic> data,
-    double Function(double) fs,
-    double Function(double) sp,
-  ) {
-    return Container(
-      margin: EdgeInsets.only(bottom: sp(12)),
-      padding: EdgeInsets.all(sp(12)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(sp(12)),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: sp(80),
-            height: sp(80),
-            decoration: BoxDecoration(
-              color: Colors.blue[100],
-              borderRadius: BorderRadius.circular(sp(10)),
-            ),
-            child: Icon(Icons.image_outlined, color: Colors.blue[300], size: fs(40)),
-          ),
-          SizedBox(width: sp(12)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['name'],
-                  style: TextStyle(
-                    fontSize: fs(15),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: sp(6)),
-                Row(
-                  children: [
-                    Icon(Icons.scale_rounded, size: fs(13), color: Colors.grey[600]),
-                    SizedBox(width: sp(4)),
-                    Text(
-                      '${data['weight']} kg',
-                      style: TextStyle(fontSize: fs(12), color: Colors.grey[600]),
-                    ),
-                    SizedBox(width: sp(12)),
-                    Icon(Icons.access_time_rounded, size: fs(13), color: Colors.grey[600]),
-                    SizedBox(width: sp(4)),
-                    Text(
-                      data['time'],
-                      style: TextStyle(fontSize: fs(12), color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-                SizedBox(height: sp(4)),
-                Row(
-                  children: [
-                    Icon(Icons.location_on_rounded, size: fs(13), color: Colors.grey[600]),
-                    SizedBox(width: sp(4)),
-                    Expanded(
-                      child: Text(
-                        data['location'],
-                        style: TextStyle(fontSize: fs(12), color: Colors.grey[600]),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            'Belum Ada Riwayat',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[600],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'Rp ${data['revenue']}',
-                style: TextStyle(
-                  fontSize: fs(14),
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1B4F9C),
-                ),
-              ),
-              SizedBox(height: sp(6)),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(4)),
-                decoration: BoxDecoration(
-                  color: _conditionColor(data['condition']).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(sp(6)),
-                ),
-                child: Text(
-                  data['condition'],
-                  style: TextStyle(
-                    fontSize: fs(10),
-                    fontWeight: FontWeight.w600,
-                    color: _conditionColor(data['condition']),
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            'Mulai catat tangkapan Anda',
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDummyCardTablet(Map<String, dynamic> data) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: Colors.blue[100],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.image_outlined, color: Colors.blue[300], size: 35),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data['name'],
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Rp ${data['revenue']}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1B4F9C),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.scale_rounded, size: 13, color: Colors.grey[600]),
-              const SizedBox(width: 4),
-              Text(
-                '${data['weight']} kg',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-              ),
-              const SizedBox(width: 12),
-              Icon(Icons.access_time_rounded, size: 13, color: Colors.grey[600]),
-              const SizedBox(width: 4),
-              Text(
-                data['time'],
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.location_on_rounded, size: 13, color: Colors.grey[600]),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  data['location'],
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: _conditionColor(data['condition']).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                data['condition'],
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: _conditionColor(data['condition']),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  List<Map<String, dynamic>> _getDummyData() {
-    return [
-      {
-        'name': 'Ikan Tuna',
-        'weight': '25.5',
-        'time': '06:00',
-        'location': 'Perairan Utara Jawa',
-        'revenue': '2.5jt',
-        'condition': 'Segar',
-      },
-      {
-        'name': 'Ikan Kakap',
-        'weight': '18.3',
-        'time': '07:30',
-        'location': 'Selat Sunda',
-        'revenue': '1.8jt',
-        'condition': 'Cukup Segar',
-      },
-      {
-        'name': 'Ikan Kembung',
-        'weight': '35.0',
-        'time': '05:15',
-        'location': 'Laut Jawa Tengah',
-        'revenue': '3.2jt',
-        'condition': 'Segar',
-      },
-    ];
-  }
 
   // ========================================================================
   // GROUPED CATCHES - MOBILE

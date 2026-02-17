@@ -168,29 +168,36 @@ class CatchDetailScreen extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(sp(16)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          _buildFinancialItem(fs, sp, 'Pendapatan', 'Rp ${_formatNumber(catchData.totalRevenue)}'),
-          Container(width: sp(1), height: sp(40), color: Colors.white30),
-          _buildFinancialItem(fs, sp, 'Biaya', 'Rp ${_formatNumber(catchData.totalCost)}'),
-          Container(width: sp(1), height: sp(40), color: Colors.white30),
-          _buildFinancialItem(fs, sp, 'Profit', 'Rp ${_formatNumber(catchData.netProfit)}'),
+          _buildFinancialRow(fs, sp, 'Pendapatan', catchData.totalRevenue, Colors.green.shade300),
+          Divider(color: Colors.white30, height: sp(20)),
+          _buildFinancialRow(fs, sp, 'Biaya', catchData.totalCost, Colors.orange.shade300),
+          Divider(color: Colors.white30, height: sp(20)),
+          _buildFinancialRow(fs, sp, 'Profit Bersih', catchData.netProfit, 
+            catchData.netProfit >= 0 ? Colors.green.shade300 : Colors.red.shade300),
         ],
       ),
     );
   }
 
-  Widget _buildFinancialItem(double Function(double) fs, double Function(double) sp, String label, String value) {
-    return Column(
+  Widget _buildFinancialRow(double Function(double) fs, double Function(double) sp, 
+      String label, double value, Color iconColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Colors.white70, fontSize: fs(11))),
-        SizedBox(height: sp(4)),
+        Row(
+          children: [
+            Icon(Icons.circle, color: iconColor, size: fs(8)),
+            SizedBox(width: sp(8)),
+            Text(label, style: TextStyle(color: Colors.white, fontSize: fs(14))),
+          ],
+        ),
         Text(
-          value,
+          'Rp ${_formatNumber(value)}',
           style: TextStyle(
             color: Colors.white,
-            fontSize: fs(13),
+            fontSize: fs(16),
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -223,13 +230,22 @@ class CatchDetailScreen extends StatelessWidget {
               color: const Color(0xFF1B4F9C),
             ),
           ),
-          SizedBox(height: sp(16)),
-          ...items.map(
-            (item) => Padding(
-              padding: EdgeInsets.only(bottom: sp(8)),
-              child: Text(
-                item,
-                style: TextStyle(fontSize: fs(14), color: Colors.black87),
+          SizedBox(height: sp(12)),
+          ...items.asMap().entries.map(
+            (entry) => Padding(
+              padding: EdgeInsets.only(bottom: entry.key < items.length - 1 ? sp(10) : 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.check_circle, size: fs(16), color: Colors.green),
+                  SizedBox(width: sp(8)),
+                  Expanded(
+                    child: Text(
+                      entry.value,
+                      style: TextStyle(fontSize: fs(14), color: Colors.black87, height: 1.4),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -239,33 +255,57 @@ class CatchDetailScreen extends StatelessWidget {
   }
 
   Widget _buildProfitCard(double Function(double) fs, double Function(double) sp) {
+    final isProfit = catchData.netProfit >= 0;
     return Container(
       padding: EdgeInsets.all(sp(20)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: catchData.netProfit >= 0
+          colors: isProfit
               ? [Colors.green, Colors.green.shade700]
               : [Colors.red, Colors.red.shade700],
         ),
         borderRadius: BorderRadius.circular(sp(16)),
+        boxShadow: [
+          BoxShadow(
+            color: (isProfit ? Colors.green : Colors.red).withOpacity(0.3),
+            blurRadius: sp(12),
+            offset: Offset(0, sp(4)),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Keuntungan Bersih', style: TextStyle(color: Colors.white70, fontSize: fs(14))),
-              SizedBox(height: sp(4)),
-              Text('Pendapatan - Total Biaya', style: TextStyle(color: Colors.white60, fontSize: fs(11))),
+              Icon(isProfit ? Icons.trending_up : Icons.trending_down, 
+                color: Colors.white, size: fs(24)),
+              SizedBox(width: sp(8)),
+              Text(
+                'Keuntungan Bersih',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: fs(16),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
+          SizedBox(height: sp(12)),
           Text(
             'Rp ${_formatNumber(catchData.netProfit)}',
             style: TextStyle(
               color: Colors.white,
-              fontSize: fs(24),
+              fontSize: fs(28),
               fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: sp(4)),
+          Text(
+            'Pendapatan - Total Biaya',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: fs(12),
             ),
           ),
         ],

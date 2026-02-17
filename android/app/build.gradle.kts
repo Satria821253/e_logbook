@@ -6,6 +6,9 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Properties
+import java.io.FileInputStream
+
 android {
     namespace = "com.example.e_logbook"
     compileSdk = 36
@@ -31,6 +34,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Load Google Maps API Key from .env
+        val envProperties = Properties()
+        val envFile = rootProject.file("../.env")
+        if (envFile.exists()) {
+            envProperties.load(FileInputStream(envFile))
+        }
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = envProperties.getProperty("GOOGLE_MAPS_API_KEY", "")
     }
 
     buildTypes {
