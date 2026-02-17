@@ -16,6 +16,7 @@ class TrackingMinimizeProvider extends ChangeNotifier {
 
   bool get isMinimized => _isMinimized;
   bool get isTrackingActive => _isTrackingActive;
+  bool get isTracking => _isTrackingActive; // Alias untuk konsistensi
   Map<String, dynamic>? get trackingData => _trackingData;
   Position? get currentPosition => _currentPosition;
   bool get isViolating => _isViolating;

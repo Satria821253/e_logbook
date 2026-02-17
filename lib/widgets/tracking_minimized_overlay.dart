@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:e_logbook/provider/tracking_minimize_provider.dart';
 import 'package:e_logbook/screens/tracking/production_map.dart';
+import 'package:e_logbook/screens/tracking/active_tracking_screen.dart';
+import 'package:e_logbook/screens/main_screen.dart';
 
 class TrackingMinimizedOverlay extends StatefulWidget {
   const TrackingMinimizedOverlay({super.key});
@@ -129,30 +132,51 @@ class _TrackingMinimizedOverlayState extends State<TrackingMinimizedOverlay> wit
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: currentPosition != null && trackingData['harborCoordinates'] != null
-                        ? IgnorePointer(
-                            child: ProductionTrackingMap(
-                              currentPosition: currentPosition,
-                              harborLat: trackingData['harborCoordinates']['lat'],
-                              harborLng: trackingData['harborCoordinates']['lng'],
-                              harborName: trackingData['selectedHarbor'] ?? '',
-                              zoneRadius: trackingData['zoneRadius'] ?? 0.0,
-                              isViolating: provider.isViolating,
-                              selectedCatchZoneName: trackingData['selectedHarbor'] ?? '',
-                              zoneStatus: provider.zoneStatus,
-                              isMinimized: true,
-                            ),
-                          )
-                        : Container(
-                            color: Colors.grey.shade200,
-                            child: const Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2.5),
-                              ),
-                            ),
-                          ),
+                    child: IgnorePointer(
+                      child: () {
+                        // Validasi koordinat harbor
+                        final harborCoords = trackingData['harborCoordinates'];
+                        double harborLat = 0.0;
+                        double harborLng = 0.0;
+                        
+                        if (harborCoords != null) {
+                          harborLat = (harborCoords['latitude'] ?? harborCoords['lat'] ?? 0.0).toDouble();
+                          harborLng = (harborCoords['longitude'] ?? harborCoords['lng'] ?? 0.0).toDouble();
+                          
+                          if (harborLat.abs() > 90) {
+                            final temp = harborLat;
+                            harborLat = harborLng;
+                            harborLng = temp;
+                          }
+                        }
+                        
+                        // Jika currentPosition null, gunakan harbor sebagai default
+                        final position = currentPosition ?? Position(
+                          latitude: harborLat,
+                          longitude: harborLng,
+                          timestamp: DateTime.now(),
+                          accuracy: 0,
+                          altitude: 0,
+                          heading: 0,
+                          speed: 0,
+                          speedAccuracy: 0,
+                          altitudeAccuracy: 0,
+                          headingAccuracy: 0,
+                        );
+                        
+                        return ProductionTrackingMap(
+                          currentPosition: position,
+                          harborLat: harborLat,
+                          harborLng: harborLng,
+                          harborName: trackingData['selectedHarbor'] ?? '',
+                          zoneRadius: (trackingData['zoneRadius'] ?? 50.0).toDouble(),
+                          isViolating: provider.isViolating,
+                          selectedCatchZoneName: trackingData['selectedHarbor'] ?? '',
+                          zoneStatus: provider.zoneStatus,
+                          isMinimized: true,
+                        );
+                      }(),
+                    ),
                   ),
                   if (_showControls)
                     Container(
@@ -168,14 +192,87 @@ class _TrackingMinimizedOverlayState extends State<TrackingMinimizedOverlay> wit
                             child: GestureDetector(
                               onTap: () {
                                 print('❌ [Minimize Widget] Close button tapped');
-                                print('❌ [Minimize Widget] Calling stopTracking()');
-                                provider.stopTracking();
-                                print('❌ [Minimize Widget] stopTracking() completed');
+                                if (provider.navigatorKey?.currentContext != null) {
+                                  showDialog(
+                                    context: provider.navigatorKey!.currentContext!,
+                                    builder: (dialogContext) => AlertDialog(
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      title: Row(
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange.withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(Icons.exit_to_app, color: Colors.orange),
+                                          ),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text('Keluar dari Tracking?', style: TextStyle(fontSize: 18)),
+                                          ),
+                                        ],
+                                      ),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Anda akan keluar dari layar tracking.'),
+                                          SizedBox(height: 12),
+                                          Container(
+                                            padding: EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Tracking tetap berjalan di background. Anda bisa kembali kapan saja.',
+                                                    style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(dialogContext),
+                                          child: Text('Batal'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            print('❌ [Minimize] Close confirmed - tracking continues');
+                                            Navigator.pop(dialogContext);
+                                            
+                                            // Set minimize false agar widget hilang
+                                            provider.maximize();
+                                            
+                                            // Navigate ke MainScreen, tracking tetap jalan
+                                            if (provider.navigatorKey?.currentContext != null) {
+                                              Navigator.of(provider.navigatorKey!.currentContext!).pushAndRemoveUntil(
+                                                MaterialPageRoute(builder: (context) => MainScreen()),
+                                                (route) => false,
+                                              );
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                                          child: Text('Keluar'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: const BoxDecoration(
-                                  color: Colors.red,
+                                  color: Colors.orange,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -190,31 +287,39 @@ class _TrackingMinimizedOverlayState extends State<TrackingMinimizedOverlay> wit
                             child: GestureDetector(
                               onTap: () {
                                 print('\n🔵🔵🔵 [Minimize] MAXIMIZE BUTTON TAPPED');
-                                print('🔵 [Minimize] Hiding controls');
                                 setState(() => _showControls = false);
                                 
-                                // Pop semua screen sampai kembali ke ActiveTrackingScreen
-                                print('🔵 [Minimize] Popping to ActiveTrackingScreen...');
-                                Navigator.of(context).popUntil((route) {
-                                  // Cek apakah route ini adalah ActiveTrackingScreen
-                                  final isActiveTracking = route.settings.name?.contains('ActiveTracking') ?? false;
-                                  if (isActiveTracking) {
-                                    print('🔵 [Minimize] Found ActiveTrackingScreen, stopping pop');
-                                    return true;
-                                  }
-                                  // Cek apakah ini adalah route pertama (untuk menghindari pop semua)
-                                  if (route.isFirst) {
-                                    print('🔵 [Minimize] Reached first route, stopping pop');
-                                    return true;
-                                  }
-                                  print('🔵 [Minimize] Popping route: ${route.settings.name}');
-                                  return false;
-                                });
-                                
-                                // Setelah pop, maximize
+                                // Maximize dulu baru navigate
                                 provider.maximize();
-                                print('🔵 [Minimize] maximize() called - isMinimized now: ${provider.isMinimized}');
-                                print('🔵🔵🔵 [Minimize] Should show ActiveTrackingScreen full view\n');
+                                
+                                // Navigate ke ActiveTrackingScreen dengan data dari provider
+                                final data = trackingData;
+                                // ignore: unnecessary_null_comparison
+                                if (data != null && provider.navigatorKey?.currentState != null) {
+                                  provider.navigatorKey!.currentState!.pushAndRemoveUntil(
+                                    MaterialPageRoute(
+                                      builder: (context) => ActiveTrackingScreen(
+                                        vesselName: data['vesselName'] ?? '',
+                                        vesselNumber: data['vesselNumber'] ?? '',
+                                        captainName: data['captainName'] ?? '',
+                                        crewCount: data['crewCount'] ?? 0,
+                                        selectedHarbor: data['selectedHarbor'] ?? '',
+                                        departureTime: data['departureTime'] ?? DateTime.now(),
+                                        estimatedReturnDate: data['estimatedReturnDate'],
+                                        estimatedDuration: data['estimatedDuration'] ?? 1,
+                                        emergencyContact: data['emergencyContact'] ?? '',
+                                        fuelAmount: (data['fuelAmount'] ?? 0.0).toDouble(),
+                                        iceStorage: (data['iceStorage'] ?? 0.0).toDouble(),
+                                        notes: data['notes'],
+                                        harborCoordinates: data['harborCoordinates'],
+                                        zoneRadius: (data['zoneRadius'] ?? 50.0).toDouble(),
+                                        userRole: data['userRole'] ?? 'Nahkoda',
+                                        userName: data['userName'] ?? '',
+                                      ),
+                                    ),
+                                    (route) => false,
+                                  );
+                                }
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(8),

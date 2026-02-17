@@ -46,10 +46,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return AppBar(
       elevation: 0,
       backgroundColor: Colors.transparent,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
-        onPressed: () => Navigator.pop(context),
-      ),
       flexibleSpace: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

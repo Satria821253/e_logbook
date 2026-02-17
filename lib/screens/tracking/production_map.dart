@@ -123,6 +123,9 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
               urlTemplate: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
               userAgentPackageName: 'com.elogbook.app',
               maxZoom: 20,
+              errorTileCallback: (tile, error, stackTrace) {
+                // Silently handle tile loading errors
+              },
             ),
 
             // Overlay labels
@@ -130,6 +133,9 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
               urlTemplate: 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}',
               userAgentPackageName: 'com.elogbook.app',
               maxZoom: 20,
+              errorTileCallback: (tile, error, stackTrace) {
+                // Silently handle tile loading errors
+              },
             ),
 
             // Harbor Zones Layer
@@ -189,7 +195,21 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
     return PolygonLayer(
       polygons: filteredZones.map((zone) {
         final coords = zone['coordinates'] as List;
-        final points = coords.map((c) => LatLng(c['lat'], c['lng'])).toList();
+        final points = coords.map((c) {
+          double lat = (c['lat'] as num).toDouble();
+          double lng = (c['lng'] as num).toDouble();
+          
+          // Validasi dan swap jika koordinat terbalik
+          if (lat.abs() > 90) {
+            print('⚠️ [CatchPolygon] Swapping coordinates - lat=$lat, lng=$lng');
+            final temp = lat;
+            lat = lng;
+            lng = temp;
+            print('✅ [CatchPolygon] After swap - lat=$lat, lng=$lng');
+          }
+          
+          return LatLng(lat, lng);
+        }).toList();
         
         return Polygon(
           points: points,
@@ -230,8 +250,26 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
         PolygonLayer(
           polygons: polygonZones.map((zone) {
             final color = _getZoneColor(zone.type);
+            
+            // Validasi koordinat polygon
+            final validatedPoints = zone.polygonCoordinates!.map((point) {
+              double lat = point.latitude;
+              double lng = point.longitude;
+              
+              // Validasi dan swap jika koordinat terbalik
+              if (lat.abs() > 90) {
+                print('⚠️ [HarborPolygon] Swapping coordinates - lat=$lat, lng=$lng');
+                final temp = lat;
+                lat = lng;
+                lng = temp;
+                print('✅ [HarborPolygon] After swap - lat=$lat, lng=$lng');
+              }
+              
+              return LatLng(lat, lng);
+            }).toList();
+            
             return Polygon(
-              points: zone.polygonCoordinates!,
+              points: validatedPoints,
               color: color.withAlpha(40),
               borderColor: color,
               borderStrokeWidth: 2.5,
@@ -263,7 +301,25 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
   }
 
   Widget _buildVesselTrail(LatLng vesselPosition) {
-    final harborCenter = LatLng(widget.harborLat, widget.harborLng);
+    // Validasi dan swap koordinat harbor jika terbalik
+    double harborLat = widget.harborLat;
+    double harborLng = widget.harborLng;
+    
+    if (harborLat.abs() > 90) {
+      print('⚠️ [VesselTrail] Swapping harbor - lat=$harborLat, lng=$harborLng');
+      final temp = harborLat;
+      harborLat = harborLng;
+      harborLng = temp;
+      print('✅ [VesselTrail] After swap - lat=$harborLat, lng=$harborLng');
+    }
+    
+    // Validasi final - pastikan koordinat valid
+    if (harborLat.abs() > 90 || harborLng.abs() > 180) {
+      print('❌ [VesselTrail] Invalid harbor coordinates after swap: lat=$harborLat, lng=$harborLng');
+      return PolylineLayer(polylines: const <Polyline>[]);
+    }
+    
+    final harborCenter = LatLng(harborLat, harborLng);
     
     List<Polyline> polylines = [
       // Garis dari harbor ke kapal
@@ -288,24 +344,46 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
         final zone = filteredZones.first;
         final coords = zone['coordinates'] as List;
         if (coords.isNotEmpty) {
-          // Hitung center dari polygon zona tangkap
+          // Hitung center dari polygon zona tangkap dengan validasi
           double sumLat = 0;
           double sumLng = 0;
-          for (var c in coords) {
-            sumLat += c['lat'];
-            sumLng += c['lng'];
-          }
-          final zoneCenter = LatLng(sumLat / coords.length, sumLng / coords.length);
+          int validCount = 0;
           
-          // Garis dari kapal ke zona tangkap
-          polylines.add(
-            Polyline(
-              points: [vesselPosition, zoneCenter],
-              strokeWidth: 2.5,
-              color: Colors.green.shade700,
-              pattern: StrokePattern.dashed(segments: const [10, 5]),
-            ),
-          );
+          for (var c in coords) {
+            double lat = (c['lat'] as num).toDouble();
+            double lng = (c['lng'] as num).toDouble();
+            
+            // Validasi dan swap jika koordinat terbalik
+            if (lat.abs() > 90) {
+              final temp = lat;
+              lat = lng;
+              lng = temp;
+            }
+            
+            // Validasi final sebelum menambahkan
+            if (lat.abs() <= 90 && lng.abs() <= 180) {
+              sumLat += lat;
+              sumLng += lng;
+              validCount++;
+            } else {
+              print('⚠️ [VesselTrail] Skipping invalid coordinate: lat=$lat, lng=$lng');
+            }
+          }
+          
+          // Hanya tambahkan polyline jika ada koordinat valid
+          if (validCount > 0) {
+            final zoneCenter = LatLng(sumLat / validCount, sumLng / validCount);
+            
+            // Garis dari kapal ke zona tangkap
+            polylines.add(
+              Polyline(
+                points: [vesselPosition, zoneCenter],
+                strokeWidth: 2.5,
+                color: Colors.green.shade700,
+                pattern: StrokePattern.dashed(segments: const [10, 5]),
+              ),
+            );
+          }
         }
       }
     }
@@ -319,8 +397,20 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
         final coords = poi['coordinates'];
         if (coords == null) return null;
         
+        double lat = (coords['lat'] as num).toDouble();
+        double lng = (coords['lng'] as num).toDouble();
+        
+        // Validasi dan swap jika koordinat terbalik
+        if (lat.abs() > 90) {
+          print('⚠️ [POI] Swapping coordinates - lat=$lat, lng=$lng');
+          final temp = lat;
+          lat = lng;
+          lng = temp;
+          print('✅ [POI] After swap - lat=$lat, lng=$lng');
+        }
+        
         return Marker(
-          point: LatLng(coords['lat'], coords['lng']),
+          point: LatLng(lat, lng),
           width: 30,
           height: 30,
           child: GestureDetector(
@@ -611,7 +701,7 @@ class _ProductionTrackingMapState extends State<ProductionTrackingMap> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Zona ${widget.zoneRadius.toInt()} km',
+                  'Radius: ${widget.zoneRadius.toInt()} km',
                   style: const TextStyle(fontSize: 12),
                 ),
               ],

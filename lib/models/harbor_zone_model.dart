@@ -43,10 +43,19 @@ class HarborZoneModel {
     if (shapeType == 'circle') {
       final coords = json['coordinates'];
       if (coords is Map) {
-        centerPoint = LatLng(
-          (coords['lat'] as num).toDouble(),
-          (coords['lng'] as num).toDouble(),
-        );
+        double lat = (coords['lat'] as num).toDouble();
+        double lng = (coords['lng'] as num).toDouble();
+        
+        // Validasi dan swap jika koordinat terbalik
+        if (lat.abs() > 90) {
+          print('⚠️ [HarborZone Circle] Swapping coordinates - lat=$lat, lng=$lng');
+          final temp = lat;
+          lat = lng;
+          lng = temp;
+          print('✅ [HarborZone Circle] After swap - lat=$lat, lng=$lng');
+        }
+        
+        centerPoint = LatLng(lat, lng);
       }
       radiusMeters = (json['radius'] as num?)?.toDouble();
     } else if (shapeType == 'polygon') {
@@ -54,10 +63,19 @@ class HarborZoneModel {
       if (coords is List) {
         polygonCoordinates = coords.map((coord) {
           if (coord is Map) {
-            return LatLng(
-              (coord['lat'] as num).toDouble(),
-              (coord['lng'] as num).toDouble(),
-            );
+            double lat = (coord['lat'] as num).toDouble();
+            double lng = (coord['lng'] as num).toDouble();
+            
+            // Validasi dan swap jika koordinat terbalik
+            if (lat.abs() > 90) {
+              print('⚠️ [HarborZone Polygon] Swapping coordinates - lat=$lat, lng=$lng');
+              final temp = lat;
+              lat = lng;
+              lng = temp;
+              print('✅ [HarborZone Polygon] After swap - lat=$lat, lng=$lng');
+            }
+            
+            return LatLng(lat, lng);
           }
           return LatLng(0, 0);
         }).toList();

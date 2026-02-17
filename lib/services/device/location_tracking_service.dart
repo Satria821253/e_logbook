@@ -166,6 +166,27 @@ class LocationTrackingService {
   static bool get isCurrentlyViolating => _isCurrentlyViolating;
   static String? get currentHarbor => _selectedHarborName;
   static String? get currentVessel => _vesselName;
+  
+  /// Get last known position (untuk restore setelah rebuild)
+  static Future<Position?> getLastKnownPosition() async {
+    if (_lastPosition != null) {
+      debugPrint('✅ [LocationTracking] Returning cached position: ${_lastPosition!.latitude}, ${_lastPosition!.longitude}');
+      return _lastPosition;
+    }
+    
+    try {
+      // Fallback: ambil posisi terakhir dari device
+      final position = await Geolocator.getLastKnownPosition();
+      if (position != null) {
+        debugPrint('✅ [LocationTracking] Returning device last position: ${position.latitude}, ${position.longitude}');
+        return position;
+      }
+    } catch (e) {
+      debugPrint('❌ [LocationTracking] Error getting last position: $e');
+    }
+    
+    return null;
+  }
 
   /// Get current zone info
   static Future<void> startTrackingWithCoordinates({
@@ -178,6 +199,21 @@ class LocationTrackingService {
   required Function() onBackToSafeZone,
   required Function(Position, Map<String, dynamic>) onLocationUpdate,
 }) async {
+  // Validasi dan swap koordinat jika terbalik
+  double validHarborLat = harborLat;
+  double validHarborLng = harborLng;
+  
+  if (validHarborLat.abs() > 90) {
+    debugPrint('⚠️ [LocationTracking] SWAPPING harbor coords - lat=$validHarborLat, lng=$validHarborLng');
+    final temp = validHarborLat;
+    validHarborLat = validHarborLng;
+    validHarborLng = temp;
+    debugPrint('✅ [LocationTracking] After swap - lat=$validHarborLat, lng=$validHarborLng');
+  }
+  
+  debugPrint('📍 [LocationTracking] Starting with coords: ($validHarborLat, $validHarborLng)');
+  debugPrint('📍 [LocationTracking] Zone radius: $zoneRadius km');
+  
   LocationPermission permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.denied) {
     permission = await Geolocator.requestPermission();
@@ -213,8 +249,8 @@ class LocationTrackingService {
     bool isInRestrictedZone = restrictedCheck['isInRestrictedZone'] == true;
 
     final distance = Geolocator.distanceBetween(
-          harborLat,
-          harborLng,
+          validHarborLat,
+          validHarborLng,
           position.latitude,
           position.longitude,
         ) /

@@ -4,11 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import '../../services/api/trip_service.dart';
 import '../../services/api/vessel_service.dart';
 import '../../services/nitification/local_notification_service.dart';
+import '../../services/cuaca/weather_service.dart';
+import '../../provider/tracking_minimize_provider.dart';
 import '../tracking/active_tracking_screen.dart';
+import '../tracking/waiting_schedule_screen.dart';
 import '../../utils/auth_helper.dart';
+import '../../utils/navigation_helper.dart';
 import '../../constants/harbor_coordinates.dart';
 
 class MySchedulesScreen extends StatefulWidget {
@@ -22,7 +28,6 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
   List<Map<String, dynamic>> _schedules = [];
   bool _isLoading = true;
   bool _hasActiveTrip = false;
-  Map<String, dynamic>? _activeTrip;
   Timer? _notificationPollTimer;
   String? _lastNotificationId;
 
@@ -40,7 +45,9 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
   }
 
   void _startNotificationPolling() {
-    _notificationPollTimer = Timer.periodic(Duration(seconds: 30), (timer) async {
+    _notificationPollTimer = Timer.periodic(Duration(seconds: 30), (
+      timer,
+    ) async {
       await _checkNewTaskNotification();
     });
   }
@@ -51,9 +58,9 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       final token = prefs.getString('auth_token');
       final userRole = prefs.getString('role');
       final userDataString = prefs.getString('user_data');
-      
+
       if (token == null || userRole == null) return;
-      
+
       int? currentUserId;
       if (userDataString != null) {
         try {
@@ -64,67 +71,75 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
           return;
         }
       }
-      
+
       if (currentUserId == null) return;
 
-      final response = await http.get(
-        Uri.parse('https://elogbookipb.web.id/api/mobile/notifications'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('https://elogbookipb.web.id/api/mobile/notifications'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
           final notifications = data['data'] as List;
-          
+
           // Filter notifikasi berdasarkan user ID
           final myNotifications = notifications.where((n) {
             final recipientId = n['userId'] ?? n['recipientId'];
             return recipientId == currentUserId;
           }).toList();
-          
+
           // Cek notifikasi tugas baru
           final newTaskNotif = myNotifications.firstWhere(
             (n) => n['type'] == 'new_task' && n['isRead'] == false,
             orElse: () => null,
           );
 
-          if (newTaskNotif != null && newTaskNotif['id'] != _lastNotificationId) {
+          if (newTaskNotif != null &&
+              newTaskNotif['id'] != _lastNotificationId) {
             _lastNotificationId = newTaskNotif['id'];
-            
+
             // Hanya tampilkan notifikasi jika tidak ada trip aktif
             if (!_hasActiveTrip) {
               // Untuk crew, tambahkan info bahwa perlu menunggu izin nahkoda
-              String message = newTaskNotif['message'] ?? 'Anda mendapat tugas trip baru';
-              if (userRole.toLowerCase() == 'crew' || userRole.toLowerCase() == 'abk') {
+              String message =
+                  newTaskNotif['message'] ?? 'Anda mendapat tugas trip baru';
+              if (userRole.toLowerCase() == 'crew' ||
+                  userRole.toLowerCase() == 'abk') {
                 message += '. Menunggu Nahkoda mendapatkan izin dari Admin';
               }
-              
+
               await LocalNotificationService.showNewTaskNotification(
                 title: newTaskNotif['title'] ?? 'Tugas Baru',
                 message: message,
               );
-              
+
               await _loadSchedules();
             }
           }
-          
+
           // Untuk crew: Cek notifikasi status berlayar
-          if (userRole.toLowerCase() == 'crew' || userRole.toLowerCase() == 'abk') {
+          if (userRole.toLowerCase() == 'crew' ||
+              userRole.toLowerCase() == 'abk') {
             final berlayarNotif = myNotifications.firstWhere(
               (n) => n['type'] == 'trip_berlayar' && n['isRead'] == false,
               orElse: () => null,
             );
-            
+
             if (berlayarNotif != null) {
               await LocalNotificationService.showNewTaskNotification(
                 title: berlayarNotif['title'] ?? 'Trip Berlayar',
-                message: berlayarNotif['message'] ?? 'Trip sudah dimulai, tracking aktif',
+                message:
+                    berlayarNotif['message'] ??
+                    'Trip sudah dimulai, tracking aktif',
               );
-              
+
               // Refresh data
               await _loadSchedules();
             }
@@ -139,10 +154,10 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
   Future<void> _initializeData() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    
+
     // Pastikan vessel data sudah tersedia
     await _ensureVesselDataAvailable();
-    
+
     // Baru load schedules
     await _loadSchedules();
   }
@@ -150,11 +165,12 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
   Future<void> _ensureVesselDataAvailable() async {
     try {
       print('🔄 [MySchedules] Ensuring vessel data is available...');
-      
+
       final vesselService = VesselService();
-      final vesselId = await vesselService.getVesselIdFromUserSettings() ?? 
-                       await vesselService.getVesselIdFromTrip();
-      
+      final vesselId =
+          await vesselService.getVesselIdFromUserSettings() ??
+          await vesselService.getVesselIdFromTrip();
+
       if (vesselId != null) {
         print('✅ [MySchedules] Vessel ID found: $vesselId');
       } else {
@@ -165,7 +181,6 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     }
   }
 
-
   Future<void> _loadSchedules() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -174,7 +189,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       final prefs = await SharedPreferences.getInstance();
       final userDataString = prefs.getString('user_data');
       int? currentUserId;
-      
+
       if (userDataString != null) {
         try {
           final userData = json.decode(userDataString);
@@ -184,64 +199,91 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
           print('❌ [MySchedules] Error parsing user_data: $e');
         }
       }
-      
+
       // Ambil semua trips
       final response = await TripService.getAllTrips();
       if (response['success'] == true && response['data'] != null) {
         final allTrips = List<Map<String, dynamic>>.from(response['data']);
         print('\n========== FILTER SCHEDULES START ==========');
         print('📋 [MySchedules] Total trips from API: ${allTrips.length}');
-        
-        // Cek apakah ada trip BERLAYAR untuk user ini
-        final activeTrip = allTrips.firstWhere(
-          (trip) {
-            final nahkodaId = trip['nahkodaId'];
-            final awakKapal = trip['awakKapal'] as List?;
-            final status = trip['status']?.toLowerCase();
-            
-            final isMyTrip = (currentUserId != null && nahkodaId == currentUserId) ||
-                             (currentUserId != null && awakKapal != null && awakKapal.contains(currentUserId));
-            
-            // Cek jika ada trip yang sedang berlayar
-            // Support multiple status: berlayar, sedang_melaut, active, sailing
-            return isMyTrip && (status == 'berlayar' || status == 'sedang_melaut' || status == 'active' || status == 'sailing');
-          },
-          orElse: () => {},
-        );
-        
+
+        // Cek apakah ada trip BERLAYAR atau DARURAT untuk user ini
+        final activeTrip = allTrips.firstWhere((trip) {
+          final nahkodaId = trip['nahkodaId'];
+          final awakKapal = trip['awakKapal'] as List?;
+          final status = trip['status']?.toLowerCase();
+
+          final isMyTrip =
+              (currentUserId != null && nahkodaId == currentUserId) ||
+              (currentUserId != null &&
+                  awakKapal != null &&
+                  awakKapal.contains(currentUserId));
+
+          // Cek jika ada trip yang sedang berlayar atau darurat
+          return isMyTrip &&
+              (status == 'berlayar' ||
+                  status == 'sedang_melaut' ||
+                  status == 'active' ||
+                  status == 'sailing' ||
+                  status == 'darurat' ||
+                  status == 'emergency');
+        }, orElse: () => {});
+
         final hasActive = activeTrip.isNotEmpty;
         print('🚨 [MySchedules] Has active/sailing trip: $hasActive');
-        
+
         // Filter: tampilkan trip BERLAYAR, DISETUJUI, atau SELESAI
         final filteredTrips = allTrips.where((trip) {
           final nahkodaId = trip['nahkodaId'];
           final awakKapal = trip['awakKapal'] as List?;
           final status = trip['status']?.toLowerCase();
-          
+
           // Filter 1: Apakah trip ini milik user?
-          final isMyTrip = (currentUserId != null && nahkodaId == currentUserId) ||
-                           (currentUserId != null && awakKapal != null && awakKapal.contains(currentUserId));
-          
-          // Filter 2: Tampilkan trip berlayar, siap dimulai, atau selesai
+          final isMyTrip =
+              (currentUserId != null && nahkodaId == currentUserId) ||
+              (currentUserId != null &&
+                  awakKapal != null &&
+                  awakKapal.contains(currentUserId));
+
+          // Filter 2: Tampilkan trip berlayar, darurat, siap dimulai, atau selesai
           // Status berlayar: berlayar, sedang_melaut, active, sailing
+          // Status darurat: darurat, emergency
           // Status selesai: selesai, completed, finished
           // Status siap: disetujui, approved, siap_berangkat, menunggu_dokumen, menunggu_izin
-          final isBerlayar = status == 'berlayar' || status == 'sedang_melaut' || status == 'active' || status == 'sailing';
-          final isSelesai = status == 'selesai' || status == 'completed' || status == 'finished';
-          final validStatuses = ['disetujui', 'approved', 'siap_berangkat', 'menunggu_dokumen', 'menunggu_izin'];
+          final isBerlayar =
+              status == 'berlayar' ||
+              status == 'sedang_melaut' ||
+              status == 'active' ||
+              status == 'sailing';
+          final isDarurat = status == 'darurat' || status == 'emergency';
+          final isSelesai =
+              status == 'selesai' ||
+              status == 'completed' ||
+              status == 'finished';
+          final validStatuses = [
+            'disetujui',
+            'approved',
+            'siap_berangkat',
+            'menunggu_dokumen',
+            'menunggu_izin',
+          ];
           final isValidStatus = validStatuses.contains(status);
-          
-          // Jika ada trip berlayar, tampilkan trip berlayar dan selesai
-          // Jika tidak ada trip berlayar, tampilkan trip siap dimulai dan selesai
-          final shouldShow = hasActive ? (isBerlayar || isSelesai) : (isValidStatus || isSelesai);
-          
+
+          // Jika ada trip berlayar/darurat, tampilkan trip berlayar/darurat dan selesai
+          // Jika tidak ada trip berlayar/darurat, tampilkan trip siap dimulai dan selesai
+          final shouldShow = hasActive
+              ? (isBerlayar || isDarurat || isSelesai)
+              : (isValidStatus || isSelesai);
+
           final match = isMyTrip && shouldShow;
           if (match) {
-            print('✅ [MySchedules] Match: Trip ID ${trip['id']}, Nahkoda ID $nahkodaId, Status: $status');
+            print(
+              '✅ [MySchedules] Match: Trip ID ${trip['id']}, Nahkoda ID $nahkodaId, Status: $status',
+            );
           }
           return match;
         }).toList();
-        
+
         // Sort by tanggalBerangkat (newest first)
         filteredTrips.sort((a, b) {
           try {
@@ -252,18 +294,17 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
             return 0;
           }
         });
-        
+
         // Ambil semua trip (tidak dibatasi 3)
         final limitedTrips = filteredTrips;
-        
+
         print('🔍 [MySchedules] Filtered trips: ${limitedTrips.length}');
         print('========== FILTER SCHEDULES END ==========\n');
-        
+
         if (!mounted) return;
         setState(() {
           _schedules = limitedTrips;
           _hasActiveTrip = hasActive;
-          _activeTrip = hasActive ? activeTrip : null;
           _isLoading = false;
         });
       } else {
@@ -271,29 +312,26 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         setState(() {
           _schedules = [];
           _hasActiveTrip = false;
-          _activeTrip = null;
           _isLoading = false;
         });
       }
     } catch (e) {
       print('❌ [MySchedules] Error loading schedules: $e');
-      
+
       // Check if token expired
       if (AuthHelper.isTokenExpiredError(e) && mounted) {
         await AuthHelper.handleTokenExpired(context);
         return;
       }
-      
+
       if (!mounted) return;
       setState(() {
         _schedules = [];
         _hasActiveTrip = false;
-        _activeTrip = null;
         _isLoading = false;
       });
     }
   }
-
 
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
@@ -305,6 +343,8 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         return Colors.green;
       case 'siap_berangkat':
         return Colors.blue;
+      case 'siap_berlayar': // Status efektif saat buffer time tercapai
+        return Colors.green;
       case 'berlayar':
         return Colors.green;
       case 'sedang_melaut':
@@ -322,7 +362,9 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       case 'ditolak':
         return Colors.red;
       case 'darurat':
-        return Colors.red.shade900;
+        return Colors.red;
+      case 'emergency':
+        return Colors.red;
       default:
         return Colors.grey;
     }
@@ -355,7 +397,9 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       case 'ditolak':
         return 'Ditolak';
       case 'darurat':
-        return 'Darurat';
+        return 'DARURAT';
+      case 'emergency':
+        return 'DARURAT';
       default:
         return status ?? 'Unknown';
     }
@@ -377,7 +421,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     print('🚢 [CHECK] Kapal: ${schedule['kapal']?['namaKapal']}');
     print('👤 [CHECK] Nahkoda: ${schedule['nahkoda']?['nama']}');
     print('========================================\n');
-    
+
     try {
       // Show loading
       showDialog(
@@ -405,14 +449,17 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       print('📡 [CHECK] Fetching trip detail from API...');
       // Get trip detail untuk cek dokumen
       final response = await TripService.getTripDetail(schedule['id']);
-      
+
       if (mounted) Navigator.pop(context); // Close loading
-      
+
       if (response['success'] != true) {
         print('❌ [CHECK] Failed to get trip detail');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal memuat data trip'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Gagal memuat data trip'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
         return;
@@ -431,26 +478,30 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       final hasDokumenKapal = dokumen['dokumenKapal'] == true;
       final hasAsuransi = dokumen['asuransi'] == true;
 
-      final isComplete = hasFuel && hasIce && hasIzinMelaut && hasDokumenKapal && hasAsuransi;
+      final isComplete =
+          hasFuel && hasIce && hasIzinMelaut && hasDokumenKapal && hasAsuransi;
 
       print('\n========================================');
       print('📊 [CHECK] HASIL CEK DOKUMEN');
       print('========================================');
-      print('⛽ BBM: ${hasFuel ? "✅ Ada (${fuelDataList.length} data)" : "❌ Belum"}');
-      print('🧊 Es: ${hasIce ? "✅ Ada (${iceDataList.length} data)" : "❌ Belum"}');
+      print(
+        '⛽ BBM: ${hasFuel ? "✅ Ada (${fuelDataList.length} data)" : "❌ Belum"}',
+      );
+      print(
+        '🧊 Es: ${hasIce ? "✅ Ada (${iceDataList.length} data)" : "❌ Belum"}',
+      );
       print('📄 Izin Melaut: ${hasIzinMelaut ? "✅ Sudah" : "❌ Belum"}');
       print('📄 Dokumen Kapal: ${hasDokumenKapal ? "✅ Sudah" : "❌ Belum"}');
       print('📄 Asuransi: ${hasAsuransi ? "✅ Sudah" : "❌ Belum"}');
       print('========================================');
-      print('🎯 [CHECK] Kelengkapan: ${isComplete ? "✅ LENGKAP" : "❌ BELUM LENGKAP"}');
+      print(
+        '🎯 [CHECK] Kelengkapan: ${isComplete ? "✅ LENGKAP" : "❌ BELUM LENGKAP"}',
+      );
       print('========================================\n');
 
       if (isComplete) {
-        // Dokumen lengkap → Langsung ke Active Tracking
-        print('\n🚀 [CHECK] ========================================');
-        print('🚀 [CHECK] DOKUMEN LENGKAP - MULAI TRACKING');
-        print('🚀 [CHECK] ========================================\n');
-        await _navigateToTracking(tripData);
+        // Dokumen lengkap → Langsung cek cuaca dan navigasi
+        await _checkWeatherAndNavigate(tripData);
       } else {
         // Dokumen belum lengkap → Ke Pre-Trip Form
         print('\n⚠️ [CHECK] ========================================');
@@ -465,16 +516,149 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       if (mounted) {
         Navigator.pop(context); // Close loading if still open
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Terjadi kesalahan: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Terjadi kesalahan: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
+  }
+  Future<void> _checkWeatherAndNavigate(Map<String, dynamic> tripData) async {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Memeriksa Cuaca...'),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+      );
+      final weather = await WeatherService.getWeatherByPosition(position);
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      if (weather == null) {
+        await Future.delayed(Duration(milliseconds: 300));
+        if (!mounted) return;
+        _navigateToWaitingSchedule(tripData);
+        return;
+      }
+
+      final isExtreme = _isWeatherExtreme(weather);
+      if (!mounted) return;
+
+      if (isExtreme) {
+        _showWeatherWarning(weather, tripData);
+      } else {
+        await Future.delayed(Duration(milliseconds: 300));
+        if (!mounted) return;
+        _navigateToWaitingSchedule(tripData);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        await Future.delayed(Duration(milliseconds: 300));
+        if (mounted) _navigateToWaitingSchedule(tripData);
+      }
+    }
+  }
+
+  bool _isWeatherExtreme(WeatherData weather) {
+    final condition = weather.condition.toLowerCase();
+    if (condition.contains('petir') ||
+        condition.contains('thunder') ||
+        condition.contains('storm') ||
+        condition.contains('badai')) return true;
+    if (weather.windSpeed > 40) return true;
+    if (weather.waveHeight > 2.5) return true;
+    return false;
+  }
+
+  void _showWeatherWarning(WeatherData weather, Map<String, dynamic> tripData) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.red, size: 32),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Cuaca Tidak Aman',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Kondisi cuaca saat ini tidak mendukung untuk melaut:'),
+            SizedBox(height: 12),
+            Text('• Kondisi: ${weather.condition}'),
+            Text('• Kecepatan Angin: ${weather.windSpeed.toStringAsFixed(1)} km/h'),
+            Text('• Tinggi Ombak: ${weather.waveHeight.toStringAsFixed(1)} m'),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange),
+              ),
+              child: Text(
+                'Demi keselamatan, disarankan untuk menunda trip.',
+                style: TextStyle(fontSize: 13, color: Colors.orange.shade900),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _navigateToWaitingSchedule(tripData);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Tetap Lanjutkan'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _navigateToPreTripForm(Map<String, dynamic> schedule) {
     final kapal = schedule['kapal'];
     final nahkoda = schedule['nahkoda'];
-    
+
     Navigator.pushNamed(
       context,
       '/pre-trip-form',
@@ -484,9 +668,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
           'namaKapal': kapal?['namaKapal'] ?? kapal?['nama'],
           'nomorRegistrasi': kapal?['nomorRegistrasi'],
         },
-        'nahkoda': {
-          'nama': nahkoda?['nama'] ?? nahkoda?['username'],
-        },
+        'nahkoda': {'nama': nahkoda?['nama'] ?? nahkoda?['username']},
         'awakKapal': schedule['awakKapal'],
         'tanggalBerangkat': schedule['tanggalBerangkat'],
         'estimasiPulang': schedule['estimasiPulang'],
@@ -502,13 +684,13 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     print('\n========================================');
     print('🚀 [NAVIGATE] PREPARE DATA UNTUK TRACKING');
     print('========================================');
-    
+
     final prefs = await SharedPreferences.getInstance();
     String? userRole = prefs.getString('role')?.toLowerCase();
     final userDataString = prefs.getString('user_data');
-    
+
     print('🔍 [NAVIGATE] Role from SharedPreferences: $userRole');
-    
+
     String userName = '';
     int? currentUserId;
     if (userDataString != null) {
@@ -516,7 +698,6 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         final userData = json.decode(userDataString);
         userName = userData['nama'] ?? userData['name'] ?? '';
         currentUserId = userData['id'];
-        // Fallback: ambil role dari user_data jika null
         if (userRole == null || userRole.isEmpty) {
           userRole = userData['role']?.toString().toLowerCase();
           print('🔍 [NAVIGATE] Role from user_data: $userRole');
@@ -525,8 +706,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         print('❌ Error parsing user_data: $e');
       }
     }
-    
-    // Fallback terakhir: tentukan dari tripData
+
     if (userRole == null || userRole.isEmpty) {
       final nahkodaId = tripData['nahkodaId'];
       if (currentUserId != null && currentUserId == nahkodaId) {
@@ -537,7 +717,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         print('🔍 [NAVIGATE] Role from tripData: crew (user is not captain)');
       }
     }
-    
+
     print('✅ [NAVIGATE] Final userRole: $userRole');
 
     final perizinan = tripData['perizinan'] ?? {};
@@ -545,32 +725,29 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     final nahkoda = tripData['nahkoda'] ?? {};
     final areaTangkap = tripData['areaTangkap'] ?? {};
 
-    print('🔍 [NAVIGATE] DEBUG tripData keys: ${tripData.keys}');
-    print('🔍 [NAVIGATE] DEBUG kapal: $kapal');
-    print('🔍 [NAVIGATE] DEBUG nahkoda: $nahkoda');
-    print('🔍 [NAVIGATE] DEBUG areaTangkap: $areaTangkap');
-
-    // Hitung total BBM dan Es dengan null safety
     double totalFuel = 0.0;
     double totalIce = 0.0;
-    
+
     final fuelDataList = perizinan['fuelData'] as List? ?? [];
     for (var fuel in fuelDataList) {
       final jumlah = fuel['jumlahLiter'];
       if (jumlah != null) {
-        totalFuel += (jumlah is num) ? jumlah.toDouble() : double.tryParse(jumlah.toString()) ?? 0.0;
+        totalFuel += (jumlah is num)
+            ? jumlah.toDouble()
+            : double.tryParse(jumlah.toString()) ?? 0.0;
       }
     }
-    
+
     final iceDataList = perizinan['iceData'] as List? ?? [];
     for (var ice in iceDataList) {
       final jumlah = ice['jumlahKg'];
       if (jumlah != null) {
-        totalIce += (jumlah is num) ? jumlah.toDouble() : double.tryParse(jumlah.toString()) ?? 0.0;
+        totalIce += (jumlah is num)
+            ? jumlah.toDouble()
+            : double.tryParse(jumlah.toString()) ?? 0.0;
       }
     }
 
-    // Parse waktu dengan null safety
     DateTime departureTime;
     try {
       if (tripData['waktuMulai'] != null) {
@@ -591,137 +768,194 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         estimatedReturnDate = DateTime.parse(tripData['estimasiPulang']);
       }
     } catch (e) {
-      print('⚠️ [NAVIGATE] Error parsing return date: $e');
       estimatedReturnDate = null;
     }
 
-    // Koordinat pelabuhan - coba dari berbagai sumber
     Map<String, double>? harborCoordinates;
     try {
-      // Prioritas 1: Dari areaTangkap
       var lat = areaTangkap['latitude'];
       var lng = areaTangkap['longitude'];
-      
-      // Prioritas 2: Dari tripData langsung
+
       if (lat == null || lng == null) {
         lat = tripData['latitude'];
         lng = tripData['longitude'];
       }
-      
-      // Prioritas 3: Dari harbor_coordinates constants berdasarkan nama pelabuhan
+
       if (lat == null || lng == null) {
         final harborName = tripData['pelabuhanAsal'] ?? areaTangkap['nama'];
         if (harborName != null && harborName.toString().isNotEmpty) {
-          print('🔍 [NAVIGATE] Trying to get coordinates for harbor: $harborName');
           final coords = getHarborCoordinates(harborName.toString());
-          lat = coords['lat'];
-          lng = coords['lng'];
-          print('✅ [NAVIGATE] Found coordinates from constants: $coords');
+          lat = coords['latitude'];
+          lng = coords['longitude'];
         }
       }
-      
-      // Prioritas 4: Fallback ke Jakarta jika masih null
+
       if (lat == null || lng == null) {
-        print('⚠️ [NAVIGATE] No coordinates found, using default Jakarta');
         lat = -6.1075;
         lng = 106.7975;
       }
-      
+
       harborCoordinates = {
-        'lat': (lat is num) ? lat.toDouble() : double.parse(lat.toString()),
-        'lng': (lng is num) ? lng.toDouble() : double.parse(lng.toString()),
+        'latitude': (lat is num)
+            ? lat.toDouble()
+            : double.parse(lat.toString()),
+        'longitude': (lng is num)
+            ? lng.toDouble()
+            : double.parse(lng.toString()),
       };
-      print('✅ [NAVIGATE] Final harbor coordinates: $harborCoordinates');
     } catch (e) {
-      print('⚠️ [NAVIGATE] Error parsing coordinates: $e, using default Jakarta');
-      harborCoordinates = {
-        'lat': -6.1075,
-        'lng': 106.7975,
-      };
-    }
-
-    print('📊 [NAVIGATE] DATA YANG AKAN DIKIRIM:');
-    print('   👤 User Role: $userRole');
-    print('   👤 User Name: $userName');
-    print('   🚢 Vessel: ${kapal['namaKapal'] ?? kapal['nama']}');
-    print('   🔢 Vessel Number: ${kapal['nomorRegistrasi']}');
-    print('   🧑‍✈️ Captain: ${nahkoda['nama'] ?? nahkoda['username']}');
-    print('   👥 Crew Count: ${(tripData['awakKapal'] as List?)?.length ?? 0}');
-    print('   ⚓ Harbor: ${tripData['pelabuhanAsal'] ?? areaTangkap['nama']}');
-    print('   📅 Departure: $departureTime');
-    print('   📅 Return: $estimatedReturnDate');
-    print('   ⏱️ Duration: ${tripData['durasi']} hari');
-    print('   ⛽ Fuel: $totalFuel L');
-    print('   🧊 Ice: $totalIce Kg');
-    print('   📍 Coordinates: $harborCoordinates');
-    print('   📍 Zone Radius: 50.0 km');
-    print('========================================\n');
-
-    if (!mounted) {
-      print('❌ [NAVIGATE] Widget not mounted, aborting');
-      return;
+      harborCoordinates = {'latitude': -6.1075, 'longitude': 106.7975};
     }
 
     print('🚀 [NAVIGATE] Navigating to ActiveTrackingScreen...');
-    
-    // Skip update status - akan dihandle oleh backend saat tracking dimulai
-    // try {
-    //   print('📡 [NAVIGATE] Updating trip status to BERLAYAR...');
-    //   final updateResponse = await TripService.updateTripStatus(
-    //     tripData['id'],
-    //     'berlayar',
-    //   );
-    //   
-    //   if (updateResponse['success'] == true) {
-    //     print('✅ [NAVIGATE] Trip status updated to BERLAYAR');
-    //   } else {
-    //     print('⚠️ [NAVIGATE] Failed to update trip status, continuing anyway');
-    //   }
-    // } catch (e) {
-    //   print('⚠️ [NAVIGATE] Error updating trip status: $e, continuing anyway');
-    // }
-    
-    try {
-      // Use push with fullscreenDialog to prevent parent rebuild
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (context) => ActiveTrackingScreen(
-            vesselName: kapal['namaKapal'] ?? kapal['nama'] ?? '',
-            vesselNumber: kapal['nomorRegistrasi'] ?? '',
-            captainName: nahkoda['nama'] ?? nahkoda['username'] ?? '',
-            crewCount: (tripData['awakKapal'] as List?)?.length ?? 0,
-            selectedHarbor: tripData['pelabuhanAsal'] ?? areaTangkap['nama'] ?? '',
-            departureTime: departureTime,
-            estimatedReturnDate: estimatedReturnDate,
-            estimatedDuration: (tripData['durasi'] is num) ? (tripData['durasi'] as num).toInt() : int.tryParse(tripData['durasi']?.toString() ?? '1') ?? 1,
-            emergencyContact: '',
-            fuelAmount: totalFuel,
-            iceStorage: totalIce,
-            notes: null,
-            harborCoordinates: harborCoordinates,
-            zoneRadius: 50.0,
-            userRole: userRole == 'nahkoda' ? 'Nahkoda' : 'ABK',
-            userName: userName,
-          ),
-        ),
-      );
-      print('✅ [NAVIGATE] Navigation completed successfully');
-    } catch (e, stackTrace) {
-      print('❌ [NAVIGATE] Error during navigation: $e');
-      print('❌ [NAVIGATE] Stack trace: $stackTrace');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal memulai tracking: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-    
+
+    if (!mounted) return;
+
+    NavigationHelper.pushReplacementNoTransition(
+      context,
+      ActiveTrackingScreen(
+        vesselName: kapal['namaKapal'] ?? kapal['nama'] ?? '',
+        vesselNumber: kapal['nomorRegistrasi'] ?? '',
+        captainName: nahkoda['nama'] ?? nahkoda['username'] ?? '',
+        crewCount: (tripData['awakKapal'] as List?)?.length ?? 0,
+        selectedHarbor: tripData['pelabuhanAsal'] ?? areaTangkap['nama'] ?? '',
+        departureTime: departureTime,
+        estimatedReturnDate: estimatedReturnDate,
+        estimatedDuration: (tripData['durasi'] is num)
+            ? (tripData['durasi'] as num).toInt()
+            : int.tryParse(tripData['durasi']?.toString() ?? '1') ?? 1,
+        emergencyContact: '',
+        fuelAmount: totalFuel,
+        iceStorage: totalIce,
+        notes: null,
+        harborCoordinates: harborCoordinates,
+        zoneRadius: 50.0,
+        userRole: userRole == 'nahkoda' ? 'Nahkoda' : 'ABK',
+        userName: userName,
+      ),
+    );
     print('✅ [NAVIGATE] Navigation completed!');
     print('========================================\n');
+  }
+
+  void _navigateToWaitingSchedule(Map<String, dynamic> tripData) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    String userName = '';
+    String userRole = prefs.getString('role')?.toLowerCase() ?? 'crew';
+    
+    if (userDataString != null) {
+      try {
+        final userData = json.decode(userDataString);
+        userName = userData['nama'] ?? userData['name'] ?? '';
+      } catch (e) {}
+    }
+
+    final perizinan = tripData['perizinan'] ?? {};
+    final kapal = tripData['kapal'] ?? {};
+    final nahkoda = tripData['nahkoda'] ?? {};
+    final areaTangkap = tripData['areaTangkap'] ?? {};
+
+    double totalFuel = 0.0;
+    double totalIce = 0.0;
+    final fuelDataList = perizinan['fuelData'] as List? ?? [];
+    for (var fuel in fuelDataList) {
+      final jumlah = fuel['jumlahLiter'];
+      if (jumlah != null) {
+        totalFuel += (jumlah is num) ? jumlah.toDouble() : double.tryParse(jumlah.toString()) ?? 0.0;
+      }
+    }
+    final iceDataList = perizinan['iceData'] as List? ?? [];
+    for (var ice in iceDataList) {
+      final jumlah = ice['jumlahKg'];
+      if (jumlah != null) {
+        totalIce += (jumlah is num) ? jumlah.toDouble() : double.tryParse(jumlah.toString()) ?? 0.0;
+      }
+    }
+
+    DateTime departureTime;
+    try {
+      departureTime = tripData['waktuMulai'] != null
+          ? DateTime.parse(tripData['waktuMulai'])
+          : DateTime.parse(tripData['tanggalBerangkat']);
+    } catch (e) {
+      departureTime = DateTime.now();
+    }
+
+    // Untuk nahkoda: countdown ke 24 jam sebelum keberangkatan
+    // Untuk crew: countdown ke waktu keberangkatan
+    DateTime scheduledDepartureTime;
+    if (userRole == 'nahkoda') {
+      scheduledDepartureTime = departureTime.subtract(Duration(hours: 24));
+    } else {
+      scheduledDepartureTime = departureTime;
+    }
+
+    DateTime? estimatedReturnDate;
+    try {
+      if (tripData['estimasiPulang'] != null) {
+        estimatedReturnDate = DateTime.parse(tripData['estimasiPulang']);
+      }
+    } catch (e) {}
+
+    Map<String, double>? harborCoordinates;
+    try {
+      var lat = areaTangkap['latitude'];
+      var lng = areaTangkap['longitude'];
+      if (lat == null || lng == null) {
+        lat = tripData['latitude'];
+        lng = tripData['longitude'];
+      }
+      if (lat == null || lng == null) {
+        final harborName = tripData['pelabuhanAsal'] ?? areaTangkap['nama'];
+        if (harborName != null && harborName.toString().isNotEmpty) {
+          final coords = getHarborCoordinates(harborName.toString());
+          lat = coords['latitude'];
+          lng = coords['longitude'];
+        }
+      }
+      if (lat == null || lng == null) {
+        lat = -6.1075;
+        lng = 106.7975;
+      }
+      harborCoordinates = {
+        'latitude': (lat is num) ? lat.toDouble() : double.parse(lat.toString()),
+        'longitude': (lng is num) ? lng.toDouble() : double.parse(lng.toString()),
+      };
+    } catch (e) {
+      harborCoordinates = {'latitude': -6.1075, 'longitude': 106.7975};
+    }
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WaitingScheduleScreen(
+          scheduledDepartureTime: scheduledDepartureTime,
+          tripData: {
+            'vesselName': kapal['namaKapal'] ?? kapal['nama'] ?? '',
+            'vesselNumber': kapal['nomorRegistrasi'] ?? '',
+            'captainName': nahkoda['nama'] ?? nahkoda['username'] ?? '',
+            'crewCount': (tripData['awakKapal'] as List?)?.length ?? 0,
+            'selectedHarbor': tripData['pelabuhanAsal'] ?? areaTangkap['nama'] ?? '',
+            'departureTime': departureTime,
+            'estimatedReturnDate': estimatedReturnDate,
+            'estimatedDuration': (tripData['durasi'] is num)
+                ? (tripData['durasi'] as num).toInt()
+                : int.tryParse(tripData['durasi']?.toString() ?? '1') ?? 1,
+            'emergencyContact': '',
+            'fuelAmount': totalFuel,
+            'iceStorage': totalIce,
+            'notes': null,
+            'harborCoordinates': harborCoordinates,
+            'zoneRadius': 50.0,
+            'userRole': userRole == 'nahkoda' ? 'Nahkoda' : 'ABK',
+            'userName': userName,
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -750,24 +984,14 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         onRefresh: _loadSchedules,
         child: _isLoading
             ? Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  // Banner jika ada trip aktif
-                  if (_hasActiveTrip) _buildActiveTripBanner(),
-                  
-                  // List jadwal
-                  Expanded(
-                    child: _schedules.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                            padding: EdgeInsets.all(16),
-                            itemCount: _schedules.length,
-                            itemBuilder: (context, index) {
-                              return _buildScheduleCard(_schedules[index]);
-                            },
-                          ),
-                  ),
-                ],
+            : _schedules.isEmpty
+            ? _buildEmptyState()
+            : ListView.builder(
+                padding: EdgeInsets.all(16),
+                itemCount: _schedules.length,
+                itemBuilder: (context, index) {
+                  return _buildScheduleCard(_schedules[index]);
+                },
               ),
       ),
     );
@@ -778,86 +1002,15 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.calendar_today_outlined, size: 80, color: Colors.grey[400]),
+          Icon(
+            Icons.calendar_today_outlined,
+            size: 80,
+            color: Colors.grey[400],
+          ),
           SizedBox(height: 16),
           Text(
-            _hasActiveTrip 
-                ? 'Tidak ada jadwal baru'
-                : 'Belum ada jadwal tugas',
+            'Belum ada jadwal tugas',
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-          ),
-          if (_hasActiveTrip)
-            SizedBox(height: 8),
-          if (_hasActiveTrip)
-            Text(
-              'Selesaikan trip yang sedang berjalan terlebih dahulu',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActiveTripBanner() {
-    final kapal = _activeTrip?['kapal'];
-    return Container(
-      margin: EdgeInsets.all(16),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF2563EB), Color(0xFF1B4F9C)],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.sailing, color: Colors.white, size: 24),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '🚢 Trip Sedang Berjalan',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Kapal ${kapal?['namaKapal'] ?? '-'} sedang aktif',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Trip baru akan dimulai setelah trip ini selesai',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -866,7 +1019,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
 
   Widget _buildScheduleCard(Map<String, dynamic> schedule) {
     final dateFormat = DateFormat('dd MMM yyyy');
-    
+
     // Debug: Print schedule data
     print('\n========== SCHEDULE CARD DATA ==========');
     print('Schedule ID: ${schedule['id']}');
@@ -876,11 +1029,11 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     print('targetIkan: ${schedule['targetIkan']}');
     print('estimasiBerat: ${schedule['estimasiBerat']}');
     print('========================================\n');
-    
+
     DateTime? scheduledDate;
     try {
-      scheduledDate = schedule['tanggalBerangkat'] != null 
-          ? DateTime.parse(schedule['tanggalBerangkat']) 
+      scheduledDate = schedule['tanggalBerangkat'] != null
+          ? DateTime.parse(schedule['tanggalBerangkat'])
           : null;
     } catch (e) {
       scheduledDate = null;
@@ -910,7 +1063,10 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF1B4F9C).withOpacity(0.1), Color(0xFF2563EB).withOpacity(0.05)],
+                colors: [
+                  Color(0xFF1B4F9C).withOpacity(0.1),
+                  Color(0xFF2563EB).withOpacity(0.05),
+                ],
               ),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16),
@@ -927,7 +1083,11 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.directions_boat, color: Colors.white, size: 20),
+                  child: Icon(
+                    Icons.directions_boat,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -945,10 +1105,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                       SizedBox(height: 4),
                       Text(
                         kapal?['nomorRegistrasi'] ?? '-',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -979,7 +1136,9 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                 _buildInfoRow(
                   Icons.calendar_today,
                   'Tanggal Berangkat',
-                  scheduledDate != null ? dateFormat.format(scheduledDate) : '-',
+                  scheduledDate != null
+                      ? dateFormat.format(scheduledDate)
+                      : '-',
                   Colors.blue,
                 ),
                 if (nahkoda != null) ...[
@@ -1013,14 +1172,15 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                   Colors.teal,
                 ),
                 SizedBox(height: 16),
-                // Button berbeda untuk trip berlayar, selesai, vs trip baru
-                if (status?.toLowerCase() == 'selesai' || status?.toLowerCase() == 'completed' || status?.toLowerCase() == 'finished')
-                  // Trip selesai - tampilkan button ke riwayat
+                // Button berbeda untuk setiap status
+                if (status?.toLowerCase() == 'selesai' ||
+                    status?.toLowerCase() == 'completed' ||
+                    status?.toLowerCase() == 'finished')
+                  // Trip selesai
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Navigate ke history screen dengan filter trip ini
                         Navigator.pushNamed(
                           context,
                           '/history',
@@ -1051,48 +1211,66 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                       ),
                     ),
                   )
-                else if (!_hasActiveTrip)
+                else if (status?.toLowerCase() == 'berlayar' ||
+                    status?.toLowerCase() == 'sedang_melaut' ||
+                    status?.toLowerCase() == 'active' ||
+                    status?.toLowerCase() == 'sailing')
+                  // Trip berlayar
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        // Cek apakah dokumen sudah lengkap
-                        await _checkAndNavigate(schedule);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.sailing, size: 20, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text(
-                            'Mulai Trip',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                        // Cek apakah tracking sedang minimize
+                        final minimizeProvider = Provider.of<TrackingMinimizeProvider>(context, listen: false);
+                        if (minimizeProvider.isMinimized && minimizeProvider.isTracking) {
+                          // Jika minimize, tampilkan dialog peringatan
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              title: Row(
+                                children: [
+                                  Icon(Icons.navigation, color: Colors.blue),
+                                  SizedBox(width: 8),
+                                  Expanded(child: Text('Tracking Sedang Berjalan')),
+                                ],
+                              ),
+                              content: Text('Anda memiliki tracking yang sedang berjalan di background. Silakan buka tracking tersebut terlebih dahulu melalui minimize overlay.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text('Tutup'),
+                                ),
+                              ],
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.blue,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  )
-                else if (status?.toLowerCase() == 'berlayar' || status?.toLowerCase() == 'sedang_melaut' || status?.toLowerCase() == 'active' || status?.toLowerCase() == 'sailing')
-                  // Jika trip sedang berlayar, tampilkan button "Lanjutkan Tracking"
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Langsung ke tracking tanpa cek dokumen
-                        final response = await TripService.getTripDetail(schedule['id']);
+                        );
+
+                        final response = await TripService.getTripDetail(
+                          schedule['id'],
+                        );
+                        if (mounted) Navigator.pop(context);
+
                         if (response['success'] == true) {
                           await _navigateToTracking(response['data']);
+                        } else if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Gagal memuat data trip'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -1119,7 +1297,127 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                       ),
                     ),
                   )
+                else if (status?.toLowerCase() == 'darurat' ||
+                    status?.toLowerCase() == 'emergency')
+                  // Trip darurat
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // Cek apakah tracking sedang minimize
+                        final minimizeProvider = Provider.of<TrackingMinimizeProvider>(context, listen: false);
+                        print('🚨 [DARURAT] Check: isMinimized=${minimizeProvider.isMinimized}, isTracking=${minimizeProvider.isTracking}');
+                        if (minimizeProvider.isMinimized && minimizeProvider.isTracking) {
+                          print('🚨 [DARURAT] Show warning dialog');
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              title: Row(
+                                children: [
+                                  Icon(Icons.navigation, color: Colors.blue),
+                                  SizedBox(width: 8),
+                                  Expanded(child: Text('Tracking Sedang Berjalan')),
+                                ],
+                              ),
+                              content: Text('Anda memiliki tracking yang sedang berjalan di background. Silakan buka tracking tersebut terlebih dahulu melalui minimize overlay.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text('Tutup'),
+                                ),
+                              ],
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => Center(
+                            child: CircularProgressIndicator(color: Colors.red),
+                          ),
+                        );
+
+                        final response = await TripService.getTripDetail(
+                          schedule['id'],
+                        );
+                        if (mounted) Navigator.pop(context);
+
+                        if (response['success'] == true) {
+                          await _navigateToTracking(response['data']);
+                        } else if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Gagal memuat data trip'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.warning, size: 20, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text(
+                            'Lanjutkan - DARURAT!',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (!_hasActiveTrip &&
+                    (status?.toLowerCase() == 'menunggu_dokumen' ||
+                        status?.toLowerCase() == 'menunggu_izin' ||
+                        status?.toLowerCase() == 'disetujui' ||
+                        status?.toLowerCase() == 'siap_berangkat'))
+                  // Trip baru - siap dimulai
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await _checkAndNavigate(schedule);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.sailing, size: 20, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text(
+                            'Mulai Trip',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
                 else
+                  // Trip tidak bisa dimulai (ada trip aktif)
                   Container(
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -1129,7 +1427,11 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.orange,
+                          size: 20,
+                        ),
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(

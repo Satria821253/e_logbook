@@ -115,8 +115,11 @@ class _TripInfoScreenState extends State<TripInfoScreen> with SingleTickerProvid
                  status == 'sailing' ||
                  status == 'on_trip' ||
                  status == 'on trip' ||
+                 status == 'darurat' ||
+                 status == 'emergency' ||
                  status.contains('berlayar') ||
-                 status.contains('melaut');
+                 status.contains('melaut') ||
+                 status.contains('darurat');
         }).toList();
 
         _completedTrips = userTrips.where((trip) {
@@ -366,43 +369,53 @@ class _TripInfoScreenState extends State<TripInfoScreen> with SingleTickerProvid
   }
 
   Widget _buildStatusBadge(String status) {
-    Color color;
+    Color bgColor;
+    Color textColor;
     String text;
     final statusLower = status.toLowerCase();
     
     if (statusLower == 'menunggu_dokumen') {
-      color = Colors.orange;
+      bgColor = Colors.white;
+      textColor = Colors.orange;
       text = 'Menunggu Dokumen';
     } else if (statusLower == 'menunggu_izin') {
-      color = Colors.amber;
+      bgColor = Colors.white;
+      textColor = Colors.amber;
       text = 'Menunggu Izin';
     } else if (statusLower == 'disetujui' || statusLower == 'approved') {
-      color = Colors.blue;
+      bgColor = Colors.white;
+      textColor = Colors.blue;
       text = 'Disetujui';
     } else if (statusLower == 'siap_berangkat' || statusLower == 'scheduled') {
-      color = Colors.blue;
+      bgColor = Colors.white;
+      textColor = Colors.blue;
       text = 'Siap Berangkat';
     } else if (statusLower == 'berlayar' || statusLower == 'sedang_melaut' || statusLower == 'active' || statusLower == 'sailing') {
-      color = Colors.green;
+      bgColor = Colors.white;
+      textColor = Colors.green;
       text = 'Berlayar';
-    } else if (statusLower == 'selesai' || statusLower == 'completed' || statusLower == 'finished') {
-      color = Colors.teal;
-      text = 'Selesai';
     } else if (statusLower == 'darurat' || statusLower == 'emergency') {
-      color = Colors.red;
-      text = 'Darurat';
+      bgColor = Colors.red;
+      textColor = Colors.white;
+      text = 'Berlayar - DARURAT';
+    } else if (statusLower == 'selesai' || statusLower == 'completed' || statusLower == 'finished') {
+      bgColor = Colors.white;
+      textColor = Colors.teal;
+      text = 'Selesai';
     } else if (statusLower == 'ditolak' || statusLower == 'rejected') {
-      color = Colors.red;
+      bgColor = Colors.white;
+      textColor = Colors.red;
       text = 'Ditolak';
     } else {
-      color = Colors.grey;
+      bgColor = Colors.white;
+      textColor = Colors.grey;
       text = status;
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -410,7 +423,7 @@ class _TripInfoScreenState extends State<TripInfoScreen> with SingleTickerProvid
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: color,
+          color: textColor,
         ),
       ),
     );

@@ -45,6 +45,18 @@ class SettingsScreen extends StatelessWidget {
             subtitle: 'Kelola kata sandi akun',
             onTap: () => NavigationHelper.pushNoTransition(context, const PasswordScreen()),
           ),
+          const SizedBox(height: 16),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Text(
+              'Developer Tools',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
         ],
       ),
     );

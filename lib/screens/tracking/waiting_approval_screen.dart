@@ -1,7 +1,9 @@
 import 'package:e_logbook/screens/tracking/waiting_schedule_screen.dart';
+import 'package:e_logbook/screens/main_screen.dart';
 import 'package:e_logbook/services/api/trip_service.dart';
 import 'package:e_logbook/services/nitification/notification_service.dart';
 import 'package:e_logbook/services/nitification/local_notification_service.dart';
+import 'package:e_logbook/provider/tracking_minimize_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:async';
@@ -41,6 +43,7 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
   @override
   void initState() {
     super.initState();
+    print('🟢 [WAITING_APPROVAL] initState called');
     _initialize();
   }
 
@@ -202,12 +205,32 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
   }
 
   void _navigateToHome() {
+    print('🔙 [DEBUG] _navigateToHome called');
+    print('🔙 [DEBUG] Cancelling poll timer');
     _pollTimer?.cancel();
-    Navigator.of(context).pop();
+    print('🔙 [DEBUG] Navigating to MainScreen with pushAndRemoveUntil');
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const MainScreen()),
+      (route) => false, // Remove all previous routes
+    );
+    print('🔙 [DEBUG] Navigation completed');
   }
 
   void _navigateToWaitingSchedule(Map<String, dynamic> apiTripData) async {
     _pollTimer?.cancel();
+    
+    // CEK APAKAH TRACKING SUDAH AKTIF
+    final trackingProvider = Provider.of<TrackingMinimizeProvider>(context, listen: false);
+    if (trackingProvider.isTrackingActive) {
+      print('✅ [WAITING_APPROVAL] Tracking already active, maximizing...');
+      trackingProvider.maximize();
+      return;
+    }
+    
+    print('\n📅 [WAITING_APPROVAL] ===== NAVIGATE TO WAITING SCHEDULE =====');
+    print('📅 [WAITING_APPROVAL] Raw API data:');
+    print('📅 [WAITING_APPROVAL]   waktuMulai: ${apiTripData['waktuMulai']}');
+    print('📅 [WAITING_APPROVAL]   tanggalBerangkat: ${apiTripData['tanggalBerangkat']}');
     
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final prefs = await SharedPreferences.getInstance();
@@ -234,10 +257,13 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
       totalIce += (ice['jumlahKg'] ?? 0).toDouble();
     }
 
+    // PRIORITAS: waktuMulai > tanggalBerangkat
     if (apiTripData['waktuMulai'] != null) {
       actualDepartureTime = DateTime.parse(apiTripData['waktuMulai']);
+      print('📅 [WAITING_APPROVAL] Using waktuMulai: $actualDepartureTime');
     } else if (apiTripData['tanggalBerangkat'] != null) {
       actualDepartureTime = DateTime.parse(apiTripData['tanggalBerangkat']);
+      print('📅 [WAITING_APPROVAL] Using tanggalBerangkat: $actualDepartureTime');
     }
 
     if (apiTripData['estimasiPulang'] != null) {
@@ -250,6 +276,38 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
     final iceStorage = totalIce > 0 ? totalIce : (widget.tripData['iceStorage'] ?? 0.0).toDouble();
     final estimatedDuration = actualDuration ?? widget.tripData['estimatedDuration'] ?? 1;
     final departureTime = actualDepartureTime ?? widget.tripData['departureDate'] ?? DateTime.now();
+    
+    print('📅 [WAITING_APPROVAL] Final departureTime: $departureTime');
+    print('📅 [WAITING_APPROVAL] Time until departure: ${departureTime.difference(DateTime.now())}');
+    
+    // Konversi harborCoordinates dari {lat, lng} ke {latitude, longitude}
+    Map<String, dynamic>? convertedCoords;
+    if (widget.tripData['harborCoordinates'] != null) {
+      final coords = widget.tripData['harborCoordinates'] as Map;
+      convertedCoords = {
+        'latitude': coords['lat'] ?? coords['latitude'],
+        'longitude': coords['lng'] ?? coords['longitude'],
+      };
+    }
+
+    print('\n📦 [WAITING_APPROVAL] ===== SENDING TO WAITING SCHEDULE =====');
+    print('📦 [WAITING_APPROVAL] scheduledDepartureTime: $departureTime');
+    print('📦 [WAITING_APPROVAL] vesselName: "${widget.tripData['vesselName'] ?? ''}"');
+    print('📦 [WAITING_APPROVAL] vesselNumber: "${widget.tripData['vesselNumber'] ?? ''}"');
+    print('📦 [WAITING_APPROVAL] captainName: "${widget.tripData['captainName'] ?? ''}"');
+    print('📦 [WAITING_APPROVAL] crewCount: ${widget.tripData['crewCount'] ?? 0}');
+    print('📦 [WAITING_APPROVAL] selectedHarbor: "${widget.tripData['departureHarbor'] ?? ''}"');
+    print('📦 [WAITING_APPROVAL] departureTime in tripData: $departureTime');
+    print('📦 [WAITING_APPROVAL] estimatedReturnDate: $estimatedReturnDate');
+    print('📦 [WAITING_APPROVAL] estimatedDuration: $estimatedDuration');
+    print('📦 [WAITING_APPROVAL] fuelAmount: $fuelAmount');
+    print('📦 [WAITING_APPROVAL] iceStorage: $iceStorage');
+    print('📦 [WAITING_APPROVAL] harborCoordinates: $convertedCoords');
+    print('📦 [WAITING_APPROVAL] zoneRadius: ${PollingConfig.zoneRadius}');
+    print('📦 [WAITING_APPROVAL] userRole: "$finalUserRole"');
+    print('📦 [WAITING_APPROVAL] userName: "$userName"');
+    print('📦 [WAITING_APPROVAL] ===== END SENDING DATA =====\n');
+    print('📅 [WAITING_APPROVAL] ===== END =====\n');
 
     if (!mounted) return;
 
@@ -270,7 +328,7 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
             'fuelAmount': fuelAmount,
             'iceStorage': iceStorage,
             'notes': widget.tripData['notes'],
-            'harborCoordinates': widget.tripData['harborCoordinates'],
+            'harborCoordinates': convertedCoords,
             'zoneRadius': PollingConfig.zoneRadius,
             'userRole': finalUserRole,
             'userName': userName,
@@ -283,15 +341,21 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
 
   @override
   void dispose() {
+    print('🔴 [WAITING_APPROVAL] dispose called - Screen is being destroyed!');
     _pollTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    print('🔄 [WAITING_APPROVAL] build called');
     return WillPopScope(
       onWillPop: () async {
+        print('🔙 [DEBUG] ===== BACK GESTURE DETECTED =====');
+        print('🔙 [DEBUG] WillPopScope onWillPop triggered');
+        print('🔙 [DEBUG] Calling _navigateToHome()');
         _navigateToHome();
+        print('🔙 [DEBUG] Returning false to prevent default pop');
         return false;
       },
       child: Scaffold(
@@ -305,6 +369,7 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: _navigateToHome,
           ),
+          automaticallyImplyLeading: false,
           iconTheme: const IconThemeData(color: Colors.white),
           flexibleSpace: Container(
             decoration: const BoxDecoration(
@@ -312,7 +377,15 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
             ),
           ),
         ),
-        body: Center(
+        body: GestureDetector(
+          onHorizontalDragEnd: (details) {
+            // Detect swipe from left to right
+            if (details.primaryVelocity! > 0) {
+              print('🔙 [DEBUG] Swipe back gesture detected!');
+              _navigateToHome();
+            }
+          },
+          child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -390,6 +463,7 @@ class _WaitingApprovalScreenState extends State<WaitingApprovalScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

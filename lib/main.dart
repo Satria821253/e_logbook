@@ -12,6 +12,7 @@ import 'package:e_logbook/config/app_initializer.dart';
 import 'package:e_logbook/routes/route_generator.dart';
 import 'package:e_logbook/screens/splash_screen.dart';
 import 'package:e_logbook/widgets/initialization_error_screen.dart';
+import 'package:e_logbook/widgets/tracking_minimized_overlay.dart';
 import 'package:e_logbook/services/fcm/fcm_service.dart';
 
 void main() async {
@@ -63,6 +64,16 @@ class _MyAppState extends State<MyApp> {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   @override
+  void initState() {
+    super.initState();
+    // Set navigator key ke provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<TrackingMinimizeProvider>(context, listen: false)
+          .setNavigatorKey(navigatorKey);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
@@ -74,6 +85,21 @@ class _MyAppState extends State<MyApp> {
       ),
       home: const SplashScreen(),
       onGenerateRoute: RouteGenerator.generateRoute,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            child ?? const SizedBox(),
+            Consumer<TrackingMinimizeProvider>(
+              builder: (context, provider, _) {
+                if (provider.isMinimized && provider.isTracking) {
+                  return TrackingMinimizedOverlay();
+                }
+                return const SizedBox();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }

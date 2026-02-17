@@ -1176,7 +1176,7 @@ class _MainScreenState extends State<MainScreen> {
       if (response['success'] == true && response['data'] != null) {
         final allTrips = List<Map<String, dynamic>>.from(response['data']);
         
-        // Filter trip milik user
+        // Filter trip milik user - TERMASUK DARURAT!
         final myTrips = allTrips.where((trip) {
           final nahkodaId = trip['nahkodaId'];
           final awakKapal = trip['awakKapal'] as List?;
@@ -1185,7 +1185,8 @@ class _MainScreenState extends State<MainScreen> {
           final isMyTrip = (nahkodaId == currentUserId) ||
                            (awakKapal != null && awakKapal.contains(currentUserId));
           
-          return isMyTrip && (status == 'berlayar' || status == 'selesai');
+          // Izinkan: berlayar, darurat, emergency, selesai
+          return isMyTrip && (status == 'berlayar' || status == 'darurat' || status == 'emergency' || status == 'selesai');
         }).toList();
         
         if (myTrips.isEmpty) {
@@ -1224,7 +1225,7 @@ class _MainScreenState extends State<MainScreen> {
                     SizedBox(height: 12),
                     _buildInfoRow(Icons.close, 'Belum ada trip aktif', Colors.red),
                     SizedBox(height: 8),
-                    _buildInfoRow(Icons.info_outline, 'Status trip harus "Berlayar" atau "Selesai"', Colors.orange),
+                    _buildInfoRow(Icons.info_outline, 'Status trip harus "Berlayar", "Darurat", atau "Selesai"', Colors.orange),
                     SizedBox(height: 16),
                     Container(
                       padding: EdgeInsets.all(12),
@@ -1260,13 +1261,15 @@ class _MainScreenState extends State<MainScreen> {
           return;
         }
         
-        // Prioritas: 1. Berlayar, 2. Selesai, 3. Terbaru
+        // Prioritas: 1. Berlayar, 2. Darurat, 3. Selesai, 4. Terbaru
         myTrips.sort((a, b) {
           final statusA = a['status']?.toLowerCase() ?? '';
           final statusB = b['status']?.toLowerCase() ?? '';
           
           if (statusA == 'berlayar') return -1;
           if (statusB == 'berlayar') return 1;
+          if (statusA == 'darurat' || statusA == 'emergency') return -1;
+          if (statusB == 'darurat' || statusB == 'emergency') return 1;
           if (statusA == 'selesai') return -1;
           if (statusB == 'selesai') return 1;
           

@@ -37,17 +37,40 @@ flutter pub get
 ```
 
 3. **Setup environment variables**
+
+⚠️ **PENTING untuk Tim**: Setiap developer HARUS generate API key SENDIRI!
+
 ```bash
+# Windows
+copy .env.example .env
+
+# Linux/Mac
 cp .env.example .env
 ```
 
-Edit `.env` dan isi dengan API keys Anda:
+Edit `.env` dan isi dengan API keys PRIBADI Anda:
+
 ```env
-API_BASE_URL=http://your-api-url.com/api
-OPENWEATHER_API_KEY=your_openweather_key
-GOOGLE_MAPS_API_KEY=your_google_maps_key
-GEMINI_API_KEY=your_gemini_key
+API_BASE_URL=https://elogbookipb.web.id/api
+
+# Generate di: https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=YOUR_PERSONAL_API_KEY_HERE
+GEMINI_MODEL=gemini-1.5-flash
+
+# Generate di: https://console.cloud.google.com/google/maps-apis
+GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_KEY_HERE
+
+# Generate di: https://openweathermap.org/api
+OPENWEATHER_API_KEY=YOUR_OPENWEATHER_KEY_HERE
 ```
+
+🔐 **SECURITY WARNING**:
+- ❌ JANGAN commit file `.env` ke Git!
+- ❌ JANGAN share API key ke orang lain!
+- ✅ Setiap developer generate key sendiri
+- ✅ File `.env` sudah ada di `.gitignore`
+
+📖 **Panduan lengkap**: Lihat `TEAM_SETUP_GUIDE.md`
 
 4. **Setup Google Maps API Key (Android)**
 
@@ -58,7 +81,20 @@ Edit `android/app/src/main/AndroidManifest.xml`:
     android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
 ```
 
-5. **Run the app**
+5. **Verify API Keys (WAJIB!)**
+
+Jalankan app dan test API key:
+```bash
+flutter run
+```
+
+Di app:
+1. Buka **Menu → Pengaturan**
+2. Scroll ke **Developer Tools**
+3. Tap **"Test Gemini API Key"**
+4. Harus muncul: ✅ **API Key valid**
+
+6. **Run the app**
 ```bash
 flutter run
 ```
@@ -114,7 +150,33 @@ dependencies:
 
 ## 🔐 Security Notes
 
-⚠️ **IMPORTANT**: Untuk production, implement:
+⚠️ **CRITICAL - API Key Security**:
+
+### Kenapa API Key Bisa Di-Block?
+1. ❌ API key di-commit ke GitHub (public/private)
+2. ❌ API key di-share antar developer
+3. ❌ Google bot auto-detect dan suspend key
+4. ❌ Banyak IP berbeda pakai 1 key = suspicious
+
+### Solusi:
+- ✅ **Setiap developer HARUS punya API key SENDIRI**
+- ✅ Generate key di: https://aistudio.google.com/app/apikey
+- ✅ Simpan di file `.env` (sudah di `.gitignore`)
+- ✅ JANGAN PERNAH commit atau share API key
+
+### Jika API Key Di-Block:
+```bash
+1. Generate API key BARU (jangan pakai yang lama)
+2. Update .env dengan key baru
+3. Restart aplikasi
+```
+
+📖 **Panduan lengkap**: 
+- Setup tim: `TEAM_SETUP_GUIDE.md`
+- Troubleshooting: `TROUBLESHOOTING_GEMINI.md`
+- Quick fix: `GEMINI_API_FIX.md`
+
+### Production Security:
 1. `flutter_secure_storage` untuk token storage
 2. Certificate pinning untuk API calls
 3. Biometric authentication

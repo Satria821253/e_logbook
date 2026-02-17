@@ -37,9 +37,11 @@ class CatchPolygonModel {
               (coord['lng'] as num).toDouble(),
             );
           } else if (coord is List && coord.length >= 2) {
+            // coord[0] = longitude, coord[1] = latitude (GeoJSON format)
+            // But LatLng expects (latitude, longitude)
             return LatLng(
-              (coord[1] as num).toDouble(),
-              (coord[0] as num).toDouble(),
+              (coord[1] as num).toDouble(), // latitude
+              (coord[0] as num).toDouble(), // longitude
             );
           }
           return LatLng(0, 0);

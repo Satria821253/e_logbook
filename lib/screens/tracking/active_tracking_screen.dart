@@ -10,9 +10,9 @@ import 'package:e_logbook/services/device/foreground_tracking_service.dart';
 import 'package:e_logbook/services/device/zone_checker.dart';
 import 'package:e_logbook/services/realtime/realtime_service.dart';
 import 'package:e_logbook/services/cuaca/weather_service.dart';
+import 'package:e_logbook/services/api/trip_service.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:e_logbook/widgets/sos_alert_dialog.dart';
-import 'package:e_logbook/widgets/tracking_minimized_overlay.dart';
 import 'package:e_logbook/provider/tracking_minimize_provider.dart';
 import 'package:e_logbook/screens/main_screen.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +20,9 @@ import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'dart:convert';
 
 class ActiveTrackingScreen extends StatefulWidget {
   final String vesselName;
@@ -91,6 +93,8 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
   
   // Provider reference
   TrackingMinimizeProvider? _minimizeProvider;
+  bool _isInitialized = false;
+  DateTime? _lastMapUpdate;
 
   @override
   void initState() {
@@ -103,49 +107,103 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
     
     ForegroundTrackingService.initForegroundTask();
     
-    print('⛽ [ActiveTracking] ===== INIT DATA =====');
-    print('⛽ [ActiveTracking] userRole: ${widget.userRole}');
-    print('⛽ [ActiveTracking] userName: ${widget.userName}');
-    print('⛽ [ActiveTracking] vesselName: ${widget.vesselName}');
-    print('⛽ [ActiveTracking] selectedHarbor: ${widget.selectedHarbor}');
-    print('⛽ [ActiveTracking] harborCoordinates: ${widget.harborCoordinates}');
-    print('⛽ [ActiveTracking] zoneRadius: ${widget.zoneRadius} km');
+    print('⛽ [ActiveTracking] ===== RECEIVED DATA DEBUG =====');
+    print('⛽ [ActiveTracking] userRole: "${widget.userRole}"');
+    print('⛽ [ActiveTracking] userName: "${widget.userName}"');
+    print('⛽ [ActiveTracking] vesselName: "${widget.vesselName}"');
+    print('⛽ [ActiveTracking] vesselNumber: "${widget.vesselNumber}"');
+    print('⛽ [ActiveTracking] captainName: "${widget.captainName}"');
+    print('⛽ [ActiveTracking] crewCount: ${widget.crewCount}');
+    print('⛽ [ActiveTracking] selectedHarbor: "${widget.selectedHarbor}"');
+    print('⛽ [ActiveTracking] departureTime: ${widget.departureTime}');
+    print('⛽ [ActiveTracking] estimatedReturnDate: ${widget.estimatedReturnDate}');
+    print('⛽ [ActiveTracking] estimatedDuration: ${widget.estimatedDuration}');
     print('⛽ [ActiveTracking] fuelAmount: ${widget.fuelAmount}');
     print('⛽ [ActiveTracking] iceStorage: ${widget.iceStorage}');
-    print('⛽ [ActiveTracking] ===== END INIT =====');
+    print('⛽ [ActiveTracking] harborCoordinates: ${widget.harborCoordinates}');
+    print('⛽ [ActiveTracking] zoneRadius: ${widget.zoneRadius} km');
+    print('⛽ [ActiveTracking] emergencyContact: "${widget.emergencyContact}"');
+    print('⛽ [ActiveTracking] notes: "${widget.notes}"');
+    print('⛽ [ActiveTracking] ===== END RECEIVED DATA =====');
     
     _remainingFuel = widget.fuelAmount;
+    
+    // Ambil posisi terakhir dari LocationTrackingService jika ada
+    _restoreLastPosition();
+    
     _initializeTracking();
+  }
+  
+  Future<void> _restoreLastPosition() async {
+    try {
+      // Coba ambil posisi terakhir dari LocationTrackingService
+      final lastPosition = await LocationTrackingService.getLastKnownPosition();
+      if (lastPosition != null && mounted) {
+        print('✅ [ActiveTracking] Restored last position: ${lastPosition.latitude}, ${lastPosition.longitude}');
+        setState(() {
+          _currentPosition = lastPosition;
+          _zoneStatus = _calculateZoneStatus(lastPosition);
+        });
+      } else {
+        // Fallback: ambil posisi current
+        print('🔵 [ActiveTracking] No last position, getting current position');
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 5),
+        );
+        if (mounted) {
+          setState(() {
+            _currentPosition = position;
+            _zoneStatus = _calculateZoneStatus(position);
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ [ActiveTracking] Error restoring position: $e');
+    }
   }
   
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _minimizeProvider ??= Provider.of<TrackingMinimizeProvider>(context, listen: false);
     
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _minimizeProvider?.startTracking(
-        data: {
-          'vesselName': widget.vesselName,
-          'vesselNumber': widget.vesselNumber,
-          'captainName': widget.captainName,
-          'crewCount': widget.crewCount,
-          'selectedHarbor': widget.selectedHarbor,
-          'departureTime': widget.departureTime,
-          'estimatedReturnDate': widget.estimatedReturnDate,
-          'estimatedDuration': widget.estimatedDuration,
-          'emergencyContact': widget.emergencyContact,
-          'fuelAmount': widget.fuelAmount,
-          'iceStorage': widget.iceStorage,
-          'notes': widget.notes,
-          'harborCoordinates': widget.harborCoordinates,
-          'zoneRadius': widget.zoneRadius,
-          'userRole': widget.userRole,
-          'userName': widget.userName,
-        },
-      );
-      _minimizeProvider?.maximize();
-    });
+    if (!_isInitialized) {
+      _isInitialized = true;
+      _minimizeProvider = Provider.of<TrackingMinimizeProvider>(context, listen: false);
+      
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        
+        _minimizeProvider?.startTracking(
+          data: {
+            'vesselName': widget.vesselName,
+            'vesselNumber': widget.vesselNumber,
+            'captainName': widget.captainName,
+            'crewCount': widget.crewCount,
+            'selectedHarbor': widget.selectedHarbor,
+            'departureTime': widget.departureTime,
+            'estimatedReturnDate': widget.estimatedReturnDate,
+            'estimatedDuration': widget.estimatedDuration,
+            'emergencyContact': widget.emergencyContact,
+            'fuelAmount': widget.fuelAmount,
+            'iceStorage': widget.iceStorage,
+            'notes': widget.notes,
+            'harborCoordinates': widget.harborCoordinates,
+            'zoneRadius': widget.zoneRadius,
+            'userRole': widget.userRole,
+            'userName': widget.userName,
+          },
+        );
+        
+        // Hanya maximize jika sedang minimize
+        if (_minimizeProvider?.isMinimized == true) {
+          print('🔵 [ActiveTracking] Was minimized, maximizing now');
+          _minimizeProvider?.maximize();
+        } else {
+          print('🔵 [ActiveTracking] Already maximized, skipping');
+        }
+      });
+    }
   }
 
   @override
@@ -174,24 +232,24 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
 
   Future<void> _validateAndStartTracking() async {
     if (widget.harborCoordinates == null || 
-        widget.harborCoordinates!['lat'] == null || 
-        widget.harborCoordinates!['lng'] == null) {
-      print('❌ [ActiveTracking] Invalid harbor coordinates: ${widget.harborCoordinates}');
+        widget.harborCoordinates!['latitude'] == null || 
+        widget.harborCoordinates!['longitude'] == null) {
+      print('❌ [ActiveTracking] Invalid coordinates: ${widget.harborCoordinates}');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          _showError('Data koordinat pelabuhan tidak tersedia. Menggunakan GPS real-time.');
+          _showError('Data koordinat zona tangkap tidak tersedia. Menggunakan GPS real-time.');
           // Jangan pop, lanjutkan dengan GPS real-time
         }
       });
-      // Lanjutkan tracking dengan GPS real-time tanpa koordinat pelabuhan
+      // Lanjutkan tracking dengan GPS real-time tanpa koordinat zona
       return;
     }
     
-    print('✅ [ActiveTracking] Valid harbor coordinates: ${widget.harborCoordinates}');
+    print('✅ [ActiveTracking] Valid coordinates: ${widget.harborCoordinates}');
 
     try {
-      final harborLat = widget.harborCoordinates!['lat'];
-      final harborLng = widget.harborCoordinates!['lng'];
+      final harborLat = widget.harborCoordinates!['latitude'];
+      final harborLng = widget.harborCoordinates!['longitude'];
       
       if (harborLat == null || harborLng == null) {
         throw Exception('Koordinat pelabuhan tidak valid');
@@ -363,12 +421,25 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
 
   void _handleLocationUpdate(Position position, Map<String, dynamic> zoneInfo) {
     if (!mounted) return;
+    
+    // Throttle map updates - hanya update setiap 2 detik
+    final now = DateTime.now();
+    final shouldUpdateMap = _lastMapUpdate == null || 
+        now.difference(_lastMapUpdate!).inSeconds >= 2;
 
-    setState(() {
+    if (shouldUpdateMap) {
+      setState(() {
+        _currentPosition = position;
+        _currentZoneInfo = zoneInfo;
+        _zoneStatus = _calculateZoneStatus(position);
+      });
+      _lastMapUpdate = now;
+    } else {
+      // Update data tanpa rebuild UI
       _currentPosition = position;
       _currentZoneInfo = zoneInfo;
       _zoneStatus = _calculateZoneStatus(position);
-    });
+    }
     
     // Update provider untuk minimize view
     _minimizeProvider?.updatePosition(
@@ -381,47 +452,90 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
   String _calculateZoneStatus(Position position) {
     if (widget.harborCoordinates == null) return 'unknown';
 
-    final harborLat = widget.harborCoordinates!['lat'];
-    final harborLng = widget.harborCoordinates!['lng'];
+    final harborLat = widget.harborCoordinates!['latitude'];
+    final harborLng = widget.harborCoordinates!['longitude'];
+
+    // Validasi dan swap koordinat jika terbalik
+    double validHarborLat = (harborLat is num) ? harborLat.toDouble() : double.parse(harborLat.toString());
+    double validHarborLng = (harborLng is num) ? harborLng.toDouble() : double.parse(harborLng.toString());
+    
+    // Jika latitude > 90 atau < -90, kemungkinan terbalik dengan longitude
+    if (validHarborLat.abs() > 90) {
+      print('⚠️ [ZoneStatus] SWAPPING harbor coords - lat=$validHarborLat, lng=$validHarborLng');
+      final temp = validHarborLat;
+      validHarborLat = validHarborLng;
+      validHarborLng = temp;
+      print('✅ [ZoneStatus] After swap - lat=$validHarborLat, lng=$validHarborLng');
+    }
 
     // Hitung jarak dari posisi kapal ke pusat zona (dalam meter)
     final distanceInMeters = Geolocator.distanceBetween(
       position.latitude,
       position.longitude,
-      harborLat,
-      harborLng,
+      validHarborLat,
+      validHarborLng,
     );
 
     // Konversi radius zona dari km ke meter
     final zoneRadiusInMeters = widget.zoneRadius * 1000;
+    final distanceInKm = distanceInMeters / 1000;
 
     // Debug logging
     print('🎯 [ZoneStatus] ===== ZONE CALCULATION =====');
     print('🎯 [ZoneStatus] User Role: ${widget.userRole}');
     print('🎯 [ZoneStatus] Harbor: ${widget.selectedHarbor}');
-    print('🎯 [ZoneStatus] Harbor Coords: ($harborLat, $harborLng)');
+    print('🎯 [ZoneStatus] Harbor Coords (ORIGINAL): ($harborLat, $harborLng)');
+    print('🎯 [ZoneStatus] Harbor Coords (VALIDATED): ($validHarborLat, $validHarborLng)');
     print('🎯 [ZoneStatus] Current Position: (${position.latitude}, ${position.longitude})');
-    print('🎯 [ZoneStatus] Distance: ${(distanceInMeters / 1000).toStringAsFixed(2)} km');
+    print('🎯 [ZoneStatus] Distance: ${distanceInKm.toStringAsFixed(2)} km');
     print('🎯 [ZoneStatus] Zone Radius: ${widget.zoneRadius} km');
-    print('🎯 [ZoneStatus] Zone Radius (meters): $zoneRadiusInMeters m');
 
-    // Untuk perjalanan laut 7 hari, gunakan threshold realistis:
+    // Logika zona yang lebih realistis:
     // - Dalam zona: ≤ radius zona
-    // - Menuju zona: radius zona sampai 3x radius (area operasi normal)
-    // - Melewati zona: > 3x radius (terlalu jauh dari zona tangkap)
+    // - Menuju zona: radius zona sampai 10x radius (untuk perjalanan jauh)
+    // - Melewati zona: > 10x radius (sangat jauh dari zona)
     String status;
     if (distanceInMeters <= zoneRadiusInMeters) {
       status = 'inside'; // Dalam zona tangkap
-    } else if (distanceInMeters <= zoneRadiusInMeters * 3) {
+    } else if (distanceInMeters <= zoneRadiusInMeters * 10) {
       status = 'approaching'; // Menuju zona / dalam perjalanan
     } else {
       status = 'outside'; // Melewati zona / terlalu jauh
     }
     
     print('🎯 [ZoneStatus] Calculated Status: $status');
+    print('🎯 [ZoneStatus] Threshold: inside ≤ ${widget.zoneRadius} km, approaching ≤ ${widget.zoneRadius * 10} km');
     print('🎯 [ZoneStatus] =============================\n');
     
     return status;
+  }
+
+  // Helper untuk mendapatkan jarak saat ini
+  double? _getCurrentDistance() {
+    if (_currentPosition == null || widget.harborCoordinates == null) return null;
+    
+    final harborLat = widget.harborCoordinates!['latitude'];
+    final harborLng = widget.harborCoordinates!['longitude'];
+    
+    if (harborLat == null || harborLng == null) return null;
+    
+    double validHarborLat = (harborLat is num) ? harborLat.toDouble() : double.parse(harborLat.toString());
+    double validHarborLng = (harborLng is num) ? harborLng.toDouble() : double.parse(harborLng.toString());
+    
+    if (validHarborLat.abs() > 90) {
+      final temp = validHarborLat;
+      validHarborLat = validHarborLng;
+      validHarborLng = temp;
+    }
+    
+    final distanceInMeters = Geolocator.distanceBetween(
+      _currentPosition!.latitude,
+      _currentPosition!.longitude,
+      validHarborLat,
+      validHarborLng,
+    );
+    
+    return distanceInMeters / 1000; // Return dalam km
   }
 
   Future<void> _handleViolation() async {
@@ -513,16 +627,154 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
 
   // ==================== NAVIGATION ====================
 
+  void _showExitTrackingDialog() {
+    print('\n🚪🚪🚪 [ActiveTracking] ===== EXIT DIALOG =====');
+    print('🚪 [ActiveTracking] Showing exit dialog');
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.exit_to_app, color: Colors.orange),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('Keluar dari Tracking?', style: TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Anda akan keluar dari layar tracking.'),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Tracking tetap berjalan di background. Anda bisa kembali kapan saja.',
+                      style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              print('🚪 [ActiveTracking] Exit cancelled');
+              Navigator.pop(dialogContext);
+            },
+            child: Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              print('🚪 [ActiveTracking] Exit confirmed - going to MainScreen WITHOUT minimize');
+              Navigator.pop(dialogContext);
+              if (!mounted) return;
+              
+              // Langsung navigate ke MainScreen tanpa minimize
+              print('🚪 [ActiveTracking] Navigating to clean MainScreen');
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => MainScreen()),
+                (route) => false,
+              );
+              print('🚪🚪🚪 [ActiveTracking] ===== EXIT COMPLETE =====\n');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+            ),
+            child: Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _navigateToCatchScreen() async {
     try {
-      final result = await Navigator.pushNamed(
-        context,
-        '/create-catch',
-      );
+      // Ambil tripId dari tracking data
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      int? currentUserId;
+      
+      if (userDataString != null) {
+        final userData = json.decode(userDataString);
+        currentUserId = userData['id'];
+      }
+      
+      if (currentUserId == null) {
+        _showError('User ID tidak ditemukan');
+        return;
+      }
+      
+      // Ambil trip yang sedang berlayar/darurat
+      final response = await TripService.getAllTrips();
+      if (response['success'] == true && response['data'] != null) {
+        final allTrips = List<Map<String, dynamic>>.from(response['data']);
+        
+        final myTrips = allTrips.where((trip) {
+          final nahkodaId = trip['nahkodaId'];
+          final awakKapal = trip['awakKapal'] as List?;
+          final status = trip['status']?.toLowerCase();
+          
+          final isMyTrip = (nahkodaId == currentUserId) ||
+                           (awakKapal != null && awakKapal.contains(currentUserId));
+          
+          return isMyTrip && (status == 'berlayar' || status == 'darurat' || status == 'emergency' || status == 'selesai');
+        }).toList();
+        
+        if (myTrips.isEmpty) {
+          _showError('Tidak ada trip aktif');
+          return;
+        }
+        
+        // Prioritas: Berlayar -> Darurat -> Selesai
+        myTrips.sort((a, b) {
+          final statusA = a['status']?.toLowerCase() ?? '';
+          final statusB = b['status']?.toLowerCase() ?? '';
+          
+          if (statusA == 'berlayar') return -1;
+          if (statusB == 'berlayar') return 1;
+          if (statusA == 'darurat' || statusA == 'emergency') return -1;
+          if (statusB == 'darurat' || statusB == 'emergency') return 1;
+          if (statusA == 'selesai') return -1;
+          if (statusB == 'selesai') return 1;
+          
+          return (b['id'] ?? 0).compareTo(a['id'] ?? 0);
+        });
+        
+        final tripId = myTrips.first['id'];
+        
+        final result = await Navigator.pushNamed(
+          context,
+          '/create-catch',
+          arguments: {'tripId': tripId},
+        );
 
-      // Jika berhasil submit tangkapan, tampilkan notifikasi
-      if (result == true && mounted) {
-        _showSuccess('Tangkapan berhasil dicatat!');
+        // Jika berhasil submit tangkapan, tampilkan notifikasi
+        if (result == true && mounted) {
+          _showSuccess('Tangkapan berhasil dicatat!');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -696,28 +948,20 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<TrackingMinimizeProvider, bool>(
-      selector: (_, provider) => provider.isMinimized,
-      builder: (context, isMinimized, child) {
-        if (isMinimized) {
-          return WillPopScope(
-            onWillPop: () async => false,
-            child: Stack(
-              children: [
-                const MainScreen(),
-                TrackingMinimizedOverlay(),
-              ],
-            ),
-          );
-        }
-        
-        return WillPopScope(
-          onWillPop: () async {
-            Provider.of<TrackingMinimizeProvider>(context, listen: false).minimize();
-            return false;
-          },
-          child: child!,
+    print('\n🎭 [ActiveTracking] ===== BUILD DEBUG =====');
+    print('🎭 [ActiveTracking] widget.userRole: "${widget.userRole}"');
+    print('🎭 [ActiveTracking] Show catch button: ${widget.userRole.toLowerCase() == 'abk' || widget.userRole.toLowerCase() == 'crew'}');
+    print('🎭 [ActiveTracking] ===== END DEBUG =====\n');
+    
+    return WillPopScope(
+      onWillPop: () async {
+        final provider = Provider.of<TrackingMinimizeProvider>(context, listen: false);
+        provider.minimize();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => MainScreen()),
+          (route) => false,
         );
+        return false;
       },
       child: _buildFullView(),
     );
@@ -733,24 +977,25 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
         children: [
           _buildBody(sp),
 
-          // Catch Button - Untuk semua role (Nahkoda dan ABK)
-          Positioned(
-            right: 35,
-            bottom: 180,
-            child: GestureDetector(
-              onTap: _navigateToCatchScreen,
-              child: SizedBox(
-                width: ResponsiveHelper.width(context, mobile: 70, tablet: 80),
-                height: ResponsiveHelper.height(context, mobile: 70, tablet: 80),
-                child: Lottie.asset(
-                  'assets/animations/catch.json',
-                  fit: BoxFit.contain,
-                  repeat: true,
-                  animate: true,
+          // Catch Button - Hanya untuk ABK/Crew
+          if (widget.userRole.toLowerCase() == 'abk' || widget.userRole.toLowerCase() == 'crew')
+            Positioned(
+              right: 35,
+              bottom: 180,
+              child: GestureDetector(
+                onTap: _navigateToCatchScreen,
+                child: SizedBox(
+                  width: ResponsiveHelper.width(context, mobile: 70, tablet: 80),
+                  height: ResponsiveHelper.height(context, mobile: 70, tablet: 80),
+                  child: Lottie.asset(
+                    'assets/animations/catch.json',
+                    fit: BoxFit.contain,
+                    repeat: true,
+                    animate: true,
+                  ),
                 ),
               ),
             ),
-          ),
 
           // Emergency Button - Untuk semua role
           Positioned(
@@ -776,8 +1021,17 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
           onPressed: () {
             final provider = Provider.of<TrackingMinimizeProvider>(context, listen: false);
             provider.minimize();
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => MainScreen()),
+              (route) => false,
+            );
           },
           tooltip: 'Minimize',
+        ),
+        IconButton(
+          icon: Icon(Icons.close, color: Colors.white),
+          onPressed: _showExitTrackingDialog,
+          tooltip: 'Keluar dari Tracking',
         ),
       ],
       flexibleSpace: Container(
@@ -870,7 +1124,7 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
                   departureDate: widget.departureTime,
                   estimatedReturnDate: widget.estimatedReturnDate,
                   estimatedDurationDays: widget.estimatedDuration,
-                  currentDistance: _currentZoneInfo?['distance'],
+                  currentDistance: _getCurrentDistance(),
                   isViolating: _isViolating,
                   zoneStatus: _zoneStatus,
                 ),
@@ -1031,8 +1285,54 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
   }
 
   Widget _buildMapSection(double Function(double) sp) {
-    if (_currentPosition != null && widget.harborCoordinates != null) {
+    // Validasi ketat
+    if (_currentPosition == null || widget.harborCoordinates == null) {
       return Container(
+        height: 300,
+        margin: EdgeInsets.symmetric(horizontal: sp(16)),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(sp(16)),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              SizedBox(height: sp(16)),
+              Text(
+                'Mendapatkan lokasi...',
+                style: TextStyle(fontSize: sp(16), color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    try {
+      final lat = widget.harborCoordinates!['latitude'];
+      final lng = widget.harborCoordinates!['longitude'];
+      
+      if (lat == null || lng == null) {
+        throw Exception('Koordinat null');
+      }
+      
+      // Validasi dan swap jika terbalik
+      double finalLat = (lat is num) ? lat.toDouble() : double.parse(lat.toString());
+      double finalLng = (lng is num) ? lng.toDouble() : double.parse(lng.toString());
+      
+      // Jika latitude > 90, kemungkinan terbalik dengan longitude
+      if (finalLat.abs() > 90) {
+        print('⚠️ [Map] Swapping - lat=$finalLat, lng=$finalLng');
+        final temp = finalLat;
+        finalLat = finalLng;
+        finalLng = temp;
+        print('✅ [Map] After swap - lat=$finalLat, lng=$finalLng');
+      }
+      
+      return Container(
+        key: ValueKey('map_${_currentPosition?.latitude}_${_currentPosition?.longitude}'),
         height: 700,
         margin: EdgeInsets.symmetric(horizontal: sp(16)),
         decoration: BoxDecoration(
@@ -1047,9 +1347,10 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
         ),
         clipBehavior: Clip.antiAlias,
         child: ProductionTrackingMap(
+          key: ValueKey('production_map_${_currentPosition?.latitude}'),
           currentPosition: _currentPosition!,
-          harborLat: widget.harborCoordinates!['lat'],
-          harborLng: widget.harborCoordinates!['lng'],
+          harborLat: finalLat,
+          harborLng: finalLng,
           harborName: widget.selectedHarbor,
           zoneRadius: widget.zoneRadius,
           isViolating: _isViolating,
@@ -1057,25 +1358,31 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
           zoneStatus: _zoneStatus,
         ),
       );
-    }
-
-    return Container(
-      height: 300,
-      margin: EdgeInsets.symmetric(horizontal: sp(16)),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            SizedBox(height: sp(16)),
-            Text(
-              'Mendapatkan lokasi...',
-              style: TextStyle(fontSize: sp(16), color: Colors.grey[600]),
-            ),
-          ],
+    } catch (e) {
+      print('❌ [Map] Error: $e');
+      return Container(
+        height: 300,
+        margin: EdgeInsets.symmetric(horizontal: sp(16)),
+        decoration: BoxDecoration(
+          color: Colors.red[50],
+          borderRadius: BorderRadius.circular(sp(16)),
+          border: Border.all(color: Colors.red[300]!),
         ),
-      ),
-    );
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
+              SizedBox(height: sp(16)),
+              Text(
+                'Error memuat peta',
+                style: TextStyle(fontSize: sp(16), color: Colors.red[700]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildBottomActions(double Function(double) sp) {

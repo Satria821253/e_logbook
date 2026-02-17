@@ -5,6 +5,7 @@ class ApiConfig {
   static String get baseUrl => 
       dotenv.env['API_BASE_URL'] ?? 'https://elogbookipb.web.id/api';
 
+  // ========== GEMINI AI ==========
   // Load API Key from environment
   static String get geminiApiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
 
@@ -18,4 +19,10 @@ class ApiConfig {
 
   // Timeout yang cukup untuk processing gambar
   static const Duration requestTimeout = Duration(seconds: 60);
+
+  // ========== GOOGLE MAPS ==========
+  static String get googleMapsApiKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+
+  // ========== OPENWEATHER ==========
+  static String get openWeatherApiKey => dotenv.env['OPENWEATHER_API_KEY'] ?? '';
 }

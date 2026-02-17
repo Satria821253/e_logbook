@@ -46,6 +46,16 @@ class GeminiFishDetectionService {
       debugPrint('\n🔍 ========== GEMINI AI DETECTION START ==========');
       debugPrint('📁 Image path: ${image.path}');
       
+      // VALIDASI API KEY
+      if (ApiConfig.geminiApiKey.isEmpty) {
+        debugPrint('❌ GEMINI_API_KEY tidak ditemukan di .env file!');
+        throw Exception('API Key Gemini tidak dikonfigurasi. Tambahkan GEMINI_API_KEY di file .env');
+      }
+      
+      debugPrint('🔑 API Key: ${ApiConfig.geminiApiKey.substring(0, 10)}...${ApiConfig.geminiApiKey.substring(ApiConfig.geminiApiKey.length - 4)}');
+      debugPrint('🤖 Model: ${ApiConfig.geminiModel}');
+      debugPrint('🌐 Base URL: ${ApiConfig.geminiBaseUrl}');
+      
       final Uint8List imageBytes = await image.readAsBytes();
       final fileSizeMB = (imageBytes.length / (1024 * 1024)).toStringAsFixed(2);
       debugPrint('📦 Image size: ${fileSizeMB}MB (${imageBytes.length} bytes)');
@@ -247,36 +257,77 @@ Jawab HANYA dengan JSON valid (tanpa markdown, tanpa backticks):
           unitWeight: unitWeight,
         );
       } else {
-        debugPrint('❌ Server Error ${response.statusCode}');
-        debugPrint('📄 Response body: ${response.body}');
+        debugPrint('❌ ========== SERVER ERROR ${response.statusCode} ==========');
+        debugPrint('📄 Full Response Body:');
+        debugPrint(response.body);
+        debugPrint('=' * 60);
         
         // Parse error message dari Gemini API
+        String userFriendlyMessage = 'Error tidak diketahui';
         try {
           final errorData = json.decode(response.body);
           final errorMessage = errorData['error']?['message'] ?? 'Unknown error';
-          final errorReason = errorData['error']?['details']?[0]?['reason'];
+          final errorStatus = errorData['error']?['status'];
+          final errorCode = errorData['error']?['code'];
+          final errorDetails = errorData['error']?['details'];
           
-          debugPrint('🔴 Gemini Error: $errorMessage');
-          debugPrint('🔴 Error Reason: $errorReason');
+          debugPrint('🔴 Error Message: $errorMessage');
+          debugPrint('🔴 Error Status: $errorStatus');
+          debugPrint('🔴 Error Code: $errorCode');
+          debugPrint('🔴 Error Details: $errorDetails');
           
+          // Cek apakah ada reason di details
+          String? errorReason;
+          if (errorDetails != null && errorDetails is List && errorDetails.isNotEmpty) {
+            errorReason = errorDetails[0]['reason'];
+            debugPrint('🔴 Error Reason: $errorReason');
+          }
+          
+          // Handle berbagai error code
           if (response.statusCode == 400) {
-            throw Exception('Invalid request: $errorMessage');
+            userFriendlyMessage = '❌ Request tidak valid: $errorMessage';
+            if (errorMessage.contains('API key')) {
+              userFriendlyMessage = '❌ Format API Key salah. Periksa GEMINI_API_KEY di file .env';
+            }
           } else if (response.statusCode == 403) {
             if (errorReason == 'CONSUMER_SUSPENDED') {
-              throw Exception('API Key telah di-suspend oleh Google. Generate API Key baru di https://makersuite.google.com/app/apikey');
+              userFriendlyMessage = '🚫 API Key telah DI-SUSPEND oleh Google!\n\n'
+                  '📝 Solusi:\n'
+                  '1. Buka: https://aistudio.google.com/app/apikey\n'
+                  '2. Generate API Key BARU\n'
+                  '3. Update GEMINI_API_KEY di file .env\n'
+                  '4. Restart aplikasi';
+            } else if (errorMessage.contains('API key not valid')) {
+              userFriendlyMessage = '❌ API Key TIDAK VALID!\n\n'
+                  '📝 Solusi:\n'
+                  '1. Periksa GEMINI_API_KEY di file .env\n'
+                  '2. Pastikan tidak ada spasi atau karakter tambahan\n'
+                  '3. Generate key baru di: https://aistudio.google.com/app/apikey';
+            } else {
+              userFriendlyMessage = '🚫 Akses ditolak: $errorMessage';
             }
-            throw Exception('API Key invalid atau tidak memiliki akses: $errorMessage');
           } else if (response.statusCode == 429) {
-            throw Exception('Quota API habis atau terlalu banyak request');
+            userFriendlyMessage = '⏱️ Quota API habis atau terlalu banyak request.\n'
+                'Tunggu beberapa menit atau upgrade quota.';
           } else if (response.statusCode == 404) {
-            throw Exception('Model tidak ditemukan. Pastikan menggunakan gemini-1.5-flash');
+            userFriendlyMessage = '❌ Model "${ApiConfig.geminiModel}" tidak ditemukan!\n\n'
+                '📝 Solusi:\n'
+                '1. Ubah GEMINI_MODEL di .env menjadi: gemini-1.5-flash\n'
+                '2. Model yang tersedia: gemini-1.5-flash, gemini-1.5-pro\n'
+                '3. Restart aplikasi';
+          } else if (response.statusCode == 500) {
+            userFriendlyMessage = '🔧 Server Gemini sedang bermasalah. Coba lagi nanti.';
+          } else {
+            userFriendlyMessage = '❌ Error ${response.statusCode}: $errorMessage';
           }
+          
         } catch (e) {
-          debugPrint('⚠️ Could not parse error: $e');
+          debugPrint('⚠️ Could not parse error response: $e');
+          userFriendlyMessage = '❌ Error ${response.statusCode}: ${response.body}';
         }
         
         debugPrint('========== GEMINI AI DETECTION FAILED ==========\n');
-        throw Exception('Server Error ${response.statusCode}: ${response.body}');
+        throw Exception(userFriendlyMessage);
       }
     } catch (e) {
       debugPrint('❌ Exception caught: $e');

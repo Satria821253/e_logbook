@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
+import '../../config/api_config.dart';
 
 class WeatherData {
   final String condition;
@@ -19,24 +20,29 @@ class WeatherData {
 }
 
 class WeatherService {
-  // API Key dari environment variables untuk keamanan
-  static const String _apiKey = String.fromEnvironment(
-    'OPENWEATHER_API_KEY',
-    defaultValue: 'df250624f6353ee29708e524f537e27a',
-  );
+  // API Key dari .env file untuk keamanan
+  static String get _apiKey => ApiConfig.openWeatherApiKey;
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5';
 
   /// Mendapatkan data cuaca berdasarkan posisi
   static Future<WeatherData?> getWeatherByPosition(Position position) async {
     try {
+      // Validasi API key
+      if (_apiKey.isEmpty) {
+        print('❌ [Weather] OpenWeather API key tidak ditemukan di .env');
+        return null;
+      }
+
       final url = Uri.parse(
         '$_baseUrl/weather?lat=${position.latitude}&lon=${position.longitude}&appid=$_apiKey&units=metric&lang=id',
       );
 
+      print('🌤️ [Weather] Fetching weather data...');
       final response = await http.get(url).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('✅ [Weather] Data received successfully');
 
         return WeatherData(
           condition: data['weather'][0]['description'] ?? 'Tidak diketahui',
@@ -49,10 +55,11 @@ class WeatherService {
           ),
         );
       } else {
+        print('❌ [Weather] Error ${response.statusCode}: ${response.body}');
         throw Exception('Failed to load weather data: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching weather: $e');
+      print('❌ [Weather] Error fetching weather: $e');
       return null;
     }
   }
@@ -63,6 +70,12 @@ class WeatherService {
     required double lon,
   }) async {
     try {
+      // Validasi API key
+      if (_apiKey.isEmpty) {
+        print('❌ [Weather] OpenWeather API key tidak ditemukan di .env');
+        return null;
+      }
+
       final url = Uri.parse(
         '$_baseUrl/weather?lat=$lat&lon=$lon&appid=$_apiKey&units=metric&lang=id',
       );
@@ -82,10 +95,11 @@ class WeatherService {
           ),
         );
       } else {
+        print('❌ [Weather] Error ${response.statusCode}');
         throw Exception('Failed to load weather data');
       }
     } catch (e) {
-      print('Error fetching weather: $e');
+      print('❌ [Weather] Error fetching weather: $e');
       return null;
     }
   }

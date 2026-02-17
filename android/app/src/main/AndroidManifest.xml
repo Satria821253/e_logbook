@@ -27,7 +27,7 @@
         android:label="e_logbook"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:enableOnBackInvokedCallback="true"
+        android:enableOnBackInvokedCallback="false"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
@@ -57,9 +57,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDq8iGgIDkAV8XgKDCsvgNuPcViWbDhbvA"/>
         
         <!-- FCM Notification Channel -->
         <meta-data

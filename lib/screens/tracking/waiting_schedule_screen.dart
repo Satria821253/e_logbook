@@ -1,10 +1,10 @@
 import 'package:e_logbook/screens/tracking/active_tracking_screen.dart';
+import 'package:e_logbook/utils/navigation_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
-import '../../utils/navigation_helper.dart';
 import '../../services/nitification/local_notification_service.dart';
 import '../../services/cuaca/weather_service.dart';
 import '../../provider/user_provider.dart';
@@ -33,11 +33,14 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    print('📍 [WaitingSchedule] ===== INIT DEBUG =====');
+    print('\n📍 [WaitingSchedule] ===== INIT DEBUG =====');
+    print('📍 [WaitingSchedule] scheduledDepartureTime: ${widget.scheduledDepartureTime}');
     print('📍 [WaitingSchedule] userRole received: ${widget.tripData['userRole']}');
     print('📍 [WaitingSchedule] userName received: ${widget.tripData['userName']}');
     print('📍 [WaitingSchedule] captainName: ${widget.tripData['captainName']}');
-    print('📍 [WaitingSchedule] ===== INIT DEBUG END =====');
+    print('📍 [WaitingSchedule] Current time: ${DateTime.now()}');
+    print('📍 [WaitingSchedule] Time until departure: ${widget.scheduledDepartureTime.difference(DateTime.now())}');
+    print('📍 [WaitingSchedule] ===== INIT DEBUG END =====\n');
     _startCountdown();
   }
 
@@ -357,13 +360,14 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
   }
 
   void _navigateToTracking() {
-    print('🚀 [Navigate] Starting navigation to ActiveTrackingScreen');
-    print('📦 [Navigate] tripData keys: ${widget.tripData.keys.toList()}');
+    print('\n🚀 [WaitingSchedule] ===== NAVIGATE TO ACTIVE TRACKING =====');
+    print('🚀 [WaitingSchedule] Starting navigation to ActiveTrackingScreen');
+    print('🚀 [WaitingSchedule] tripData keys: ${widget.tripData.keys.toList()}');
     
     // Validasi dan parse data dengan type safety
     final departureTime = widget.tripData['departureTime'];
     if (departureTime == null || departureTime is! DateTime) {
-      print('❌ [Navigate] Error: departureTime is null or invalid type');
+      print('❌ [WaitingSchedule] Error: departureTime is null or invalid type');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: Waktu keberangkatan tidak valid'),
@@ -378,9 +382,9 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
     final rawCoordinates = widget.tripData['harborCoordinates'];
     if (rawCoordinates != null && rawCoordinates is Map) {
       harborCoordinates = Map<String, dynamic>.from(rawCoordinates);
-      print('✅ [Navigate] harborCoordinates: $harborCoordinates');
+      print('✅ [WaitingSchedule] harborCoordinates: $harborCoordinates');
     } else {
-      print('⚠️ [Navigate] harborCoordinates is null or invalid, using default');
+      print('⚠️ [WaitingSchedule] harborCoordinates is null or invalid, using default');
       harborCoordinates = {
         'latitude': -6.1075,
         'longitude': 106.8975,
@@ -415,8 +419,28 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
         ? (widget.tripData['zoneRadius'] as num).toDouble()
         : double.tryParse(widget.tripData['zoneRadius'].toString()) ?? 50.0;
     
-    print('✅ [Navigate] All data validated, navigating...');
+    print('\n📦 [WaitingSchedule] ===== SENDING TO ACTIVE TRACKING =====');
+    print('📦 [WaitingSchedule] vesselName: "${widget.tripData['vesselName']?.toString() ?? ''}"');
+    print('📦 [WaitingSchedule] vesselNumber: "${widget.tripData['vesselNumber']?.toString() ?? ''}"');
+    print('📦 [WaitingSchedule] captainName: "${widget.tripData['captainName']?.toString() ?? ''}"');
+    print('📦 [WaitingSchedule] crewCount: $crewCount');
+    print('📦 [WaitingSchedule] selectedHarbor: "${widget.tripData['selectedHarbor']?.toString() ?? ''}"');
+    print('📦 [WaitingSchedule] departureTime: $departureTime');
+    print('📦 [WaitingSchedule] estimatedReturnDate: $estimatedReturnDate');
+    print('📦 [WaitingSchedule] estimatedDuration: $estimatedDuration');
+    print('📦 [WaitingSchedule] fuelAmount: $fuelAmount');
+    print('📦 [WaitingSchedule] iceStorage: $iceStorage');
+    print('📦 [WaitingSchedule] harborCoordinates: $harborCoordinates');
+    print('📦 [WaitingSchedule] zoneRadius: $zoneRadius');
+    print('📦 [WaitingSchedule] userRole: "${widget.tripData['userRole']?.toString() ?? 'Nahkoda'}"');
+    print('📦 [WaitingSchedule] userName: "${widget.tripData['userName']?.toString() ?? ''}"');
+    print('📦 [WaitingSchedule] emergencyContact: "${widget.tripData['emergencyContact']?.toString() ?? ''}"');
+    print('📦 [WaitingSchedule] notes: "${widget.tripData['notes']?.toString()}"');
+    print('📦 [WaitingSchedule] ===== END SENDING DATA =====\n');
     
+    print('✅ [WaitingSchedule] All data validated, navigating...');
+    
+    // Gunakan NavigationHelper.pushReplacementNoTransition seperti tracking button
     NavigationHelper.pushReplacementNoTransition(
       context,
       ActiveTrackingScreen(

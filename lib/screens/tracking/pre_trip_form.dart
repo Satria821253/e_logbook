@@ -248,16 +248,6 @@ class _PreTripFormState extends State<PreTripForm> {
                         ),
                       ),
                     ),
-                    // Debug button untuk reset data
-                    IconButton(
-                      onPressed: _resetDebugData,
-                      icon: Icon(
-                        Icons.refresh,
-                        color: Colors.white.withOpacity(0.7),
-                        size: 20,
-                      ),
-                      tooltip: 'Reset Data (Debug)',
-                    ),
                   ],
                 ),
               ),
@@ -273,9 +263,14 @@ class _PreTripFormState extends State<PreTripForm> {
                       topRight: Radius.circular(30),
                     ),
                   ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: Column(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(top: 24),
+                      child: Column(
                       children: [
                         _buildTripHeader(),
                         _buildProgressTracker(),
@@ -285,6 +280,7 @@ class _PreTripFormState extends State<PreTripForm> {
                         const SizedBox(height: 24),
                       ],
                     ),
+                  ),
                   ),
                 ),
               ),
@@ -1561,53 +1557,5 @@ class _PreTripFormState extends State<PreTripForm> {
   @override
   void dispose() {
     super.dispose();
-  }
-
-  // Debug function untuk reset data
-  Future<void> _resetDebugData() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.warning, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Reset Data'),
-          ],
-        ),
-        content: Text(
-          'Reset semua data upload untuk testing?\n\nData yang sudah diupload ke server tidak akan terhapus.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: Text('Reset'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      setState(() {
-        _fuelData = null;
-        _iceData = null;
-        _izinMelautPath = null;
-        _dokumenKapalPath = null;
-        _asuransiPath = null;
-        _isLocked = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Data berhasil direset untuk testing'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
   }
 }
