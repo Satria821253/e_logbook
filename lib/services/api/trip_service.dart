@@ -497,10 +497,12 @@ class TripService {
         throw Exception('Token tidak ditemukan');
       }
 
-      final url = '$baseUrl/api/mobile/trip/$tripId/status';
+      // Use POST method as per backend requirement
+      final url = '$baseUrl/api/trip/$tripId';
       print('🌐 [STATUS] URL: $url');
+      print('🌐 [STATUS] Method: POST');
 
-      final response = await http.put(
+      final response = await http.post(
         Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',
@@ -512,7 +514,7 @@ class TripService {
       print('📥 [STATUS] Response status: ${response.statusCode}');
       print('📥 [STATUS] Response body: ${response.body}');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final result = json.decode(response.body);
         print('✅ [STATUS] Status updated successfully');
         print('========== UPDATE TRIP STATUS END (SUCCESS) ==========\n');
@@ -520,7 +522,7 @@ class TripService {
       } else {
         print('❌ [STATUS] Failed: ${response.statusCode}');
         print('========== UPDATE TRIP STATUS END (FAILED) ==========\n');
-        throw Exception('Gagal update status trip');
+        throw Exception('Gagal update status trip: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ [STATUS] Exception: $e');
