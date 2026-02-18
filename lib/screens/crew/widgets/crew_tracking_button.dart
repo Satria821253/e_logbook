@@ -671,6 +671,7 @@ class CrewTrackingButton extends StatelessWidget {
           zoneRadius: tripData['zoneRadius']?.toDouble() ?? 50.0,
           userRole: userRole,
           userName: userName,
+          tripId: tripData['id'],
         ),
       ),
     );

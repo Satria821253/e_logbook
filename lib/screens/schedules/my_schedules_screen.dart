@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../../services/api/trip_service.dart';
+import '../../services/api/sos_service.dart';
 import '../../services/api/vessel_service.dart';
 import '../../services/nitification/local_notification_service.dart';
 import '../../services/cuaca/weather_service.dart';
@@ -832,6 +833,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         zoneRadius: 50.0,
         userRole: userRole == 'nahkoda' ? 'Nahkoda' : 'ABK',
         userName: userName,
+        tripId: tripData['id'],
       ),
     );
     print('✅ [NAVIGATE] Navigation completed!');
@@ -952,6 +954,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
             'zoneRadius': 50.0,
             'userRole': userRole == 'nahkoda' ? 'Nahkoda' : 'ABK',
             'userName': userName,
+            'tripId': tripData['id'],
           },
         ),
       ),
@@ -1300,85 +1303,106 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                 else if (status?.toLowerCase() == 'darurat' ||
                     status?.toLowerCase() == 'emergency')
                   // Trip darurat
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Cek apakah tracking sedang minimize
-                        final minimizeProvider = Provider.of<TrackingMinimizeProvider>(context, listen: false);
-                        print('🚨 [DARURAT] Check: isMinimized=${minimizeProvider.isMinimized}, isTracking=${minimizeProvider.isTracking}');
-                        if (minimizeProvider.isMinimized && minimizeProvider.isTracking) {
-                          print('🚨 [DARURAT] Show warning dialog');
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              title: Row(
-                                children: [
-                                  Icon(Icons.navigation, color: Colors.blue),
-                                  SizedBox(width: 8),
-                                  Expanded(child: Text('Tracking Sedang Berjalan')),
-                                ],
-                              ),
-                              content: Text('Anda memiliki tracking yang sedang berjalan di background. Silakan buka tracking tersebut terlebih dahulu melalui minimize overlay.'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text('Tutup'),
+                  Column(
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            // Cek apakah tracking sedang minimize
+                            final minimizeProvider = Provider.of<TrackingMinimizeProvider>(context, listen: false);
+                            print('🚨 [DARURAT] Check: isMinimized=${minimizeProvider.isMinimized}, isTracking=${minimizeProvider.isTracking}');
+                            if (minimizeProvider.isMinimized && minimizeProvider.isTracking) {
+                              print('🚨 [DARURAT] Show warning dialog');
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  title: Row(
+                                    children: [
+                                      Icon(Icons.navigation, color: Colors.blue),
+                                      SizedBox(width: 8),
+                                      Expanded(child: Text('Tracking Sedang Berjalan')),
+                                    ],
+                                  ),
+                                  content: Text('Anda memiliki tracking yang sedang berjalan di background. Silakan buka tracking tersebut terlebih dahulu melalui minimize overlay.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text('Tutup'),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              );
+                              return;
+                            }
+                            
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => Center(
+                                child: CircularProgressIndicator(color: Colors.red),
+                              ),
+                            );
+
+                            final response = await TripService.getTripDetail(
+                              schedule['id'],
+                            );
+                            if (mounted) Navigator.pop(context);
+
+                            if (response['success'] == true) {
+                              await _navigateToTracking(response['data']);
+                            } else if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal memuat data trip'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                          );
-                          return;
-                        }
-                        
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (context) => Center(
-                            child: CircularProgressIndicator(color: Colors.red),
                           ),
-                        );
-
-                        final response = await TripService.getTripDetail(
-                          schedule['id'],
-                        );
-                        if (mounted) Navigator.pop(context);
-
-                        if (response['success'] == true) {
-                          await _navigateToTracking(response['data']);
-                        } else if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Gagal memuat data trip'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.warning, size: 20, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text(
+                                'Lanjutkan - DARURAT!',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.warning, size: 20, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text(
-                            'Lanjutkan - DARURAT!',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                      SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _cancelEmergencyStatus(schedule),
+                          icon: Icon(Icons.check_circle, size: 18),
+                          label: Text('Batalkan Status Darurat'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.green,
+                            side: BorderSide(color: Colors.green, width: 2),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   )
                 else if (!_hasActiveTrip &&
                     (status?.toLowerCase() == 'menunggu_dokumen' ||
@@ -1487,5 +1511,142 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         ),
       ],
     );
+  }
+
+  // Batalkan status darurat
+  Future<void> _cancelEmergencyStatus(Map<String, dynamic> schedule) async {
+    final kapal = schedule['kapal'];
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.check_circle, color: Colors.green),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('Batalkan Darurat?', style: TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Kapal: ${kapal?['namaKapal'] ?? kapal?['nama'] ?? '-'}'),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Status trip akan diubah dari DARURAT menjadi BERLAYAR',
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: Text('Ya, Batalkan Darurat'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Membatalkan status darurat...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // TEMPORARY: Gunakan endpoint trip update karena backend SOS belum support cancel
+      // TODO: Ganti ke SosService.cancelSosAlert() setelah backend siap
+      await TripService.updateTripStatus(schedule['id'], 'berlayar');
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Status darurat berhasil dibatalkan'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Update status lokal dan reload
+      setState(() {
+        schedule['status'] = 'berlayar';
+      });
+      await _loadSchedules();
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(child: Text('Gagal membatalkan darurat: $e')),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 }

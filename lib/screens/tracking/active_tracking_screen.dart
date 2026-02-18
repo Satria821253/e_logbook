@@ -31,7 +31,7 @@ class ActiveTrackingScreen extends StatefulWidget {
   final int crewCount;
   final String selectedHarbor;
   final DateTime departureTime;
-  final DateTime? estimatedReturnDate; // ← BARU: Dari API estimasiPulang
+  final DateTime? estimatedReturnDate;
   final int estimatedDuration;
   final String emergencyContact;
   final double fuelAmount;
@@ -39,8 +39,9 @@ class ActiveTrackingScreen extends StatefulWidget {
   final String? notes;
   final Map<String, dynamic>? harborCoordinates;
   final double zoneRadius;
-  final String userRole; // 'Nahkoda' or 'ABK'
-  final String userName; // Nama user yang login
+  final String userRole;
+  final String userName;
+  final int? tripId; // TAMBAHAN: Trip ID untuk location sync
 
   const ActiveTrackingScreen({
     super.key,
@@ -50,7 +51,7 @@ class ActiveTrackingScreen extends StatefulWidget {
     required this.crewCount,
     required this.selectedHarbor,
     required this.departureTime,
-    this.estimatedReturnDate, // ← BARU: Optional dari API
+    this.estimatedReturnDate,
     required this.estimatedDuration,
     required this.emergencyContact,
     required this.fuelAmount,
@@ -60,6 +61,7 @@ class ActiveTrackingScreen extends StatefulWidget {
     required this.zoneRadius,
     this.userRole = 'Nahkoda',
     this.userName = '',
+    this.tripId, // TAMBAHAN
   });
 
   @override
@@ -264,6 +266,7 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
         onViolationDetected: _handleViolation,
         onBackToSafeZone: _handleBackToSafe,
         onLocationUpdate: _handleLocationUpdate,
+        tripId: widget.tripId, // TAMBAHAN: Pass tripId untuk location sync
       );
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -950,7 +953,8 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
   Widget build(BuildContext context) {
     print('\n🎭 [ActiveTracking] ===== BUILD DEBUG =====');
     print('🎭 [ActiveTracking] widget.userRole: "${widget.userRole}"');
-    print('🎭 [ActiveTracking] Show catch button: ${widget.userRole.toLowerCase() == 'abk' || widget.userRole.toLowerCase() == 'crew'}');
+    print('🎭 [ActiveTracking] widget.userRole.toLowerCase(): "${widget.userRole.toLowerCase()}"');
+    print('🎭 [ActiveTracking] Show catch button: ${widget.userRole.toLowerCase() != 'nahkoda'}');
     print('🎭 [ActiveTracking] ===== END DEBUG =====\n');
     
     return WillPopScope(
@@ -977,8 +981,8 @@ class _ActiveTrackingScreenState extends State<ActiveTrackingScreen> {
         children: [
           _buildBody(sp),
 
-          // Catch Button - Hanya untuk ABK/Crew
-          if (widget.userRole.toLowerCase() == 'abk' || widget.userRole.toLowerCase() == 'crew')
+          // Catch Button - Hanya untuk ABK/Crew (BUKAN Nahkoda)
+          if (widget.userRole.toLowerCase() != 'nahkoda')
             Positioned(
               right: 35,
               bottom: 180,

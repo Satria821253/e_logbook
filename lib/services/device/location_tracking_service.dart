@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:e_logbook/services/device/zone_checker.dart';
 import 'package:e_logbook/services/device/foreground_tracking_service.dart';
+import 'package:e_logbook/services/api/location_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service untuk tracking lokasi secara real-time saat trip aktif
 class LocationTrackingService {
@@ -15,6 +17,9 @@ class LocationTrackingService {
   static String? _selectedHarborName;
   static String? _vesselName;
   static bool _isCurrentlyViolating = false;
+  
+  // Location sync
+  static int? _currentTripId;
 
   /// Mulai tracking lokasi (dipanggil saat user klik "Mulai Tracking")
   static Future<void> startTracking({
@@ -157,6 +162,7 @@ class LocationTrackingService {
       _vesselName = null;
       _onViolationDetected = null;
       _onBackToSafeZone = null;
+      _currentTripId = null;
     }
   }
 
@@ -198,6 +204,7 @@ class LocationTrackingService {
   required Function() onViolationDetected,
   required Function() onBackToSafeZone,
   required Function(Position, Map<String, dynamic>) onLocationUpdate,
+  int? tripId, // TAMBAHAN: Trip ID untuk sync ke backend
 }) async {
   // Validasi dan swap koordinat jika terbalik
   double validHarborLat = harborLat;
@@ -213,6 +220,12 @@ class LocationTrackingService {
   
   debugPrint('📍 [LocationTracking] Starting with coords: ($validHarborLat, $validHarborLng)');
   debugPrint('📍 [LocationTracking] Zone radius: $zoneRadius km');
+  
+  // Set trip ID untuk location sync
+  _currentTripId = tripId;
+  if (_currentTripId != null) {
+    _startLocationSync();
+  }
   
   LocationPermission permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.denied) {
@@ -239,6 +252,14 @@ class LocationTrackingService {
     ),
   ).listen((Position position) {
     _lastPosition = position;
+
+    // REAL-TIME: Kirim lokasi ke backend setiap update
+    if (_currentTripId != null) {
+      LocationService.sendLocationUpdate(
+        tripId: _currentTripId!,
+        position: position,
+      );
+    }
 
     final restrictedCheck = ZoneCheckerService.checkRestrictedZones(
       latitude: position.latitude,
@@ -288,4 +309,21 @@ class LocationTrackingService {
     }
   });
 }
+
+  /// Start periodic location sync to backend (DEPRECATED - now using real-time)
+  static void _startLocationSync() {
+    // Tidak digunakan lagi - sekarang real-time
+    debugPrint('✅ [LocationTracking] Real-time location sync enabled');
+  }
+  
+  /// Get trip ID from SharedPreferences
+  static Future<int?> _getTripIdFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt('current_trip_id');
+    } catch (e) {
+      debugPrint('❌ [LocationTracking] Error getting trip ID: $e');
+      return null;
+    }
+  }
 }

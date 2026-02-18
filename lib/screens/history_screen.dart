@@ -559,12 +559,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(sp(12)),
                     child: data.photoPath.isNotEmpty
-                        ? Image.file(
-                            File(data.photoPath),
-                            width: sp(100),
-                            height: sp(100),
-                            fit: BoxFit.cover,
-                          )
+                        ? _buildCatchImage(data.photoPath, sp(100), sp(100), fs(40))
                         : Container(
                             width: sp(100),
                             height: sp(100),
@@ -592,7 +587,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 size: fs(14), color: Colors.grey[600]),
                             SizedBox(width: sp(4)),
                             Text(
-                              '${data.weight} kg',
+                              data.weight > 0 
+                                  ? '${data.weight} kg'
+                                  : 'Berat tidak tersedia',
                               style: TextStyle(
                                 fontSize: fs(13),
                                 color: Colors.grey[600],
@@ -788,12 +785,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: data.photoPath.isNotEmpty
-                          ? Image.file(
-                              File(data.photoPath),
-                              width: 70,
-                              height: 70,
-                              fit: BoxFit.cover,
-                            )
+                          ? _buildCatchImage(data.photoPath, 70, 70, 30)
                           : Container(
                               width: 70,
                               height: 70,
@@ -836,7 +828,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     Icon(Icons.scale_rounded, size: 13, color: Colors.grey[600]),
                     const SizedBox(width: 4),
                     Text(
-                      '${data.weight} kg',
+                      data.weight > 0
+                          ? '${data.weight} kg'
+                          : 'Berat tidak tersedia',
                       style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                     ),
                     const SizedBox(width: 12),
@@ -929,5 +923,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (amount >= 1000000) return '${(amount / 1000000).toStringAsFixed(1)}jt';
     if (amount >= 1000) return '${(amount / 1000).toStringAsFixed(0)}k';
     return amount.toStringAsFixed(0);
+  }
+
+  // Helper untuk load image dengan error handling
+  Widget _buildCatchImage(String photoPath, double width, double height, double iconSize) {
+    try {
+      final file = File(photoPath);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              width: width,
+              height: height,
+              color: Colors.blue.withOpacity(0.1),
+              child: Icon(Icons.image_not_supported, color: Colors.grey, size: iconSize),
+            );
+          },
+        );
+      }
+    } catch (e) {
+      // Ignore error, return placeholder
+    }
+    return Container(
+      width: width,
+      height: height,
+      color: Colors.blue.withOpacity(0.1),
+      child: Icon(Icons.image_not_supported, color: Colors.grey, size: iconSize),
+    );
   }
 }

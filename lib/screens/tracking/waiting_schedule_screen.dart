@@ -460,6 +460,7 @@ class _WaitingScheduleScreenState extends State<WaitingScheduleScreen> {
         zoneRadius: zoneRadius,
         userRole: widget.tripData['userRole']?.toString() ?? 'Nahkoda',
         userName: widget.tripData['userName']?.toString() ?? '',
+        tripId: widget.tripData['tripId'],
       ),
     );
   }

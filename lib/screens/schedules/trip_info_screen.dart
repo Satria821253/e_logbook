@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/trip_model.dart';
 import '../../services/api/trip_service.dart';
+import '../../services/api/sos_service.dart';
 import '../../provider/user_provider.dart';
 
 class TripInfoScreen extends StatefulWidget {
@@ -430,6 +431,9 @@ class _TripInfoScreenState extends State<TripInfoScreen> with SingleTickerProvid
   }
 
   Widget _buildCardContent(TripModel trip) {
+    final statusLower = trip.status.toLowerCase();
+    final isDarurat = statusLower == 'darurat' || statusLower == 'emergency';
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -443,6 +447,27 @@ class _TripInfoScreenState extends State<TripInfoScreen> with SingleTickerProvid
           _buildInfoRow(Icons.people, 'Crew', '${trip.getCrewCount()} orang'),
           _buildInfoRow(Icons.set_meal, 'Target Ikan', trip.targetIkan),
           _buildInfoRow(Icons.scale, 'Est. Berat', '${trip.estimasiBerat} kg'),
+          
+          // Tombol Batalkan Darurat
+          if (isDarurat)
+            const SizedBox(height: 8),
+          if (isDarurat)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _cancelEmergencyStatus(trip),
+                icon: const Icon(Icons.check_circle, size: 18),
+                label: const Text('Batalkan Status Darurat'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -570,5 +595,144 @@ class _TripInfoScreenState extends State<TripInfoScreen> with SingleTickerProvid
         ),
       ),
     );
+  }
+
+  // Batalkan status darurat
+  Future<void> _cancelEmergencyStatus(TripModel trip) async {
+    // Konfirmasi dulu
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle, color: Colors.green),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Batalkan Darurat?', style: TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Kapal: ${trip.kapal.namaKapal}'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Status trip akan diubah dari DARURAT menjadi BERLAYAR',
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('Ya, Batalkan Darurat'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Membatalkan status darurat...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // TEMPORARY: Gunakan endpoint trip update karena backend SOS belum support cancel
+      // TODO: Ganti ke SosService.cancelSosAlert() setelah backend siap
+      await TripService.updateTripStatus(trip.id, 'berlayar');
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      // Show success
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Status darurat berhasil dibatalkan untuk ${trip.kapal.namaKapal}'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+
+      // Reload trips
+      await _loadTrips();
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      // Show error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(child: Text('Gagal membatalkan darurat: $e')),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 }

@@ -41,6 +41,9 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
   final _weightController = TextEditingController();
   final _quantityController = TextEditingController();
   final _notesController = TextEditingController();
+  
+  // IoT Data Controller - hanya kilogram dari sensor
+  final _iotWeightController = TextEditingController();
   final _estimatedLengthController = TextEditingController();
   final _estimatedHeightController = TextEditingController();
   final _unitWeightController = TextEditingController();
@@ -211,6 +214,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
     _weightController.dispose();
     _quantityController.dispose();
     _notesController.dispose();
+    _iotWeightController.dispose();
     _estimatedLengthController.dispose();
     _estimatedHeightController.dispose();
     _unitWeightController.dispose();
@@ -592,6 +596,18 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       debugPrint('⚓ Harbor zone object: $harborZone');
       debugPrint('⚓ Pelabuhan: $pelabuhan');
 
+      // Get current GPS location
+      Position? currentPosition;
+      try {
+        currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        );
+        debugPrint('📍 [CATCH] GPS: ${currentPosition.latitude}, ${currentPosition.longitude}');
+      } catch (e) {
+        debugPrint('⚠️ [CATCH] GPS error: $e, using 0,0');
+      }
+
       // Buat data catch untuk submission (data mentah, perhitungan di backend)
       final catchId = DateTime.now().millisecondsSinceEpoch.toString();
       final catchData = {
@@ -610,9 +626,9 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
         'trip_duration_minutes': _calculatedMinutes,
         'fishing_zone': zonaTangkap,
         'location_name': pelabuhan,
-        'latitude': 0.0,
-        'longitude': 0.0,
-        'water_depth': 0.0,  // Default 0 instead of null
+        'latitude': currentPosition?.latitude ?? 0.0,
+        'longitude': currentPosition?.longitude ?? 0.0,
+        'water_depth': 0.0,
         'weather_condition': _selectedWeatherCondition,
         'notes': _notesController.text.isEmpty ? null : _notesController.text,
         'kapalId': kapalId,
@@ -633,27 +649,28 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
       debugPrint('  location_name: ${catchData['location_name']}');
       debugPrint('  weather_condition: ${catchData['weather_condition']}');
 
-      // STEP 1: Kirim ke IoT terlebih dahulu
-      debugPrint('\n📡 [STEP 1] Sending to IoT...');
-      final iotResult = await IoTService.sendToIoT(catchData: catchData);
-      
-      if (!iotResult['success']) {
-        // Close loading dialog
-        if (mounted) Navigator.pop(context);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Gagal mengirim ke IoT: ${iotResult['message']}'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 5),
-            ),
-          );
+      // STEP 1: Kirim data IoT dari sensor (jika ada)
+      debugPrint('\n📡 [STEP 1] Sending IoT sensor data...');
+      if (_iotWeightController.text.isNotEmpty) {
+        try {
+          final iotData = {
+            ...catchData,
+            'iot_data': double.tryParse(_iotWeightController.text) ?? 0.0,
+          };
+          
+          final iotResult = await IoTService.sendToIoT(catchData: iotData);
+          
+          if (iotResult['success']) {
+            debugPrint('✅ [STEP 1] IoT sensor data sent successfully');
+          } else {
+            debugPrint('⚠️ [STEP 1] IoT failed (continuing anyway): ${iotResult['message']}');
+          }
+        } catch (e) {
+          debugPrint('⚠️ [STEP 1] IoT error (continuing anyway): $e');
         }
-        return;
+      } else {
+        debugPrint('ℹ️ [STEP 1] No IoT sensor data to send');
       }
-      
-      debugPrint('✅ [STEP 1] IoT data sent successfully');
       
       // Update loading message
       if (mounted) {
@@ -761,8 +778,8 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
           tripDurationMinutes: _calculatedMinutes,
           fishingZone: zonaTangkap,
           locationName: pelabuhan,
-          latitude: 0.0,
-          longitude: 0.0,
+          latitude: currentPosition?.latitude ?? 0.0,
+          longitude: currentPosition?.longitude ?? 0.0,
           waterDepth: 0.0,
           weatherCondition: _selectedWeatherCondition,
           fuelCost: 0, // Dihitung di backend
@@ -1026,6 +1043,16 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               ),
               SizedBox(height: sp(12)),
               _buildLocationWeatherSection(sp, fs),
+
+              SizedBox(height: sp(24)),
+
+              // DATA IoT DARI SENSOR
+              SectionTitle(
+                title: 'Data Sensor IoT (Opsional)',
+                icon: Icons.sensors,
+              ),
+              SizedBox(height: sp(12)),
+              _buildIoTSensorSection(sp, fs),
 
               SizedBox(height: sp(24)),
 
@@ -1466,7 +1493,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                 readOnly: true,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Berat Per Ikan (kg)',
+                  labelText: 'Berat/Ikan',
                   hintText: '0.0',
                   prefixIcon: Icon(Icons.scale_rounded, color: Color(0xFF1B4F9C)),
                   border: OutlineInputBorder(
@@ -1483,6 +1510,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   ),
                   filled: true,
                   fillColor: Colors.white,
+                  contentPadding: EdgeInsets.symmetric(horizontal: sp(12), vertical: sp(14)),
                 ),
               ),
             ),
@@ -1492,7 +1520,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                 controller: _weightController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Berat Total (kg)',
+                  labelText: 'Total (kg)',
                   hintText: '0.0',
                   prefixIcon: Icon(Icons.scale_rounded, color: Color(0xFF1B4F9C)),
                   border: OutlineInputBorder(
@@ -1509,6 +1537,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   ),
                   filled: true,
                   fillColor: Colors.white,
+                  contentPadding: EdgeInsets.symmetric(horizontal: sp(12), vertical: sp(14)),
                 ),
               ),
             ),
@@ -1523,7 +1552,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                 readOnly: true,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Tinggi Estimasi (cm)',
+                  labelText: 'Tinggi (cm)',
                   hintText: '0.0',
                   prefixIcon: Icon(Icons.height, color: Color(0xFF1B4F9C)),
                   border: OutlineInputBorder(
@@ -1540,6 +1569,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   ),
                   filled: true,
                   fillColor: Colors.white,
+                  contentPadding: EdgeInsets.symmetric(horizontal: sp(12), vertical: sp(14)),
                 ),
               ),
             ),
@@ -1550,7 +1580,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                 readOnly: true,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Panjang Estimasi (cm)',
+                  labelText: 'Panjang (cm)',
                   hintText: '0.0',
                   prefixIcon: Icon(Icons.straighten, color: Color(0xFF1B4F9C)),
                   border: OutlineInputBorder(
@@ -1567,6 +1597,7 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
                   ),
                   filled: true,
                   fillColor: Colors.white,
+                  contentPadding: EdgeInsets.symmetric(horizontal: sp(12), vertical: sp(14)),
                 ),
               ),
             ),
@@ -1898,6 +1929,52 @@ class _CreateCatchScreenState extends State<CreateCatchScreen> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(sp(12)),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIoTSensorSection(
+    double Function(double) sp,
+    double Function(double) fs,
+  ) {
+    return Container(
+      padding: EdgeInsets.all(sp(16)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(sp(12)),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.blue[700], size: fs(16)),
+              SizedBox(width: sp(8)),
+              Expanded(
+                child: Text(
+                  'Isi berat dari sensor IoT (jika ada)',
+                  style: TextStyle(fontSize: fs(12), color: Colors.blue[700]),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: sp(16)),
+          TextFormField(
+            controller: _iotWeightController,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Berat dari Sensor IoT (kg)',
+              hintText: '0.0',
+              prefixIcon: Icon(Icons.scale, color: Color(0xFF1B4F9C)),
+              suffixText: 'kg',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(sp(12)),
+              ),
+              helperText: 'Input berat hasil timbangan sensor IoT',
             ),
           ),
         ],
