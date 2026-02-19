@@ -194,7 +194,8 @@ class _WeatherDetailDialogState extends State<WeatherDetailDialog>
                 ),
               ],
             ),
-            child: Column(
+            child: SingleChildScrollView(
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Header
@@ -460,6 +461,7 @@ class _WeatherDetailDialogState extends State<WeatherDetailDialog>
                   ),
                 ),
               ],
+            ),
             ),
           ),
         ),

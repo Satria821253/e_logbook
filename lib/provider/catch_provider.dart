@@ -27,17 +27,30 @@ class CatchProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      debugPrint('🔍 [CatchProvider] Fetching catches from API...');
+      debugPrint('\n🔍 [CatchProvider] Fetching catches from API...');
       final response = await CatchService.getCatches();
+      
+      debugPrint('📦 [CatchProvider] Response success: ${response['success']}');
       
       if (response['success'] == true) {
         _catches.clear();
-        _catches.addAll(response['data'] as List<CatchModel>);
+        final fetchedCatches = response['data'] as List<CatchModel>;
+        _catches.addAll(fetchedCatches);
         _error = null;
         
         debugPrint('✅ [CatchProvider] Loaded ${_catches.length} catches');
-        debugPrint('📊 [CatchProvider] Total weight: ${_catches.fold<double>(0, (sum, c) => sum + c.weight)} kg');
-        debugPrint('📊 [CatchProvider] Total revenue: Rp ${_catches.fold<double>(0, (sum, c) => sum + c.totalRevenue)}');
+        
+        // Debug: Print first 3 catches
+        for (var i = 0; i < _catches.length && i < 3; i++) {
+          final c = _catches[i];
+          debugPrint('   [$i] ${c.fishName} - ${c.weight}kg - Date: ${c.departureDate}');
+        }
+        
+        final totalWeight = _catches.fold<double>(0, (sum, c) => sum + c.weight);
+        final totalRevenue = _catches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
+        
+        debugPrint('📊 [CatchProvider] Total weight: ${totalWeight.toStringAsFixed(1)} kg');
+        debugPrint('📊 [CatchProvider] Total revenue: Rp ${totalRevenue.toStringAsFixed(0)}\n');
       } else {
         _error = response['message'] ?? 'Gagal mengambil data';
         debugPrint('❌ [CatchProvider] Error: $_error');
@@ -48,6 +61,7 @@ class CatchProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+      debugPrint('🔔 [CatchProvider] notifyListeners() called\n');
     }
   }
 
