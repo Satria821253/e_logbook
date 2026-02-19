@@ -212,6 +212,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     double Function(double) fs,
     double Function(double) sp,
   ) {
+    // Gunakan SEMUA data, bukan hanya bulan ini
+    final allCatches = provider.catches;
+    final totalWeight = allCatches.fold<double>(0, (sum, c) => sum + c.weight);
+    final totalRevenue = allCatches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
+    final totalTrips = allCatches.length;
+    
     return Container(
       padding: EdgeInsets.all(sp(20)),
       decoration: BoxDecoration(
@@ -230,7 +236,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Column(
         children: [
           Text(
-            'Total Bulan Ini',
+            'Total Keseluruhan',
             style: TextStyle(
               color: Colors.white70,
               fontSize: fs(14),
@@ -238,7 +244,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           SizedBox(height: sp(8)),
           Text(
-            'Rp ${_formatMoney(provider.totalRevenueThisMonth)}',
+            'Rp ${_formatMoney(totalRevenue)}',
             style: TextStyle(
               color: Colors.white,
               fontSize: fs(32),
@@ -253,7 +259,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             children: [
               _buildStatItemMobile(
                 'Total Tangkapan',
-                '${provider.totalWeightThisMonth.toStringAsFixed(1)} kg',
+                '${totalWeight.toStringAsFixed(1)} kg',
                 Icons.scale_rounded,
                 fs,
                 sp,
@@ -261,7 +267,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               Container(width: 1, height: sp(40), color: Colors.white30),
               _buildStatItemMobile(
                 'Total Trip',
-                '${provider.totalTripsThisMonth} Trip',
+                '$totalTrips Trip',
                 Icons.sailing_rounded,
                 fs,
                 sp,
@@ -308,6 +314,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
   // SUMMARY CARD - TABLET
   // ========================================================================
   Widget _buildSummaryCardTablet(CatchProvider provider) {
+    // Gunakan SEMUA data, bukan hanya bulan ini
+    final allCatches = provider.catches;
+    final totalWeight = allCatches.fold<double>(0, (sum, c) => sum + c.weight);
+    final totalRevenue = allCatches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
+    final totalTrips = allCatches.length;
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -331,7 +343,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Total Bulan Ini',
+                  'Total Keseluruhan',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -339,7 +351,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Rp ${_formatMoney(provider.totalRevenueThisMonth)}',
+                  'Rp ${_formatMoney(totalRevenue)}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 36,
@@ -354,7 +366,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Expanded(
             child: _buildStatItemTablet(
               'Total Tangkapan',
-              '${provider.totalWeightThisMonth.toStringAsFixed(1)} kg',
+              '${totalWeight.toStringAsFixed(1)} kg',
               Icons.scale_rounded,
             ),
           ),
@@ -362,7 +374,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Expanded(
             child: _buildStatItemTablet(
               'Total Trip',
-              '${provider.totalTripsThisMonth} Trip',
+              '$totalTrips Trip',
               Icons.sailing_rounded,
             ),
           ),

@@ -399,6 +399,19 @@ class _HomeScreenState extends State<HomeScreen>
     super.build(context);
 
     final isTablet = ResponsiveHelper.isTablet(context);
+    
+    // Force fetch catches on every build to ensure data is loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final catchProvider = Provider.of<CatchProvider>(context, listen: false);
+        if (catchProvider.catches.isEmpty) {
+          debugPrint('⚠️ [HOME BUILD] Catches empty, fetching...');
+          catchProvider.fetchCatches();
+        } else {
+          debugPrint('✅ [HOME BUILD] Catches available: ${catchProvider.catches.length}');
+        }
+      }
+    });
 
     // Jika tablet, render tanpa CustomSliverAppBar karena sudah ada header di MainScreen
     if (isTablet) {
@@ -467,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _isMonthlyView ? 'Statistik Bulan Ini' : 'Statistik Tahun Ini',
+                        'Statistik Semua Data',
                         style: TextStyle(
                           fontSize: MediaQuery.of(context).size.width < 800
                               ? 14
@@ -640,7 +653,7 @@ class _HomeScreenState extends State<HomeScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _isMonthlyView ? 'Statistik Bulan Ini' : 'Statistik Tahun Ini',
+                              'Statistik Semua Data',
                               style: TextStyle(
                                 fontSize: ResponsiveHelper.font(
                                   context,
@@ -723,37 +736,32 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildStatisticsCards() {
     final provider = Provider.of<CatchProvider>(context);
-    final now = DateTime.now();
     
-    // Filter catches berdasarkan view yang dipilih
-    final filteredCatches = _isMonthlyView
-        ? provider.catches.where((catch_) {
-            final catchDate = catch_.departureDate;
-            return catchDate.year == now.year && catchDate.month == now.month;
-          }).toList()
-        : provider.catches.where((catch_) {
-            final catchDate = catch_.departureDate;
-            return catchDate.year == now.year;
-          }).toList();
+    debugPrint('\n🔍 [_buildStatisticsCards] Called');
+    debugPrint('🔍 [Provider] catches.length = ${provider.catches.length}');
+    debugPrint('🔍 [Provider] isLoading = ${provider.isLoading}');
     
-    final totalWeight = filteredCatches.fold<double>(
-      0,
-      (sum, catch_) => sum + catch_.weight,
-    );
-    final totalRevenue = filteredCatches.fold<double>(
-      0,
-      (sum, catch_) => sum + catch_.totalRevenue,
-    );
+    // TAMPILKAN SEMUA DATA tanpa filter
+    final filteredCatches = provider.catches;
+    
+    if (filteredCatches.isEmpty) {
+      debugPrint('⚠️ [Stats] NO DATA - Catches is empty!');
+    } else {
+      debugPrint('✅ [Stats] Found ${filteredCatches.length} catches');
+      for (var i = 0; i < filteredCatches.length && i < 3; i++) {
+        debugPrint('   [$i] ${filteredCatches[i].fishName} - ${filteredCatches[i].weight}kg');
+      }
+    }
+    
+    final totalWeight = filteredCatches.fold<double>(0, (sum, catch_) => sum + catch_.weight);
+    final totalRevenue = filteredCatches.fold<double>(0, (sum, catch_) => sum + catch_.totalRevenue);
+    final averageWeight = filteredCatches.isEmpty ? 0.0 : totalWeight / filteredCatches.length;
 
-    final averageWeight = filteredCatches.isEmpty
-        ? 0.0
-        : totalWeight / filteredCatches.length;
-
-    debugPrint('📊 [Home Stats ${_isMonthlyView ? "Monthly" : "Yearly"}]:');
+    debugPrint('📊 [Stats Result]:');
     debugPrint('   Catches: ${filteredCatches.length}');
     debugPrint('   Total Weight: ${totalWeight.toStringAsFixed(1)} kg');
     debugPrint('   Total Revenue: Rp ${totalRevenue.toStringAsFixed(0)}');
-    debugPrint('   Average Weight: ${averageWeight.toStringAsFixed(1)} kg');
+    debugPrint('   Average: ${averageWeight.toStringAsFixed(1)} kg\n');
 
     return Column(
       children: [
@@ -791,8 +799,8 @@ class _HomeScreenState extends State<HomeScreen>
               child: _buildModernStatCard(
                 icon: Icons.payments_rounded,
                 label: 'Pendapatan',
-                value: '${(totalRevenue / 1000).toStringAsFixed(0)}k',
-                subtitle: 'Rupiah',
+                value: 'Rp ${(totalRevenue / 1000).toStringAsFixed(0)}k',
+                subtitle: '',
                 gradientColors: [Color(0xFFF0AD4E), Color(0xFFEC971F)],
               ),
             ),
@@ -1125,7 +1133,8 @@ class _HomeScreenState extends State<HomeScreen>
     final now = DateTime.now();
     List<Map<String, dynamic>> data = [];
 
-    debugPrint('📈 [Chart] Generating monthly data (last 30 days)...');
+    debugPrint('\n📈 [Chart] Generating monthly data (last 30 days)...');
+    debugPrint('📈 [Chart] Total catches available: ${provider.catches.length}');
 
     for (int i = 29; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
@@ -1141,11 +1150,14 @@ class _HomeScreenState extends State<HomeScreen>
           })
           .fold<double>(0, (sum, catch_) => sum + catch_.weight);
 
+      if (dayWeight > 0) {
+        debugPrint('📈 [Chart] Day ${date.day}: ${dayWeight}kg');
+      }
       data.add({'day': dayLabel, 'weight': dayWeight});
     }
 
     final totalWeight = data.fold<double>(0, (sum, d) => sum + d['weight']);
-    debugPrint('✅ [Chart] Monthly data: ${data.length} days, total weight: ${totalWeight.toStringAsFixed(1)} kg');
+    debugPrint('✅ [Chart] Monthly data: ${data.length} days, total weight: ${totalWeight.toStringAsFixed(1)} kg\n');
 
     return data;
   }
@@ -1155,7 +1167,8 @@ class _HomeScreenState extends State<HomeScreen>
     List<Map<String, dynamic>> data = [];
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-    debugPrint('📈 [Chart] Generating yearly data (last 12 months)...');
+    debugPrint('\n📈 [Chart] Generating yearly data (last 12 months)...');
+    debugPrint('📈 [Chart] Total catches available: ${provider.catches.length}');
 
     for (int i = 11; i >= 0; i--) {
       // Hitung bulan yang benar dengan mengurangi dari bulan sekarang
@@ -1179,11 +1192,14 @@ class _HomeScreenState extends State<HomeScreen>
           })
           .fold<double>(0, (sum, catch_) => sum + catch_.weight);
 
+      if (monthWeight > 0) {
+        debugPrint('📈 [Chart] $monthLabel $targetYear: ${monthWeight}kg');
+      }
       data.add({'day': monthLabel, 'weight': monthWeight});
     }
 
     final totalWeight = data.fold<double>(0, (sum, d) => sum + d['weight']);
-    debugPrint('✅ [Chart] Yearly data: ${data.length} months, total weight: ${totalWeight.toStringAsFixed(1)} kg');
+    debugPrint('✅ [Chart] Yearly data: ${data.length} months, total weight: ${totalWeight.toStringAsFixed(1)} kg\n');
 
     return data;
   }
@@ -1677,18 +1693,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildTabletStatisticsCards() {
     final provider = Provider.of<CatchProvider>(context);
-    final now = DateTime.now();
     
-    // Filter catches berdasarkan view yang dipilih
-    final filteredCatches = _isMonthlyView
-        ? provider.catches.where((catch_) {
-            final catchDate = catch_.departureDate;
-            return catchDate.year == now.year && catchDate.month == now.month;
-          }).toList()
-        : provider.catches.where((catch_) {
-            final catchDate = catch_.departureDate;
-            return catchDate.year == now.year;
-          }).toList();
+    // TAMPILKAN SEMUA DATA tanpa filter
+    final filteredCatches = provider.catches;
+    
+    debugPrint('📊 [Tablet Stats] Showing ALL: ${filteredCatches.length}');
     
     final totalWeight = filteredCatches.fold<double>(
       0,
@@ -1730,8 +1739,8 @@ class _HomeScreenState extends State<HomeScreen>
           child: _buildCompactIconCard(
             icon: Icons.payments_rounded,
             label: 'Pendapatan',
-            value: '${(totalRevenue / 1000).toStringAsFixed(0)}k',
-            subtitle: 'Rupiah',
+            value: 'Rp ${(totalRevenue / 1000).toStringAsFixed(0)}k',
+            subtitle: '',
             gradientColors: [Color(0xFFF0AD4E), Color(0xFFEC971F)],
           ),
         ),

@@ -497,12 +497,12 @@ class TripService {
         throw Exception('Token tidak ditemukan');
       }
 
-      // Use POST method as per backend requirement
-      final url = '$baseUrl/api/trip/$tripId';
+      // Use PUT method for update
+      final url = '$baseUrl/api/trip/$tripId/status';
       print('🌐 [STATUS] URL: $url');
-      print('🌐 [STATUS] Method: POST');
+      print('🌐 [STATUS] Method: PUT');
 
-      final response = await http.post(
+      final response = await http.put(
         Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',

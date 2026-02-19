@@ -270,16 +270,23 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
           ];
           final isValidStatus = validStatuses.contains(status);
 
-          // Jika ada trip berlayar/darurat, tampilkan trip berlayar/darurat dan selesai
-          // Jika tidak ada trip berlayar/darurat, tampilkan trip siap dimulai dan selesai
+          // Jika ada trip berlayar/darurat, tampilkan:
+          // - Trip berlayar/darurat (untuk lanjutkan tracking)
+          // - Trip selesai (untuk lihat hasil)
+          // - Trip menunggu_dokumen (untuk persiapan trip berikutnya)
           final shouldShow = hasActive
-              ? (isBerlayar || isDarurat || isSelesai)
+              ? (isBerlayar || isDarurat || isSelesai || status == 'menunggu_dokumen')
               : (isValidStatus || isSelesai);
 
           final match = isMyTrip && shouldShow;
+          if (isMyTrip) {
+            print(
+              '🔍 [MySchedules] Trip ID ${trip['id']}, Status: $status, shouldShow: $shouldShow, hasActive: $hasActive',
+            );
+          }
           if (match) {
             print(
-              '✅ [MySchedules] Match: Trip ID ${trip['id']}, Nahkoda ID $nahkodaId, Status: $status',
+              '✅ [MySchedules] MATCH - Trip ID ${trip['id']}, Nahkoda ID $nahkodaId, Status: $status',
             );
           }
           return match;
@@ -1386,20 +1393,33 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                         ),
                       ),
                       SizedBox(height: 8),
-                      SizedBox(
+                      Container(
                         width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _cancelEmergencyStatus(schedule),
-                          icon: Icon(Icons.check_circle, size: 18),
-                          label: Text('Batalkan Status Darurat'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.green,
-                            side: BorderSide(color: Colors.green, width: 2),
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.support_agent,
+                              color: Colors.orange,
+                              size: 20,
                             ),
-                          ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Untuk membatalkan status darurat, hubungi Admin',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.orange.shade900,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -1511,142 +1531,5 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         ),
       ],
     );
-  }
-
-  // Batalkan status darurat
-  Future<void> _cancelEmergencyStatus(Map<String, dynamic> schedule) async {
-    final kapal = schedule['kapal'];
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.check_circle, color: Colors.green),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text('Batalkan Darurat?', style: TextStyle(fontSize: 18)),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Kapal: ${kapal?['namaKapal'] ?? kapal?['nama'] ?? '-'}'),
-            SizedBox(height: 12),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Status trip akan diubah dari DARURAT menjadi BERLAYAR',
-                      style: TextStyle(fontSize: 12, color: Colors.blue),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: Text('Ya, Batalkan Darurat'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Membatalkan status darurat...'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    try {
-      // TEMPORARY: Gunakan endpoint trip update karena backend SOS belum support cancel
-      // TODO: Ganti ke SosService.cancelSosAlert() setelah backend siap
-      await TripService.updateTripStatus(schedule['id'], 'berlayar');
-      if (!mounted) return;
-      Navigator.pop(context);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text('Status darurat berhasil dibatalkan'),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          duration: Duration(seconds: 2),
-        ),
-      );
-
-      // Update status lokal dan reload
-      setState(() {
-        schedule['status'] = 'berlayar';
-      });
-      await _loadSchedules();
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(child: Text('Gagal membatalkan darurat: $e')),
-            ],
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    }
   }
 }

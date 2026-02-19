@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class CatchModel {
   final int? id;
   final String fishName;
@@ -80,6 +82,23 @@ class CatchModel {
     final weight = double.tryParse(json['weight']?.toString() ?? '0') ?? 0.0;
     final quantity = int.tryParse(json['quantity']?.toString() ?? '0') ?? 0;
     
+    // Parse dates dengan fallback
+    DateTime departureDate;
+    try {
+      departureDate = DateTime.parse(json['departure_date']?.toString() ?? '');
+    } catch (e) {
+      debugPrint('⚠️ [CatchModel] Error parsing departure_date: ${json['departure_date']}, using now()');
+      departureDate = DateTime.now();
+    }
+    
+    DateTime arrivalDate;
+    try {
+      arrivalDate = DateTime.parse(json['arrival_date']?.toString() ?? '');
+    } catch (e) {
+      debugPrint('⚠️ [CatchModel] Error parsing arrival_date: ${json['arrival_date']}, using now()');
+      arrivalDate = DateTime.now();
+    }
+    
     return CatchModel(
       id: json['id'],
       fishName: json['fish_name'].toString().trim(),
@@ -94,9 +113,9 @@ class CatchModel {
       crewCount: int.tryParse(json['crew_count']?.toString() ?? '0') ?? 0,
       pricePerKg: double.tryParse(json['price_per_kg']?.toString() ?? '0') ?? 0.0,
       totalRevenue: double.tryParse(json['total_revenue']?.toString() ?? '0') ?? 0.0,
-      departureDate: DateTime.tryParse(json['departure_date']?.toString() ?? '') ?? DateTime.now(),
+      departureDate: departureDate,
       departureTime: json['departure_time']?.toString() ?? '',
-      arrivalDate: DateTime.tryParse(json['arrival_date']?.toString() ?? '') ?? DateTime.now(),
+      arrivalDate: arrivalDate,
       arrivalTime: json['arrival_time']?.toString() ?? '',
       tripDurationHours: int.tryParse(json['trip_duration_hours']?.toString() ?? '0') ?? 0,
       tripDurationMinutes: int.tryParse(json['trip_duration_minutes']?.toString() ?? '0') ?? 0,

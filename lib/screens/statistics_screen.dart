@@ -1,4 +1,5 @@
 import 'package:e_logbook/provider/catch_provider.dart';
+import 'package:e_logbook/models/catch_model.dart';
 import 'package:e_logbook/utils/responsive_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -13,6 +14,18 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   String _selectedPeriod = 'Bulanan';
+
+  @override
+  void initState() {
+    super.initState();
+    // Load data saat screen dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final catchProvider = Provider.of<CatchProvider>(context, listen: false);
+      if (catchProvider.catches.isEmpty) {
+        catchProvider.fetchCatches();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,70 +58,127 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       ),
       body: Consumer<CatchProvider>(
         builder: (context, catchProvider, child) {
-          return SingleChildScrollView(
-            padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildPeriodSelector(),
-                SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 28)),
-                _buildSummaryCards(catchProvider),
-                SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 32)),
-                _buildWeightChart(catchProvider),
-                SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 32)),
-                _buildRevenueChart(catchProvider),
-                SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 32)),
-                _buildFishTypeChart(catchProvider),
-                SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 32)),
-                _buildTripAnalysis(catchProvider),
-              ],
+          // Loading state
+          if (catchProvider.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+          
+          // Empty state
+          if (catchProvider.catches.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.bar_chart_rounded,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Belum ada data tangkapan',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Mulai catat tangkapan untuk melihat statistik',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          
+          return RefreshIndicator(
+            onRefresh: () => catchProvider.fetchCatches(),
+            child: SingleChildScrollView(
+              padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPeriodSelector(),
+                  SizedBox(height: ResponsiveHelper.height(context, mobile: 20, tablet: 28)),
+                  _buildSummaryCards(catchProvider),
+                  SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 32)),
+                  _buildWeightChart(catchProvider),
+                  SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 32)),
+                  _buildRevenueChart(catchProvider),
+                  SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 32)),
+                  _buildFishTypeChart(catchProvider),
+                  SizedBox(height: ResponsiveHelper.height(context, mobile: 24, tablet: 32)),
+                  _buildTripAnalysis(catchProvider),
+                ],
+              ),
             ),
           );
         },
       ),
     );
   }
-
   Widget _buildTabletLayout() {
     return Consumer<CatchProvider>(
       builder: (context, catchProvider, child) {
-        return SingleChildScrollView(
-          child: Container(
-            color: Colors.grey[100],
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+        if (catchProvider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (catchProvider.catches.isEmpty) {
+          return Center(
+            child: Text(
+              'Belum ada data tangkapan',
+              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+            ),
+          );
+        }
+        
+        return RefreshIndicator(
+          onRefresh: () => catchProvider.fetchCatches(),
+          child: SingleChildScrollView(
+            child: Container(
+              color: Colors.grey[100],
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPeriodSelector(),
+                        const SizedBox(height: 28),
+                        _buildSummaryCards(catchProvider),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildPeriodSelector(),
-                      const SizedBox(height: 28),
-                      _buildSummaryCards(catchProvider),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-                _buildWeightChart(catchProvider),
-                const SizedBox(height: 28),
-                _buildRevenueChart(catchProvider),
-                const SizedBox(height: 28),
-                _buildFishTypeChart(catchProvider),
-                const SizedBox(height: 28),
-                _buildTripAnalysis(catchProvider),
-              ],
+                  const SizedBox(height: 28),
+                  _buildWeightChart(catchProvider),
+                  const SizedBox(height: 28),
+                  _buildRevenueChart(catchProvider),
+                  const SizedBox(height: 28),
+                  _buildFishTypeChart(catchProvider),
+                  const SizedBox(height: 28),
+                  _buildTripAnalysis(catchProvider),
+                ],
+              ),
             ),
           ),
         );
@@ -156,12 +226,45 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildSummaryCards(CatchProvider provider) {
+    debugPrint('\n📊 [Statistics] Building summary cards');
+    debugPrint('📊 [Statistics] Total catches: ${provider.catches.length}');
+    
+    // TAMPILKAN SEMUA DATA tanpa filter
+    final allCatches = provider.catches;
+    final totalWeight = allCatches.fold<double>(0, (sum, c) => sum + c.weight);
+    final totalRevenue = allCatches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
+    
+    debugPrint('📊 [Statistics] Total weight: ${totalWeight.toStringAsFixed(1)} kg');
+    debugPrint('📊 [Statistics] Total revenue: Rp ${totalRevenue.toStringAsFixed(0)}');
+    
+    // Debug per periode
+    final now = DateTime.now();
+    if (_selectedPeriod == 'Bulanan') {
+      final monthCatches = allCatches.where((c) => 
+        c.departureDate.year == now.year && c.departureDate.month == now.month
+      ).length;
+      debugPrint('📊 [Statistics] Catches this month (${now.year}-${now.month}): $monthCatches');
+      // Debug: tampilkan tanggal data yang ada
+      if (allCatches.isNotEmpty) {
+        debugPrint('📊 [Statistics] Sample dates in data:');
+        for (var c in allCatches.take(3)) {
+          debugPrint('   - ${c.fishName}: ${c.departureDate.year}-${c.departureDate.month}-${c.departureDate.day}');
+        }
+      }
+    } else {
+      final yearCatches = allCatches.where((c) => 
+        c.departureDate.year == now.year
+      ).length;
+      debugPrint('📊 [Statistics] Catches this year (${now.year}): $yearCatches');
+    }
+    debugPrint('');
+    
     return Row(
       children: [
         Expanded(
           child: _buildSummaryCard(
             'Total Berat',
-            '${provider.totalWeightThisMonth.toStringAsFixed(1)} kg',
+            '${totalWeight.toStringAsFixed(1)} kg',
             Icons.scale_rounded,
             Colors.blue,
             '+12.5%',
@@ -172,7 +275,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         Expanded(
           child: _buildSummaryCard(
             'Total Pendapatan',
-            'Rp ${_formatCurrency(provider.totalRevenueThisMonth)}',
+            'Rp ${_formatCurrency(totalRevenue)}',
             Icons.payments_rounded,
             Colors.green,
             '+8.3%',
@@ -275,45 +378,70 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     List<String> labels;
     String subtitle;
 
-    switch (_selectedPeriod) {
-      case 'Bulanan':
-        // Data 4 minggu terakhir
-        chartData = List.generate(4, (index) {
-          final weekStart = now.subtract(Duration(days: (3 - index) * 7 + now.weekday - 1));
+    if (_selectedPeriod == 'Bulanan') {
+      // Data 4 minggu terakhir dari SEMUA data yang ada
+      chartData = [];
+      labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+      
+      // Jika tidak ada data bulan ini, gunakan data terakhir yang tersedia
+      final hasRecentData = provider.catches.any((c) => 
+        now.difference(c.departureDate).inDays <= 30
+      );
+      
+      if (!hasRecentData && provider.catches.isNotEmpty) {
+        // Gunakan data dari bulan terakhir yang ada data
+        final latestDate = provider.catches
+          .map((c) => c.departureDate)
+          .reduce((a, b) => a.isAfter(b) ? a : b);
+        
+        for (int i = 0; i < 4; i++) {
+          final weekStart = DateTime(latestDate.year, latestDate.month, 1)
+            .add(Duration(days: i * 7));
           final weekEnd = weekStart.add(const Duration(days: 6));
-          final catches = provider.catches.where((c) =>
-              c.departureDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
-              c.departureDate.isBefore(weekEnd.add(const Duration(days: 1))));
-          return catches.fold<double>(0, (sum, c) => sum + c.weight);
-        });
-        labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+          
+          final weekWeight = provider.catches.where((c) {
+            return c.departureDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                   c.departureDate.isBefore(weekEnd.add(const Duration(days: 1)));
+          }).fold<double>(0, (sum, c) => sum + c.weight);
+          
+          chartData.add(weekWeight);
+        }
+        subtitle = 'Data: ${latestDate.month}/${latestDate.year}';
+      } else {
+        // Gunakan data 4 minggu terakhir
+        for (int i = 0; i < 4; i++) {
+          final weekStart = now.subtract(Duration(days: (3 - i) * 7));
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          
+          final weekWeight = provider.catches.where((c) {
+            return c.departureDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                   c.departureDate.isBefore(weekEnd.add(const Duration(days: 1)));
+          }).fold<double>(0, (sum, c) => sum + c.weight);
+          
+          chartData.add(weekWeight);
+        }
         subtitle = '4 minggu terakhir';
-        break;
-
-      case 'Tahunan':
-        // Data 12 bulan terakhir
-        chartData = List.generate(12, (index) {
-          final month = now.month - 11 + index;
-          final year = now.year + (month <= 0 ? -1 : 0);
-          final adjustedMonth = month <= 0 ? month + 12 : month;
-          final catches = provider.catches.where((c) =>
-              c.departureDate.year == year &&
-              c.departureDate.month == adjustedMonth);
-          return catches.fold<double>(0, (sum, c) => sum + c.weight);
-        });
-        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        final startMonth = now.month - 11;
-        labels = List.generate(12, (i) {
-          final m = (startMonth + i - 1) % 12 + 1;
-          return ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][m - 1];
-        });
-        subtitle = '12 bulan terakhir';
-        break;
-
-      default:
-        chartData = [];
-        labels = [];
-        subtitle = '';
+      }
+    } else {
+      // Data 12 bulan - gunakan semua data yang ada
+      chartData = [];
+      final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      labels = [];
+      
+      // Cari tahun yang ada datanya
+      final years = provider.catches.map((c) => c.departureDate.year).toSet().toList()..sort();
+      final targetYear = years.isNotEmpty ? years.last : now.year;
+      
+      for (int month = 1; month <= 12; month++) {
+        final monthWeight = provider.catches.where((c) {
+          return c.departureDate.year == targetYear &&
+                 c.departureDate.month == month;
+        }).fold<double>(0, (sum, c) => sum + c.weight);
+        
+        chartData.add(monthWeight);
+        labels.add(monthNames[month - 1]);
+      }
+      subtitle = 'Tahun $targetYear';
     }
 
     return Container(
@@ -406,7 +534,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 minX: 0,
                 maxX: (chartData.length - 1).toDouble(),
                 minY: 0,
-                maxY: chartData.isEmpty
+                maxY: chartData.isEmpty || chartData.every((e) => e == 0)
                     ? 50
                     : (chartData.reduce((a, b) => a > b ? a : b) * 1.2),
                 lineBarsData: [
@@ -450,42 +578,64 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     List<String> labels;
     String title;
 
-    switch (_selectedPeriod) {
-      case 'Bulanan':
-        chartData = List.generate(4, (index) {
-          final weekStart = now.subtract(Duration(days: (3 - index) * 7 + now.weekday - 1));
+    if (_selectedPeriod == 'Bulanan') {
+      chartData = [];
+      labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+      
+      final hasRecentData = provider.catches.any((c) => 
+        now.difference(c.departureDate).inDays <= 30
+      );
+      
+      if (!hasRecentData && provider.catches.isNotEmpty) {
+        final latestDate = provider.catches
+          .map((c) => c.departureDate)
+          .reduce((a, b) => a.isAfter(b) ? a : b);
+        
+        for (int i = 0; i < 4; i++) {
+          final weekStart = DateTime(latestDate.year, latestDate.month, 1)
+            .add(Duration(days: i * 7));
           final weekEnd = weekStart.add(const Duration(days: 6));
-          final catches = provider.catches.where((c) =>
-              c.departureDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
-              c.departureDate.isBefore(weekEnd.add(const Duration(days: 1))));
-          return catches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
-        });
-        labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+          
+          final weekRevenue = provider.catches.where((c) {
+            return c.departureDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                   c.departureDate.isBefore(weekEnd.add(const Duration(days: 1)));
+          }).fold<double>(0, (sum, c) => sum + c.totalRevenue);
+          
+          chartData.add(weekRevenue);
+        }
+        title = 'Pendapatan ${latestDate.month}/${latestDate.year}';
+      } else {
+        for (int i = 0; i < 4; i++) {
+          final weekStart = now.subtract(Duration(days: (3 - i) * 7));
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          
+          final weekRevenue = provider.catches.where((c) {
+            return c.departureDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                   c.departureDate.isBefore(weekEnd.add(const Duration(days: 1)));
+          }).fold<double>(0, (sum, c) => sum + c.totalRevenue);
+          
+          chartData.add(weekRevenue);
+        }
         title = 'Pendapatan 4 Minggu Terakhir';
-        break;
-
-      case 'Tahunan':
-        chartData = List.generate(12, (index) {
-          final month = now.month - 11 + index;
-          final year = now.year + (month <= 0 ? -1 : 0);
-          final adjustedMonth = month <= 0 ? month + 12 : month;
-          final catches = provider.catches.where((c) =>
-              c.departureDate.year == year &&
-              c.departureDate.month == adjustedMonth);
-          return catches.fold<double>(0, (sum, c) => sum + c.totalRevenue);
-        });
-        final startMonth = now.month - 11;
-        labels = List.generate(12, (i) {
-          final m = (startMonth + i - 1) % 12 + 1;
-          return ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][m - 1];
-        });
-        title = 'Pendapatan 12 Bulan Terakhir';
-        break;
-
-      default:
-        chartData = [];
-        labels = [];
-        title = 'Pendapatan';
+      }
+    } else {
+      chartData = [];
+      final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      labels = [];
+      
+      final years = provider.catches.map((c) => c.departureDate.year).toSet().toList()..sort();
+      final targetYear = years.isNotEmpty ? years.last : now.year;
+      
+      for (int month = 1; month <= 12; month++) {
+        final monthRevenue = provider.catches.where((c) {
+          return c.departureDate.year == targetYear &&
+                 c.departureDate.month == month;
+        }).fold<double>(0, (sum, c) => sum + c.totalRevenue);
+        
+        chartData.add(monthRevenue);
+        labels.add(monthNames[month - 1]);
+      }
+      title = 'Pendapatan Tahun $targetYear';
     }
 
     return Container(
@@ -517,7 +667,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
-                maxY: chartData.isEmpty
+                maxY: chartData.isEmpty || chartData.every((e) => e == 0)
                     ? 3000000
                     : (chartData.reduce((a, b) => a > b ? a : b) * 1.2),
                 barTouchData: BarTouchData(enabled: false),
@@ -734,15 +884,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget _buildTripAnalysis(CatchProvider provider) {
     final now = DateTime.now();
     
-    // Filter catches berdasarkan periode yang dipilih
-    final filteredCatches = _selectedPeriod == 'Bulanan'
-        ? provider.catches.where((c) {
-            return c.departureDate.year == now.year && 
-                   c.departureDate.month == now.month;
-          }).toList()
-        : provider.catches.where((c) {
-            return c.departureDate.year == now.year;
-          }).toList();
+    // Gunakan SEMUA data yang ada, bukan filter per periode
+    final filteredCatches = provider.catches;
+    final periodLabel = 'Total';
     
     final totalTrips = filteredCatches.length;
     
@@ -758,8 +902,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             filteredCatches.length;
     
     final totalWeight = filteredCatches.fold<double>(0, (sum, c) => sum + c.weight);
-    
-    final periodLabel = _selectedPeriod == 'Bulanan' ? 'Bulan Ini' : 'Tahun Ini';
 
     return Container(
       padding: ResponsiveHelper.padding(context, mobile: 16, tablet: 20),
